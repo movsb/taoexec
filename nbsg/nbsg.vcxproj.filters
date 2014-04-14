@@ -1,0 +1,213 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="class">
+      <UniqueIdentifier>{ceb4d80f-277d-40aa-b102-759221a9a04c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Window">
+      <UniqueIdentifier>{bc039f19-64fa-4e75-a4a5-bc7658b75a86}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ctl">
+      <UniqueIdentifier>{e95b2b4c-36f7-469f-a549-908e61c47d1a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="PathLib.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="Memory.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="SQLite.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="debug.c">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="Encode.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="nbsg.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="App.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowManager.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowBase.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="ListView.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="AddDlg.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="Str.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="Thunk.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="Mini.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="MainDlg.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="ChildIndexDlg.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="EditBox.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="Button.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="ChildFileDlg.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="TabCtrl.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="ChildSettingsDlg.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="tips.c">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="reg.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="MoveToDlg.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="ShellContextMenu.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
+    <ClCompile Include="plugin.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
+    <ClCompile Include="ctl\ImageButton.cpp">
+      <Filter>ctl</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="PathLib.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="Memory.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="debug.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="Encode.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="App.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="nbsg.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="WindowManager.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowBase.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="ListView.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="AddDlg.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="Str.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="Thunk.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="Mini.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="MainDlg.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="ChildIndexDlg.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="EditBox.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="Button.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="ChildFileDlg.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="TabCtrl.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="ChildSettingsDlg.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="tips.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="reg.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="MoveToDlg.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="ShellContextMenu.h">
+      <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="plugin.h">
+      <Filter>class</Filter>
+    </ClInclude>
+    <ClInclude Include="ctl\ImageButton.h">
+      <Filter>ctl</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="nbsg.rc">
+      <Filter>Resource</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="100.ico">
+      <Filter>Resource</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="xps.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="update.txt">
+      <Filter>Resource</Filter>
+    </Text>
+    <Text Include="notes.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+  </ItemGroup>
+</Project>

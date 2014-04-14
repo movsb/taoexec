@@ -1,0 +1,327 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Chinese (Simplified, PRC) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404b0"
+        BEGIN
+            VALUE "CompanyName", "女孩不哭 <Email:anhbk@qq.com>"
+            VALUE "FileDescription", "Make it Simple!"
+            VALUE "FileVersion", "1.0.0.1"
+            VALUE "InternalName", "nbsg.exe"
+            VALUE "LegalCopyright", "Copyright (C) 2013"
+            VALUE "OriginalFilename", "nbsg.exe"
+            VALUE "ProductName", "nbsg"
+            VALUE "ProductVersion", "1.0.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ADD, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 166
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 129
+    END
+
+    IDD_TIP, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 425
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 57
+    END
+
+    IDD_MINI, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 102
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 9
+    END
+
+    IDD_MAIN, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 430
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 298
+    END
+
+    IDCD_TEMPLATE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 351
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 251
+    END
+
+    IDD_SETTINGS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 291
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 773
+    END
+
+    IDD_MOVE_TO_GROUP, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 200
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 168
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ADD DIALOGEX 0, 0, 173, 136
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "添加与修改"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_ADD_EDIT_INDEX,27,8,141,13,ES_AUTOHSCROLL
+    EDITTEXT        IDC_ADD_EDIT_COMMENT,27,26,141,13,ES_AUTOHSCROLL
+    EDITTEXT        IDC_ADD_EDIT_PATH,27,43,118,13,ES_AUTOHSCROLL,WS_EX_ACCEPTFILES
+    PUSHBUTTON      "...",IDC_ADD_BROWSE_PATH,149,42,20,14
+    EDITTEXT        IDC_ADD_EDIT_PARAM,27,61,141,13,ES_AUTOHSCROLL
+    EDITTEXT        IDC_ADD_EDIT_TIMES,27,79,141,13,ES_AUTOHSCROLL | ES_NUMBER
+    PUSHBUTTON      "批量",IDC_ADD_BATCH,6,116,36,14
+    PUSHBUTTON      "新增",IDC_ADD_NEW,48,116,36,14
+    PUSHBUTTON      "保存",IDC_ADD_SAVE,90,116,36,14
+    PUSHBUTTON      "关闭",IDC_ADD_CLOSE,132,116,36,14
+    LTEXT           "索引:",IDC_STATIC,6,9,20,8
+    LTEXT           "说明:",IDC_STATIC,6,28,20,8
+    LTEXT           "路径:",IDC_STATIC,6,45,20,8
+    LTEXT           "参数:",IDC_STATIC,6,63,20,8
+    LTEXT           "次数:",IDC_STATIC,6,81,20,8
+    LTEXT           "分类:",IDC_STATIC,6,98,19,8
+    COMBOBOX        IDC_ADD_COMBO_TYPE,27,96,142,66,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+END
+
+IDD_TIP DIALOGEX 0, 0, 432, 64
+STYLE DS_SETFONT | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_SYSMENU
+EXSTYLE WS_EX_TOOLWINDOW
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+END
+
+IDD_MINI DIALOGEX 0, 0, 109, 16
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP
+EXSTYLE WS_EX_TOOLWINDOW
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_MINI_EDIT,2,2,105,12,ES_MULTILINE | ES_AUTOHSCROLL | ES_WANTRETURN | NOT WS_TABSTOP
+END
+
+IDD_MAIN DIALOGEX 0, 0, 437, 305
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_WINDOWEDGE
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDD_MAIN_TAB,"SysTabControl32",0x0,43,41,266,12
+END
+
+IDCD_TEMPLATE DIALOGEX 0, 0, 358, 258
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDCD_TEMPLATE_LIST,"SysListView32",LVS_AUTOARRANGE | WS_BORDER | WS_TABSTOP,31,17,300,220
+END
+
+IDD_SETTINGS DIALOGEX 0, 0, 309, 791
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_VSCROLL | WS_HSCROLL | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "窗口标题:",IDC_STATIC,13,9,36,8
+    EDITTEXT        IDC_SETTINGS_TITLE,50,7,196,14,ES_AUTOHSCROLL
+    LTEXT           "索引列表(格式:数据库表名,标题):",IDC_STATIC,13,91,118,8
+    EDITTEXT        IDC_SETTINGS_INDEXLIST,11,103,278,73,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_HSCROLL
+    LTEXT           "文件夹列表(格式:标题,目录):",IDC_STATIC,10,182,102,8
+    EDITTEXT        IDC_SETTINGS_DIRLIST,10,193,279,75,ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_HSCROLL
+    CONTROL         "窗口最前",IDC_SETTINGS_TOPMOST,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,41,48,10
+    CONTROL         "打开索引后隐藏程序(按住Ctrl取消隐藏)",IDC_SETTINGS_AUTOHIDE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,55,153,10
+    CONTROL         "开机自启动(自动最小化隐藏)",IDC_SETTINGS_AUTORUN,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,69,117,10
+    CONTROL         "显示桌面标签页",IDC_SETTINGS_SHOW_DESKTOP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,172,41,72,10
+    LTEXT           "程序图标:",IDC_STATIC,13,25,36,8
+    EDITTEXT        IDC_SETTINGS_ICON,50,23,196,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "浏览...",IDC_SETTINGS_ICONBTN,249,23,36,14
+END
+
+IDD_MOVE_TO_GROUP DIALOGEX 0, 0, 207, 175
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "移动到分组..."
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_LIST_MOVETO,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,18,133,151
+    LTEXT           "选择一个要移动到的分组名:",IDC_STATIC,7,5,100,8
+    PUSHBUTTON      "移动到分组",IDC_MOVETO_MOVETO,147,18,53,14
+    PUSHBUTTON      "取消",IDC_MOVETO_CANCEL,147,54,53,14
+    PUSHBUTTON      "复制到分组",IDC_MOVETO_COPYTO,147,36,53,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDM_MENU_MAIN MENU
+BEGIN
+    POPUP "popupmenu"
+    BEGIN
+        POPUP "索引选项"
+        BEGIN
+            MENUITEM "添加索引",                        IDM_INDEX_ADD
+            MENUITEM "修改索引",                        IDM_INDEX_MODIFY
+            MENUITEM "移除选项",                        IDM_INDEX_REMOVE_MULTI
+            MENUITEM SEPARATOR
+            MENUITEM "移动到...",                      IDM_INDEX_MOVETO
+        END
+        POPUP "查看选项"
+        BEGIN
+            MENUITEM "查看详细",                        IDM_VIEW_DETAIL
+            MENUITEM "文件目录",                        IDM_VIEW_DIR
+            MENUITEM "复制路径",                        IDM_VIEW_COPYDIR
+            MENUITEM "复制参数",                        IDM_VIEW_COPYPARAM
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "刷新索引",                        IDM_INDEX_UPDATE
+    END
+END
+
+IDR_MENU_MINI MENU
+BEGIN
+    POPUP "popupmenu"
+    BEGIN
+        MENUITEM "主界面",                         IDM_MINI_MAINDLG
+        MENUITEM "退出程序",                        IDM_MINI_EXIT
+    END
+END
+
+IDR_MENU_EDITBOX MENU
+BEGIN
+    POPUP "popupmenu"
+    BEGIN
+        MENUITEM "复制(&C)\tCtrl+C",              IDM_EDITBOX_COPY
+        MENUITEM "剪切(&X)\tCtrl+X",              IDM_EDITBOX_CUT
+        MENUITEM "粘贴(&P)\tCtrl+P",              IDM_EDITBOX_PASTE
+        MENUITEM "删除(&D)\tDELETE",              IDM_EDITBOX_DELETE
+        MENUITEM SEPARATOR
+        MENUITEM "撤销(&U)\tCtrl+Z",              IDM_EDITBOX_UNDO
+        MENUITEM "全选(&A)\tCtrl+A",              IDM_EDITBOX_SELALL
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON                    "100.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RT_MANIFEST
+//
+
+1                       RT_MANIFEST             "xps.manifest"
+#endif    // Chinese (Simplified, PRC) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

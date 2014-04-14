@@ -1,0 +1,10 @@
+bin/
+!bin/nbs.db
+output/
+nbsg/sqlite3/sqlite3.lib
+nbsg/nbsg.aps
+nbsg/nbsg.plg
+nbsg.ncb
+nbsg.opt
+nbsg.positions
+nbsg.sdf
