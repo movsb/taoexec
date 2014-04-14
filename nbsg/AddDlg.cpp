@@ -19,8 +19,6 @@ AAddDlg::AAddDlg(AWindowBase* parent,const char* table,int type,LPARAM lParam):
 	m_pEditTimes(new AEditBox),
 
 	m_pBtnBrowse(new AButton),
-	m_pBtnBatch(new AButton),
-	m_pBtnNew(new AButton),
 	m_pBtnSave(new AButton),
 	m_pBtnClose(new AButton)
 {
@@ -43,8 +41,6 @@ AAddDlg::~AAddDlg()
 	delete m_pEditTimes;
 	
 	delete m_pBtnBrowse;
-	delete m_pBtnBatch;
-	delete m_pBtnNew; 
 	delete m_pBtnSave;
 	delete m_pBtnClose;
 
@@ -186,7 +182,8 @@ INT_PTR AAddDlg::DoDefault(UINT uMsg,WPARAM wParam,LPARAM lParam)
 INT_PTR AAddDlg::OnInitDialog(HWND hWnd,HWND hWndFocus,LPARAM lParam)
 {
 	m_hWnd = hWnd;
-	this->CenterWindow(GetParent()->GetHwnd());
+	//this->CenterWindow(GetParent()->GetHwnd());
+	CenterWindow(0);
 	this->ShowWindow(SW_SHOW);
 
 	m_pEditIndex	->attach(this,IDC_ADD_EDIT_INDEX);
@@ -205,8 +202,6 @@ INT_PTR AAddDlg::OnInitDialog(HWND hWnd,HWND hWndFocus,LPARAM lParam)
 	m_pEditParam	->DragAcceptFiles(TRUE);
 
 	m_pBtnBrowse	->attach(this,IDC_ADD_BROWSE_PATH);
-	m_pBtnBatch		->attach(this,IDC_ADD_BATCH);
-	m_pBtnNew 		->attach(this,IDC_ADD_NEW);
 	m_pBtnSave		->attach(this,IDC_ADD_SAVE);
 	m_pBtnClose		->attach(this,IDC_ADD_CLOSE);
 
@@ -250,9 +245,6 @@ INT_PTR AAddDlg::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
 	case IDC_ADD_CLOSE:
 		this->SendMessage(WM_CLOSE);
 		return 0;
-	case IDC_ADD_BATCH:
-		AUtils::msgbox(this->GetHwnd(),MB_ICONEXCLAMATION,g_pApp->getAppName(),"未实现!");
-		return 0;
 	case IDC_ADD_BROWSE_PATH:
 		{
 			char str[MAX_PATH];
@@ -268,11 +260,6 @@ INT_PTR AAddDlg::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
 				return 0;
 			}
 			m_pEditPath->SetWindowText(str);
-			return 0;
-		}
-	case IDC_ADD_NEW:
-		{
-			AUtils::msgbox(this->GetHwnd(),MB_ICONEXCLAMATION,"sorry...","暂时不支持从这里新增,请从菜单中进入!");
 			return 0;
 		}
 	case IDC_ADD_SAVE:

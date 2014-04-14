@@ -167,8 +167,6 @@ BEGIN
     PUSHBUTTON      "...",IDC_ADD_BROWSE_PATH,149,42,20,14
     EDITTEXT        IDC_ADD_EDIT_PARAM,27,61,141,13,ES_AUTOHSCROLL
     EDITTEXT        IDC_ADD_EDIT_TIMES,27,79,141,13,ES_AUTOHSCROLL | ES_NUMBER
-    PUSHBUTTON      "批量",IDC_ADD_BATCH,6,116,36,14
-    PUSHBUTTON      "新增",IDC_ADD_NEW,48,116,36,14
     PUSHBUTTON      "保存",IDC_ADD_SAVE,90,116,36,14
     PUSHBUTTON      "关闭",IDC_ADD_CLOSE,132,116,36,14
     LTEXT           "索引:",IDC_STATIC,6,9,20,8
@@ -268,15 +266,6 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "刷新索引",                        IDM_INDEX_UPDATE
-    END
-END
-
-IDR_MENU_MINI MENU
-BEGIN
-    POPUP "popupmenu"
-    BEGIN
-        MENUITEM "主界面",                         IDM_MINI_MAINDLG
-        MENUITEM "退出程序",                        IDM_MINI_EXIT
     END
 END
 

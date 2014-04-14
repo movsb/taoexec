@@ -5,7 +5,7 @@
 class AAddDlg:public AWindowBase
 {
 public:
-	enum{TYPE_PATH,TYPE_MODIFY,TYPE_NEW};
+	enum{TYPE_PATH,TYPE_MODIFY,TYPE_NEW,TYPE_FROM_MINI};
 	AAddDlg(AWindowBase* parent,const char* table,int type,LPARAM lParam);
 	~AAddDlg();
 public:
@@ -23,7 +23,7 @@ private:
 
 private:
 	AEditBox *m_pEditIndex,*m_pEditComment,*m_pEditPath,*m_pEditParam,*m_pEditTimes;
-	AButton  *m_pBtnBrowse,*m_pBtnBatch,*m_pBtnNew,*m_pBtnSave,*m_pBtnClose;
+	AButton  *m_pBtnBrowse,*m_pBtnSave,*m_pBtnClose;
 	
 private:
 	int m_type;

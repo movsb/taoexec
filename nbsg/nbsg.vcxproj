@@ -90,7 +90,6 @@
     <ClCompile Include="Button.cpp" />
     <ClCompile Include="ChildFileDlg.cpp" />
     <ClCompile Include="ChildIndexDlg.cpp" />
-    <ClCompile Include="ctl\ImageButton.cpp" />
     <ClCompile Include="debug.c" />
     <ClCompile Include="EditBox.cpp" />
     <ClCompile Include="Encode.cpp" />
@@ -120,7 +119,6 @@
     <ClInclude Include="Button.h" />
     <ClInclude Include="ChildFileDlg.h" />
     <ClInclude Include="ChildIndexDlg.h" />
-    <ClInclude Include="ctl\ImageButton.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="EditBox.h" />
     <ClInclude Include="Encode.h" />
@@ -156,9 +154,6 @@
   <ItemGroup>
     <Text Include="notes.txt" />
     <Text Include="update.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

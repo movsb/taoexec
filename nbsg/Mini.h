@@ -30,8 +30,8 @@ private:
 	bool create();
 	void BuildPaths();
 	bool parseCommandString(std::string& str);
-	bool parsePathString(std::string& str);
 	void updateMiniPos();
+	bool RunShell(const string& cmd,const string& arg);
 
 public:
 	INT_PTR DoDefault(UINT uMsg,WPARAM wParam,LPARAM lParam);
@@ -60,10 +60,9 @@ private:
 	AEditBox*			m_pEdit;
 	AThunk				m_SqliteThunk;
 	AIndexSqlite*		m_pIndex;
-private:
+
+	vector<string>		m_dbs;
+
 	bool				m_bStandalone;	//是否独立于主窗口,根据parent窗口是否为NULL来判断
-	std::string			m_index;
-	std::vector<std::string>	m_Paths;
-	int							m_PathIndex;
 	HIMC				m_hImc;
 };

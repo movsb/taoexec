@@ -11,9 +11,6 @@
     <Filter Include="Window">
       <UniqueIdentifier>{bc039f19-64fa-4e75-a4a5-bc7658b75a86}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ctl">
-      <UniqueIdentifier>{e95b2b4c-36f7-469f-a549-908e61c47d1a}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PathLib.cpp">
@@ -96,9 +93,6 @@
     </ClCompile>
     <ClCompile Include="plugin.cpp">
       <Filter>class</Filter>
-    </ClCompile>
-    <ClCompile Include="ctl\ImageButton.cpp">
-      <Filter>ctl</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -184,9 +178,6 @@
     <ClInclude Include="plugin.h">
       <Filter>class</Filter>
     </ClInclude>
-    <ClInclude Include="ctl\ImageButton.h">
-      <Filter>ctl</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="nbsg.rc">
@@ -206,8 +197,5 @@
       <Filter>Resource</Filter>
     </Text>
     <Text Include="notes.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

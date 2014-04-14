@@ -1,5 +1,5 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
+// Microsoft Visual C++ generated include file.
 // Used by nbsg.rc
 //
 #define IDD_ADD                         101
@@ -11,7 +11,6 @@
 #define IDCD_TEMPLATE                   115
 #define IDD_SETTINGS                    120
 #define IDR_MENU1                       121
-#define IDR_MENU_MINI                   121
 #define IDD_MOVE_TO_GROUP               122
 #define IDR_MENU_EDITBOX                123
 #define IDC_ADD_EDIT_INDEX              1001
@@ -64,8 +63,6 @@
 #define ID_POPUP_40042                  40042
 #define ID_POPUPMENU_40044              40044
 #define ID_POPUPMENU_40045              40045
-#define IDM_MINI_MAINDLG                40046
-#define IDM_MINI_EXIT                   40047
 #define ID_Menu                         40048
 #define ID_40049                        40049
 #define IDM_INDEX_MOVETO                40050

@@ -13,6 +13,9 @@
 #include "MainDlg.h"
 #include "Mini.h"
 
+#include "AddDlg.h"
+#include "ChildIndexDlg.h"
+
 using namespace std;
 
 AMini::AMini(AWindowBase* parent):
@@ -52,53 +55,12 @@ void AMini::updateMiniPos()
 	this->SetWindowPos(HWND_TOPMOST,(cxScreen-(rc.right-rc.left))/2,cyScreen-(rc.bottom-rc.top)-task_bar_height-5,0,0,SWP_NOSIZE);
 }
 
-void AMini::BuildPaths()
+bool AMini::RunShell(const string& cmd,const string& arg)
 {
-	m_Paths.clear();
-
-	string dir,str;
-	str = m_pEdit->GetWindowText();
-	dir = str.substr(0,str.find_last_of('\\')+1);
-
-	WIN32_FIND_DATA fd;
-	string s = str + "*";
-
-	HANDLE hFile = ::FindFirstFile(s.c_str(),&fd);
-	if(hFile != INVALID_HANDLE_VALUE){
-		do{
-			string file = dir + fd.cFileName;
-			if(!(::GetFileAttributes(file.c_str()) & FILE_ATTRIBUTE_HIDDEN)
-				&& strcmp(fd.cFileName,".")
-				&& strcmp(fd.cFileName,"..")
-			){
-				m_Paths.push_back(file);
-			}
-		}while(::FindNextFile(hFile,&fd));
-		::FindClose(hFile);
-	}
-}
-
-bool AMini::parsePathString(std::string& str)
-{
-	if(str.size()>=3
-		&& str[1]==':')
-	{
-		if(m_pEdit->GetModify()){
-			BuildPaths();
-			m_PathIndex=m_Paths.size()?0:-1;
-			if(m_PathIndex!=-1){
-				m_pEdit->SetWindowText(m_Paths[m_PathIndex++].c_str());
-				m_pEdit->SetModify(FALSE);
-			}
-		}else{
-			if(m_PathIndex!=-1){
-				if(m_PathIndex>m_Paths.size()-1) m_PathIndex=0;
-				m_pEdit->SetWindowText(m_Paths[m_PathIndex++].c_str());
-			}
-		}
-		Edit_SetSel(m_pEdit->GetHwnd(),m_pEdit->GetWindowTextLength(),m_pEdit->GetWindowTextLength());
-		return true;
-	}
+	int rv;
+	rv = (int)::ShellExecute(GetHwnd(),"open",cmd.c_str(),arg.c_str(),0,SW_SHOWNORMAL);
+	if(rv>32) return true;
+	AUtils::msgerr(GetHwnd(),"");
 	return false;
 }
 
@@ -118,8 +80,17 @@ bool AMini::parseCommandString(std::string& str)
 		return true;
 	}
 
-	if(parsePathString(str))
-		return true;
+	bool bshellrun=false;
+	if(str[0]=='!'){
+		str=str.substr(1);
+		bshellrun = true;
+	}
+
+	bool bmodify=false;
+	if(str[0]=='@'){
+		str=str.substr(1);
+		bmodify = true;
+	}
 
 	string cmd,param;
 	string::size_type nspace,nslash;
@@ -152,52 +123,53 @@ bool AMini::parseCommandString(std::string& str)
 		return false;
 	}
 
+	if(bshellrun){
+		return RunShell(cmd,param);
+	}
 
 	CALLBACK_RESULT cr;
 	cr.findstr = cmd;
 	cr.found = false;
-	for(const char* p=m_index.c_str(); *p;)
-	{
-		m_pIndex->setTableName(p);
+	for(auto it=m_dbs.begin();it!=m_dbs.end();it++){
+		m_pIndex->setTableName(it->c_str());
 		m_pIndex->search(
 			cmd.c_str(),
 			reinterpret_cast<void*>(&cr),
 			(sqlite3_callback)m_SqliteThunk.Cdeclcall(this,&AMini::SqliteCallback)
 			);
 
-		if(cr.found/* || cr.result.size()==1*/){
+		if(cr.found){
 			break;
-		}else{
-			while(*p++){
-			}
-			if(!*p){
-				//
-				if(cr.result.size()>1){
-					show_tips("索引过多~");
-				}else{
-					show_tips("不是有效的命令或索引名!");
-				}
-			}
 		}
 	}
 
-	if(cr.found || cr.result.size()==1){
-		bool ret = false;
-		//AIndexSqlite::SQLITE_INDEX* p = cr.result[cr.result.size()-1];
-		CALLBACK_RESULT_ENTRY* pEntry = cr.result[cr.result.size()-1];
-		m_pIndex->setTableName(pEntry->strDatabase.c_str());
-		if(param=="") param = pEntry->index.param;
-		if(bviewdir){
-			ret=APathLib::showDir(this->GetHwnd(),pEntry->index.path.c_str());
+	if(!cr.found){
+		if(cr.result.size()>1){
+			show_tips("索引过多~");
 		}else{
-			ret=APathLib::shellExec(this->GetHwnd(),pEntry->index.path.c_str(),param.c_str(),APathLib::getFileDir(pEntry->index.path.c_str()).c_str());
-			ret = m_pIndex->UpdateTimes(pEntry->index.idx.c_str());
+			show_tips("未找到该索引~");
 		}
-		if(ret){
-			show_tips((char*)pEntry->index.comment.c_str());
-			m_pEdit->SetWindowText("");
-			if(m_bStandalone) this->ShowWindow(SW_HIDE);
-		}
+		return false;
+	}
+
+	/*if(cr.found || cr.result.size()==1){*/
+	bool ret = false;
+	CALLBACK_RESULT_ENTRY* pEntry = cr.result[cr.result.size()-1];
+	m_pIndex->setTableName(pEntry->strDatabase.c_str());
+	if(param=="") param = pEntry->index.param;
+	if(bviewdir){
+		ret=APathLib::showDir(this->GetHwnd(),pEntry->index.path.c_str());
+	}else if(bmodify){
+		AAddDlg dlg(this,pEntry->strDatabase.c_str(),AAddDlg::TYPE_MODIFY,(LPARAM)&pEntry->index);
+		return false;
+	}else{
+		ret=APathLib::shellExec(this->GetHwnd(),pEntry->index.path.c_str(),param.c_str(),APathLib::getFileDir(pEntry->index.path.c_str()).c_str());
+		ret = m_pIndex->UpdateTimes(pEntry->index.idx.c_str());
+	}
+	if(ret){
+		show_tips((char*)pEntry->index.comment.c_str());
+		m_pEdit->SetWindowText("");
+		if(m_bStandalone) this->ShowWindow(SW_HIDE);
 	}
 	
 	for(auto it=cr.result.begin();
@@ -245,24 +217,24 @@ INT_PTR AMini::DoDefault(UINT uMsg,WPARAM wParam,LPARAM lParam)
 INT_PTR AMini::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
 {
 	if(!codeNotify && !hWndCtrl){
-		switch(ctrlID)
-		{
-		case IDM_MINI_MAINDLG:
-			{
-				new AMainDlg(NULL,true);
-				return 0;
-			}
-		case IDM_MINI_EXIT:
-			{
-// 				if(g_pWindowManager->m_Windows.size()>1){
-// 					AUtils::msgbox(this->GetHwnd(),MB_ICONEXCLAMATION,"提示","你必须关闭所有主窗口才能退出程序!");
-// 					return 0;
-// 				}
-				this->DestroyWindow();
-				return 0;
-			}
-		}
-		return 0;
+// 		switch(ctrlID)
+// 		{
+// 		case IDM_MINI_MAINDLG:
+// 			{
+// 				new AMainDlg(NULL,true);
+// 				return 0;
+// 			}
+// 		case IDM_MINI_EXIT:
+// 			{
+// // 				if(g_pWindowManager->m_Windows.size()>1){
+// // 					AUtils::msgbox(this->GetHwnd(),MB_ICONEXCLAMATION,"提示","你必须关闭所有主窗口才能退出程序!");
+// // 					return 0;
+// // 				}
+// 				this->DestroyWindow();
+// 				return 0;
+// 			}
+// 		}
+// 		return 0;
 	}
 	return 0;
 }
@@ -278,14 +250,16 @@ INT_PTR AMini::OnNull(LPARAM lParam)
 				m_pEdit->EnableWindow(false);
 				std::string str = m_pEdit->GetWindowText();
 				if(parseCommandString(str)){
+					m_pEdit->SetWindowText("");
+					m_pEdit->EnableWindow(TRUE);
+					ShowWindow(SW_HIDE);
 
+					return 0;
 				}
 				m_pEdit->EnableWindow(true);
 				m_pEdit->SetFocus();
 				return 0;
 			}else if(pcm->wParam == VK_TAB){
-				std::string str=m_pEdit->GetWindowText();
-				parsePathString(str);
 				return 0;
 			}
 		}else if(pcm->uMsg == WM_CONTEXTMENU){
@@ -380,13 +354,10 @@ INT_PTR AMini::OnInitDialog(HWND hWnd,HWND hWndFocus,LPARAM lParam)
 				std::string all  = str.substr(last_pos,pos-last_pos);
 				std::string data_base = all.substr(0,all.find_first_of(','));
 
-				m_index += data_base;
-				m_index += '\0';
+				m_dbs.push_back(data_base);
 
 				last_pos = pos+1;
 			}
-			m_index += '\0';//以两个'\0\0'结束
-
 
 			delete[] index;
 		}
