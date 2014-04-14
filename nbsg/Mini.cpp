@@ -146,10 +146,11 @@ bool AMini::parseCommandString(std::string& str)
 	if(!cr.found){
 		if(cr.result.size()>1){
 			show_tips("索引过多~");
-		}else{
+			return false;
+		}else if(cr.result.size()==0){
 			show_tips("未找到该索引~");
+			return false;
 		}
-		return false;
 	}
 
 	/*if(cr.found || cr.result.size()==1){*/
