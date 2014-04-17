@@ -272,7 +272,7 @@ INT_PTR AChildIndexDlg::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
 		//Index Options
 		case IDM_INDEX_ADD:
 			{
-				AAddDlg adlg(this->GetParent(),this->GetTableName(),AAddDlg::TYPE_NEW,0);
+				CAddDlg adlg(this->GetParent()->GetHwnd(),this->GetTableName(),CAddDlg::TYPE_NEW,0);
 				SearchAll();
 				return 0;
 			}
@@ -280,7 +280,7 @@ INT_PTR AChildIndexDlg::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
 			{
 				LPARAM_STRUCT* pls = 0;
 				if(!m_pIndexList->GetSelectedItemLParam((LPARAM*)&pls)) return 0;
-				AAddDlg adlg(this->GetParent(),this->GetTableName(),AAddDlg::TYPE_MODIFY,LPARAM(&pls->si));
+				CAddDlg adlg(this->GetParent()->GetHwnd(),this->GetTableName(),CAddDlg::TYPE_MODIFY,LPARAM(&pls->si));
 				SearchAll();
 				return 0;
 			}
@@ -337,11 +337,11 @@ INT_PTR AChildIndexDlg::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
 					return 0;
 				}
 
-				AMoveToDlg moveto(this,ppls,count,m_pIndexSqlite->getTableName());
+				CMoveToDlg moveto(this->GetHwnd(),ppls,count,m_pIndexSqlite->getTableName());
 
 				delete[] ppls;
 
-				if(moveto.GetDlgCode()!=AMoveToDlg::MOVETO_CANCELED) SearchAll();
+				if(moveto.GetDlgCode()!=CMoveToDlg::MOVETO_CANCELED) SearchAll();
 
 				return 0;
 			}
@@ -508,7 +508,7 @@ INT_PTR AChildIndexDlg::OnDropFiles(HDROP hDrop)
 	for(UINT i=0; i<count; i++){
 		char file[MAX_PATH]={0};
 		DragQueryFile(hDrop,i,file,sizeof(file));
-		AAddDlg adlg(this,this->GetTableName(),AAddDlg::TYPE_PATH,LPARAM(file));
+		CAddDlg adlg(this->GetHwnd(),this->GetTableName(),CAddDlg::TYPE_PATH,LPARAM(file));
 	}
 	SearchAll();
 	return 0;

@@ -1,6 +1,4 @@
 #include <string>
-
-#include "Button.h"
 #include "nbsg.h"
 #include "resource.h"
 #include "Utils.h"
@@ -9,138 +7,217 @@
 #include "SQLite.h"
 #include "MoveToDlg.h"
 
-AMoveToDlg::AMoveToDlg(AWindowBase* parent,AChildIndexDlg::LPARAM_STRUCT* *ppls,size_t count,const char* origTableName)
+#include <vector>
+#include <map>
+
+using namespace std;
+
+#include <UIlib.h>
+
+using namespace DuiLib;
+
+struct CDataList
 {
-	pSettings = new ASettingsSqlite;
-	pBtnMoveTo = new AButton;
-	pBtnCopyTo = new AButton;
-	pBtnCancel = new AButton;
-	
-	assert(parent != NULL);	//parent 一定不能为NULL,因为表名是指针, 不是数组
-	this->SetParent(parent);
-	tableName = origTableName;
-	m_count = count;
-	m_ppls = ppls;
-
-	m_ModalDialogResultCode = DialogBoxParam(g_pApp->getInstance(),MAKEINTRESOURCE(IDD_MOVE_TO_GROUP),this->GetParent()->GetHwnd(),DLGPROC(GetWindowThunk()),0);
-}
-
-AMoveToDlg::~AMoveToDlg()
-{
-	delete pBtnMoveTo;
-	delete pBtnCopyTo;
-	delete pBtnCancel;
-	delete pSettings;
-}
-
-INT_PTR AMoveToDlg::DoDefault(UINT uMsg,WPARAM wParam,LPARAM lParam)
-{
-	return 0;
-}
-
-INT_PTR AMoveToDlg::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
-{
-	if(codeNotify == BN_CLICKED){
-		if(ctrlID == IDC_MOVETO_CANCEL){
-			this->EndDialog(MOVETO_CANCELED);
-		}else if(ctrlID==IDC_MOVETO_MOVETO || ctrlID==IDC_MOVETO_COPYTO){
-			HWND hList = GetDlgItem(this->GetHwnd(),IDC_LIST_MOVETO);
-			int iSel = ListView_GetNextItem(hList,-1,LVNI_SELECTED);
-			if(iSel == -1){
-				AUtils::msgbox(this->GetHwnd(),MB_ICONEXCLAMATION,"","请先择一个表名项");
-				return 0;
-			}
-
-			LV_ITEM lvi = {0};
-			char table[64]={0};
-			lvi.mask = LVIF_TEXT;
-			lvi.cchTextMax = 64;
-			lvi.pszText = table;
-			lvi.iItem = iSel;
-			lvi.iSubItem = 0;
-			ListView_GetItem(hList,&lvi);
-			//AUtils::msgbox(hList,0,"",lvi.pszText);
-
-			AIndexSqlite* is = new AIndexSqlite;
-			is->setTableName(table);
-			is->attach(this->GetHwnd(),g_pSqliteBase->getPdb());
-
-			AIndexSqlite* ois = new AIndexSqlite;
-			ois->setTableName(tableName);
-			ois->attach(this->GetHwnd(),g_pSqliteBase->getPdb());
-
-			for(size_t n=0; n<m_count; n++){
-				//移动或复制过去算是新增了
-				//添加成功会,idx会被修改改新的
-				//char* pidx = new char[sizeof(m_ppls[n]->si.idx)];
-				//memcpy(pidx,m_ppls[n]->si.idx,sizeof(m_ppls[n]->si.idx));
-				//m_ppls[n]->si.idx[0] = '.';
-				AIndexSqlite::SQLITE_INDEX si={0};
-				si = m_ppls[n]->si;
-				si.idx[0]='.';
-				if(is->add(&si)){
-					if(ctrlID == IDC_MOVETO_MOVETO){
-						ois->deleteIndex((char*)m_ppls[n]->si.idx.c_str());
-					}
-				}else{
-					AUtils::msgbox(this->GetHwnd(),MB_ICONERROR,NULL,"失败!");
-				}
-			}
-
-			delete is;
-			delete ois;
-
-			this->EndDialog(ctrlID==IDC_MOVETO_MOVETO?MOVETO_MOVETO:MOVETO_COPYTO);
-		}
-		return 0;
+public:
+	string strTable;
+	string strAlias;
+	string GetAll() const
+	{
+		return strTable+","+strAlias;
 	}
-	return 0;
+	CDataList(const string& table,const string& alias)
+	{
+		strTable = table;
+		strAlias = alias;
+	}
+};
+
+typedef vector<CDataList*> CDataListVec;
+
+class CListCallback : public IListCallbackUI
+{
+public:
+	virtual LPCTSTR GetItemText(CControlUI* pList, int iItem, int iSubItem)
+	{
+		auto pText = reinterpret_cast<CListTextElementUI*>(pList);
+		auto tag = pText->GetTag();
+		string text;
+		switch(iSubItem)
+		{
+		case 0://数据库表名
+			text = (*m_pDataList)[tag]->strTable;
+			break;
+		case 1://数据库别名
+			text = (*m_pDataList)[tag]->strAlias;
+			break;
+		default:
+			assert(0);
+			break;
+		}
+		pList->SetUserData(text.c_str());
+		return pList->GetUserData();
+	}
+	CListCallback(CDataListVec* pDataList)
+	{
+		m_pDataList = pDataList;
+	}
+private:
+	CDataListVec* m_pDataList;
+};
+
+class CMoveToDlgImpl : public WindowImplBase
+{
+public:
+	CMoveToDlgImpl(AChildIndexDlg::LPARAM_STRUCT**ppls,size_t count,const char* origTableName)
+		: m_ListCallback(&m_DataListVec)
+	{
+		m_ppls = ppls;
+		m_count = count;
+		m_origTableName = origTableName;
+	}
+	CMoveToDlg::RET_TYPE m_dlgcode;
+
+	virtual CDuiString GetSkinFolder()
+	{
+		return "skin/";
+	}
+	virtual CDuiString GetSkinFile()
+	{
+		return "MoveToDlg.xml";
+	}
+	virtual LPCTSTR GetWindowClassName(void) const
+	{
+		return "女孩不哭";
+	}
+
+	virtual void OnClick(TNotifyUI& msg);
+	virtual void InitWindow();
+	virtual void OnFinalMessage(HWND /*hWnd*/);
+
+private:
+	void initControls();
+	void initTables();
+	void deinitTables();
+	void initList();
+private:
+	AChildIndexDlg::LPARAM_STRUCT** m_ppls;
+	size_t m_count;
+	const char* m_origTableName;
+	CListCallback m_ListCallback;
+	CDataListVec  m_DataListVec;
+
+private:
+	CButtonUI*	m_pbtnMoveTo;
+	CButtonUI*	m_pbtnCopyTo;
+	CButtonUI*	m_pbtnCancel;
+	CListUI*	m_plstList;
+};
+
+CMoveToDlg::CMoveToDlg(HWND parent,AChildIndexDlg::LPARAM_STRUCT**ppls,size_t count,const char* origTableName)
+{
+	CMoveToDlgImpl* pFrame = new CMoveToDlgImpl(ppls,count,origTableName);
+	pFrame->Create(parent,NULL,WS_VISIBLE,WS_EX_WINDOWEDGE);
+	pFrame->CenterWindow();
+	pFrame->ShowModal();
+	m_dlgcode = pFrame->m_dlgcode;
+	delete pFrame;
 }
 
-INT_PTR AMoveToDlg::OnInitDialog(HWND hWnd,HWND hWndFocus,LPARAM InitParam)
+void CMoveToDlgImpl::OnClick(TNotifyUI& msg)
 {
-	m_hWnd = hWnd;
+	if(msg.pSender == m_pbtnCancel || msg.pSender->GetName()==_T("closebtn")){
+		m_dlgcode = CMoveToDlg::MOVETO_CANCELED;
+		Close();
+	}
+	else if(msg.pSender==m_pbtnMoveTo || msg.pSender==m_pbtnCopyTo){
+		bool bMoveto = msg.pSender == m_pbtnMoveTo;
+		auto iSel = m_plstList->GetCurSel();
+		if(iSel == -1){
+			AUtils::msgbox(GetHWND(),MB_ICONEXCLAMATION,"","请选择一个表名项");
+			return;
+		}
 
-	pSettings->attach(hWnd,g_pSqliteBase->getPdb());
+		auto p = reinterpret_cast<CListTextElementUI*>(m_plstList->GetItemAt(iSel));
+		const char* newtable = m_DataListVec[p->GetTag()]->strTable.c_str();
 
-	LVCOLUMN lvc = {0};
-	RECT rc;
-	HWND hList;
-	int listWidth=0;
+		AIndexSqlite* is = new AIndexSqlite;
+		is->setTableName(newtable);
+		is->attach(GetHWND(),g_pSqliteBase->getPdb());
 
-	char str[128]={0};
-	sprintf(str,"将要移动/复制选中的 %d 项 ...",m_count);
-	this->SetWindowText(str);
+		AIndexSqlite* ois = new AIndexSqlite;
+		ois->setTableName(m_origTableName);
+		ois->attach(GetHWND(),g_pSqliteBase->getPdb());
 
-	hList = GetDlgItem(hWnd,IDC_LIST_MOVETO);
-	ListView_SetExtendedListViewStyle(hList,ListView_GetExtendedListViewStyle(hList)|LVS_EX_FULLROWSELECT);
-	::GetWindowRect(hList,&rc);
-	listWidth = rc.right-rc.left-10;
+		for(size_t n=0; n<m_count; n++){
+			//移动或复制过去算是新增了
+			//添加成功会,idx会被修改改新的
+			//char* pidx = new char[sizeof(m_ppls[n]->si.idx)];
+			//memcpy(pidx,m_ppls[n]->si.idx,sizeof(m_ppls[n]->si.idx));
+			//m_ppls[n]->si.idx[0] = '.';
+			AIndexSqlite::SQLITE_INDEX si;
+			si = m_ppls[n]->si;
+			si.idx[0]='.';
+			if(is->add(&si)){
+				if(bMoveto){
+					ois->deleteIndex((char*)m_ppls[n]->si.idx.c_str());
+				}
+			}else{
+				AUtils::msgbox(GetHWND(),MB_ICONERROR,NULL,"失败!");
+			}
+		}
 
-	lvc.mask = LVCF_TEXT | LVCF_WIDTH;
-	lvc.cchTextMax = 256;
+		delete is;
+		delete ois;
 
-	lvc.iSubItem = 0;
-	lvc.pszText = "数据库表名";
-	lvc.cx = int(listWidth*0.4);
-	ListView_InsertColumn(hList,0,&lvc);
+		m_dlgcode = bMoveto?CMoveToDlg::MOVETO_MOVETO:CMoveToDlg::MOVETO_COPYTO;
 
-	lvc.iSubItem++;
-	lvc.pszText = "标签页名";
-	lvc.cx = int(listWidth*0.6);
-	ListView_InsertColumn(hList,1,&lvc);
-	
+		Close();
+	}
+}
 
-	char* index;
+void CMoveToDlgImpl::InitWindow()
+{
+	initControls();
+	initTables();
+	initList();
+}
+
+void CMoveToDlgImpl::OnFinalMessage(HWND )
+{
+	deinitTables();
+}
+
+void CMoveToDlgImpl::initControls()
+{
+	struct{
+		void* ptr;
+		const char*  name;
+	} li[] = {
+		{&m_pbtnMoveTo,	"btnMoveTo"},
+		{&m_pbtnCopyTo,	"btnCopyTo"},
+		{&m_pbtnCancel,	"btnCancel"},
+		{&m_plstList,	"listTables"},
+		{0,0}
+	};
+	for(int i=0;li[i].ptr; i++){
+		*(CControlUI**)li[i].ptr = static_cast<CControlUI*>(m_PaintManager.FindControl(li[i].name));
+	}
+}
+
+void CMoveToDlgImpl::initTables()
+{
+	ASettingsSqlite set;
 	int size;
-	if(pSettings->getSetting("index_list",(void**)&index,&size)){
-		std::string str(index);
-		str += "\r\n";
+	char* tables;
+	set.attach(GetHWND(),g_pSqliteBase->getPdb());
+	set.getSetting("index_list",(void**)&tables,&size);
 
-		LV_ITEM lvi = {0};
-		lvi.mask = LVIF_TEXT;
-		lvi.cchTextMax = 256;
-		lvi.iItem = -1;
+	std::string str(tables);
+	str += "\r\n";
+
+	try{
+		int cpos = 0;
+
 		std::string::size_type pos=0,last_pos=0;
 		while((pos=str.find_first_of('\n',last_pos))!=std::string::npos){
 			if(pos-last_pos==1){
@@ -155,29 +232,39 @@ INT_PTR AMoveToDlg::OnInitDialog(HWND hWnd,HWND hWndFocus,LPARAM InitParam)
 			std::string data_base = all.substr(0,pos_2);
 			std::string data_name = all.substr(pos_2+1);
 
-			//忽略当前表
-			if(strcmp(data_base.c_str(),tableName)!=0){
-				lvi.iItem ++;
-				lvi.iSubItem = 0;
-				lvi.pszText = (char*)data_base.c_str();
-				ListView_InsertItem(hList,&lvi);
-				lvi.iSubItem = 1;
-				lvi.pszText = (char*)data_name.c_str();
-				ListView_SetItem(hList,&lvi);
-			}
+			m_DataListVec.push_back(new CDataList(data_base,data_name));
 
 			last_pos = pos+1;
 		}
-		delete[] index;
+		delete[] tables;
 	}
-
-	this->CenterWindow(GetParent()->GetHwnd());
-
-	return 0;
+	catch(...){
+		AUtils::msgbox(GetHWND(),MB_ICONERROR,g_pApp->getAppName(),"索引列表不正确!");
+	}
 }
 
-INT_PTR AMoveToDlg::OnClose()
+void CMoveToDlgImpl::deinitTables()
 {
-	this->EndDialog(MOVETO_CANCELED);
-	return 0;
+	for(auto it=m_DataListVec.begin(); it!=m_DataListVec.end(); it++){
+		delete *it;
+	}
 }
+
+void CMoveToDlgImpl::initList()
+{
+	m_plstList->RemoveAll();
+	m_plstList->SetTextCallback(&m_ListCallback);
+
+	auto sz = m_DataListVec.size();
+	for(auto i=0; i<sz; i++){
+		//discard current table
+		const char* p = m_DataListVec[i]->strTable.c_str();
+		if(strcmp(p, m_origTableName) == 0)
+			continue;
+
+		CListTextElementUI* pText = new CListTextElementUI;
+		pText->SetTag(i);
+		m_plstList->Add(pText);
+	}
+}
+

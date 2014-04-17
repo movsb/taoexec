@@ -5,6 +5,10 @@
 #include "Mini.h"
 #include "WindowManager.h"
 
+#include <uilib.h>
+
+using namespace DuiLib;
+
 //#pragma comment(lib,"imm32.lib")
 
 ASqliteBase* g_pSqliteBase;
@@ -46,13 +50,11 @@ int CALLBACK WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine
 // 	if(init){
 // 		init(maindlg);
 // 	}
+// 	
+	CPaintManagerUI::SetInstance(GetModuleHandle(NULL));
+	//CPaintManagerUI::SetResourcePath(CPaintManagerUI::GetInstancePath()+"skin/");
 
-	MSG msg;
-	while(GetMessage(&msg,NULL,0,0))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
+	CPaintManagerUI::MessageLoop();
 
 	g_pSqliteBase->close();
 

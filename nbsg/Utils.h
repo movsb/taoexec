@@ -1,5 +1,5 @@
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#ifndef __MYUTILS_H__
+#define __MYUTILS_H__
 
 #include <windows.h>
 
@@ -15,4 +15,4 @@ public:
 	static bool isObjOnStack(void* pObjAddr);
 };
 
-#endif//!__UTILS_H__
+#endif//!__MYUTILS_H__

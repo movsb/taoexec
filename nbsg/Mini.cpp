@@ -161,7 +161,7 @@ bool AMini::parseCommandString(std::string& str)
 	if(bviewdir){
 		ret=APathLib::showDir(this->GetHwnd(),pEntry->index.path.c_str());
 	}else if(bmodify){
-		AAddDlg dlg(this,pEntry->strDatabase.c_str(),AAddDlg::TYPE_MODIFY,(LPARAM)&pEntry->index);
+		CAddDlg dlg(this->GetHwnd(),pEntry->strDatabase.c_str(),CAddDlg::TYPE_MODIFY,(LPARAM)&pEntry->index);
 		return false;
 	}else{
 		ret=APathLib::shellExec(this->GetHwnd(),pEntry->index.path.c_str(),param.c_str(),APathLib::getFileDir(pEntry->index.path.c_str()).c_str());

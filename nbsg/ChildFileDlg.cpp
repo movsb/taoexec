@@ -334,7 +334,7 @@ INT_PTR AChildFileDlg::OnNotify(LPNMHDR phdr)
 				UINT idCommand = scm.ShowContextMenu(this->GetParent()->GetHwnd());
 				if(idCommand){
 					if(idCommand == 10001){
-						AAddDlg add(this,NULL,AAddDlg::TYPE_PATH,LPARAM(parray));
+						CAddDlg add(this->GetHwnd(),NULL,CAddDlg::TYPE_PATH,LPARAM(parray));
 					}
 				}
 
