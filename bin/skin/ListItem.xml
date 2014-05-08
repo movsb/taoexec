@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Window>
+	<VerticalLayout width="80" height="80">
+		<HorizontalLayout height="32" width="80" inset="24,0,24,0">
+			<IconButton name="listItemBtn" hotimage="btn_hot.png" width="32" height="32"/>
+		</HorizontalLayout>
+		<Text name="listItemText" text="<null>" align="center" width="80" height="36" endellipsis="true" font="1" />
+		<Control height="10" />
+	</VerticalLayout>
+</Window>

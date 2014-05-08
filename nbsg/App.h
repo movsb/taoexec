@@ -1,6 +1,5 @@
 #pragma once
 #include <Windows.h>
-#include "debug.h"
 class AApp
 {
 public:
@@ -10,7 +9,6 @@ public:
 		::GetModuleFileName(NULL,m_ProgramDirectory,sizeof(m_ProgramDirectory));
 		*strrchr(m_ProgramDirectory,'\\') = '\0';
 		::SetCurrentDirectory(m_ProgramDirectory);
-		debug_out(("Location:%s\n",m_ProgramDirectory));
 	}
 
 	void setInstance(HINSTANCE hInstance) {_hInstance = hInstance;}

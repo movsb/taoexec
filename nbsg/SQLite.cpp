@@ -1,326 +1,350 @@
 #include <iostream>
 #include <sstream>
+#include <vector>
+#include <string>
+#include <cassert>
+
+using namespace std;
+
 #include "SQLite.h"
-#include "nbsg.h"
-#include "Str.h"
-#include "PathLib.h"
-#include "Utils.h"
-#include "debug.h"
 
-/****************************Sqlite 基类实现***********************************/
-bool ASqliteBase::open(const char* zdb)
+#include "sqlite3/sqlite3.h"
+#pragma comment(lib,"sqlite3/sqlite3")
+
+#include "Except.h"
+
+
+class CSQLiteImpl
 {
-	assert(_pdb == NULL);
-	if(_pdb) return false;
+public:
+	CSQLiteImpl()
+	:m_db(0)
+	{}
+	bool Open(const char* fn);
+	bool Close();
+	bool QueryCategory(const char* cat,vector<CIndexItem*>* V);
+	bool QueryIndices(const char* find,vector<CIndexItem*>* R,bool* found);
+	bool GetCategories(vector<string>* cats);
+	bool FreeVectoredIndexItems(vector<CIndexItem*>* R);
+	bool AddItem(CIndexItem* pii);
+	bool UpdateTimes(CIndexItem* pii);
 
-	if(sqlite3_open(zdb,&_pdb) != SQLITE_OK){
-		AUtils::msgbox(_hParent,MB_ICONSTOP,g_pApp->getAppName(),"初始化sqlite3失败!");
-		return false;
-	}else{
-		return true;
-	}
+private:
+	bool init();
+
+	struct SqliteCallbackStruct
+	{
+		enum TYPE{kQueryCategory,kQueryIndices};
+		TYPE type;
+		CSQLiteImpl* that;
+	};
+
+	struct CBS_QueryCategory : public SqliteCallbackStruct
+	{
+		const char* cat;
+		vector<CIndexItem*>* V;
+	};
+
+	struct CBS_QueryIndices : public SqliteCallbackStruct
+	{
+		string find;
+		bool found;
+		vector<CIndexItem*>* indices;
+	};
+	static int __cdecl cbQeuryCallback(void* ud,int argc,char** argv,char** col);
+
+private:
+	sqlite3* m_db;
+};
+
+CSQLite::CSQLite()
+{
+	m_sqlite = new CSQLiteImpl;
+}
+CSQLite::~CSQLite()
+{
+	delete m_sqlite;
+}
+bool CSQLite::Open(const char* fn)
+{
+	return m_sqlite->Open(fn);
+}
+bool CSQLite::Close()
+{
+	return m_sqlite->Close();
+}
+bool CSQLite::QueryCategory(const char* cat,vector<CIndexItem*>* V)
+{
+	return m_sqlite->QueryCategory(cat,V);
+}
+bool CSQLite::QueryIndices(const char* find,vector<CIndexItem*>* R,bool* found)
+{
+	return m_sqlite->QueryIndices(find,R,found);
+}
+bool CSQLite::GetCategories(vector<string>* cats)
+{
+	return m_sqlite->GetCategories(cats);
+}
+bool CSQLite::FreeVectoredIndexItems(vector<CIndexItem*>* R)
+{
+	return m_sqlite->FreeVectoredIndexItems(R);
+}
+bool CSQLite::AddItem(CIndexItem* pii)
+{
+	return m_sqlite->AddItem(pii);
+}
+bool CSQLite::UpdateTimes(CIndexItem* pii)
+{
+	return m_sqlite->UpdateTimes(pii);
 }
 
-/***********************************************************************
-名称:close@-
-描述:关闭sqlite3数据库
-参数:
-返回:bool
-说明:
-***********************************************************************/
-bool ASqliteBase::close()
+
+
+bool CSQLiteImpl::Open(const char* fn)
 {
-	assert(_pdb != NULL);
-	if(_pdb){
-		if(sqlite3_close(_pdb) != SQLITE_OK){
-			AUtils::msgbox(_hParent,MB_ICONSTOP,NULL,"sqlite3_close() error:%s",sqlite3_errmsg(_pdb));
-			return false;
-		}else{
-			_pdb = NULL;
-			return true;
-		}
+	int rv;
+	rv = sqlite3_open(fn,&m_db);
+	if(rv != SQLITE_OK){
+		sqlite3_close(m_db);
+		m_db = nullptr;
+		throw CExcept("sqlite3数据库打开失败!","CSQLiteImpl::Open()");
+	}
+	init();
+	return true;
+}
+
+bool CSQLiteImpl::Close()
+{
+	if(sqlite3_close(m_db)==SQLITE_OK){
+		m_db = nullptr;
+		return true;
+	}
+	else{
+		throw CExcept("sqlite3数据库未能成功关系!","CSQLiteImpl::Close()");
 	}
 	return false;
 }
 
-///////////////////////AIndexSqlite 实现部分 开始//////////////////////////////////
-void AIndexSqlite::setTableName(const char* zTableName)
+bool CSQLiteImpl::init()
 {
-	strncpy(m_zTableName,zTableName,sizeof(m_zTableName)/sizeof(*m_zTableName));
-}
-
-const char* AIndexSqlite::getTableName() const
-{
-	return m_zTableName;
-}
-
-void AIndexSqlite::makeIndex(SQLITE_INDEX* psi,const char** argv)
-{
-	psi->idx     = argv[0];
-	psi->index   = AStr(argv[1],true).toAnsi();
-	psi->comment = AStr(argv[2],true).toAnsi();
-	psi->path    = AStr(argv[3],true).toAnsi();
-	psi->param   = AStr(argv[4],true).toAnsi();
-	psi->times   = argv[5];
-}
-
-/**********************************************************************
-名称:attach
-描述:初始化数据库:打开,新建表
-参数:
-返回:bool成功与否
-说明:
-***********************************************************************/
-bool AIndexSqlite::attach(HWND hParent,sqlite3* pdb)
-{
-	this->_pdb = pdb;
-	this->_hParent = hParent;
-
-	assert(::IsWindow(hParent) && pdb!=NULL && *m_zTableName!='\0');
-
-	std::string sql = "create table if not exists ";
-	sql += this->m_zTableName;
-	sql += " (idx integer primary key,idxn text,comment text,path text,param text,times integer default 0)";
-	if(sqlite3_exec(_pdb,sql.c_str(),NULL,NULL,&_zerr) != SQLITE_OK){
-		AUtils::msgbox(_hParent,MB_ICONSTOP,NULL,"[sqlite.init] creation error!\n");
-		sqlite3_free(_zerr);
-		return false;
-	}
-	return true;
-}
-
-/***********************************************************************
-名称:update_times@8
-描述:更新某index的使用次数
-参数:index-索引名; orig_times-原来的次数
-返回:bool
-说明:
-***********************************************************************/
-// bool AIndexSqlite::updateTimes(char* idx,int orig_times)
-// {
-// 	std::stringstream ss;
-// 	bool ret;
-// 	ss<<"update "<<m_zTableName<<" set times="<<orig_times+1<<" where idx="<<idx<<";";
-// 	if(sqlite3_exec(_pdb,string(ss.str()).c_str(),NULL,NULL,&_zerr) != SQLITE_OK){
-// 		AUtils::msgbox(_hParent,MB_ICONSTOP,"sqlite3_exec() error:%s",_zerr);
-// 		sqlite3_free(_zerr);
-// 		ret = false;
-// 	}else{
-// 		ret = true;
-// 	}
-// 	return ret;
-// }
-bool AIndexSqlite::UpdateTimes(const char* idx,unsigned int new_times)
-{
-	bool rv;
-	stringstream ss;
-	ss.clear();
-	if(new_times != -1){
-		ss<<"update "<<m_zTableName<<" set times="<<new_times<<" where idx="<<idx<<";";
+	char* err;
+	string sql("create table if not exists tbl_index (idx integer primary key,category text,name text,visible integer,comment text,path text,param text,times integer default 0);");
+	if(sqlite3_exec(m_db, sql.c_str(), nullptr,nullptr, &err) == SQLITE_OK){
+		return true;
 	}else{
-		ss<<"update "<<m_zTableName<<" set times=times+1 where idx="<<idx<<";";
+		string s(err);
+		sqlite3_free(err);
+		throw CExcept(s.c_str(),"CSQLiteImpl::init()");
 	}
-	if(sqlite3_exec(_pdb,string(ss.str()).c_str(),0,0,&_zerr) != SQLITE_OK){
-		AUtils::msgbox(_hParent,MB_ICONSTOP,"sqlite3_exec() error:%s",_zerr);
-		sqlite3_free(_zerr);
-		rv = false;
-	}else{
-		rv = true;
-	}
-	return rv;
+	return false;
 }
 
-/***********************************************************************
-名称:delete_idx@4
-描述:删除指定索引号的条目
-参数:idx-索引号对应的字符串
-返回:!0-成功; 0-失败
-说明:
-***********************************************************************/
-bool AIndexSqlite::deleteIndex(const char* idx)
+bool CSQLiteImpl::GetCategories(vector<string>* cats)
 {
-	bool ret;
-	std::string str = "delete from ";
-	str += m_zTableName;
-	str += " where idx=";
-	str += idx;
-
-	if(sqlite3_exec(_pdb,str.c_str(),NULL,NULL,&_zerr)!=SQLITE_OK){
-		AUtils::msgbox(_hParent,MB_ICONSTOP,NULL,"sqlite::delete() 遇到错误:%s",_zerr);
-		sqlite3_free(_zerr);
-		ret = false;
-	}else{
-		ret = true;
-	}
-	return ret;
-}
-
-bool AIndexSqlite::search(const char* zIndex,void* pv,sqlite3_callback cb)
-{
-	int ret;
-	bool r;
-	std::string str;
-
-	assert(zIndex != NULL);
-
-	if(!*zIndex) return true;
-
-	if(*zIndex=='*'){
-		str = "select * from ";
-		str += m_zTableName;
-		str +=" order by times desc;";
-	}else{
-		str = "select * from ";
-		str += m_zTableName;
-		str += " where idxn like \'";
-		str += zIndex;
-		str += "%\' order by times desc;";
-	}
-	ret = sqlite3_exec(_pdb,AStr(str.c_str(),false).toUtf8(),cb,pv,&_zerr);
-	if(ret!=SQLITE_OK && ret!=SQLITE_ABORT){
-		AUtils::msgbox(_hParent,MB_ICONSTOP,NULL,"sqlite::search error:%s",_zerr);
-		sqlite3_free(_zerr);
-		r = false;
-	}
-	r = true;
-	return r;
-}
-
-/***********************************************************************
-名称:add@4
-描述:增加或修改条目
-参数:
-返回:
-说明:若*idx=='.', 表示新增
-***********************************************************************/
-bool AIndexSqlite::add(SQLITE_INDEX* psi)
-{
-	bool bAddNew = psi->idx[0]=='.';
-
-	stringstream ss;
-	if(bAddNew){
-		ss<<"insert into "<<m_zTableName
-			<<" (idxn,comment,path,param,times) values (\'"
-			<<psi->index<<"\',\'"
-			<<psi->comment<<"\',\'"
-			<<psi->path<<"\',\'"
-			<<psi->param<<"\',"
-			<<psi->times<<");"
-		;
-	}else{
-		ss<<"update "<<m_zTableName
-			<<" set "<<"idxn=\'"<<psi->index
-			<<"\',comment=\'"<<psi->comment
-			<<"\',path=\'"<<psi->path
-			<<"\',param=\'"<<psi->param
-			<<"\',times="<<psi->times
-			<<" where idx="<<psi->idx<<";"
-		;
-	}
-
-	if(sqlite3_exec(_pdb,AStr(string(ss.str()).c_str(),false).toUtf8(),NULL,NULL,&_zerr) != SQLITE_OK){
-		AUtils::msgbox(_hParent,MB_ICONSTOP,NULL,"sqlite3_exec() error:%s",_zerr);
-		sqlite3_free(_zerr);
-		return false;
-	}
-	if(bAddNew){
-		AUtils::msgbox(_hParent,MB_ICONINFORMATION,"","添加成功:%s - %s",psi->index.c_str(),psi->comment.c_str());
-		char t[32];
-		_snprintf(t,sizeof(t),"%u",sqlite3_last_insert_rowid(_pdb));
-		psi->idx = t;
-	}else{
-		AUtils::msgbox(_hParent,MB_ICONINFORMATION,"","修改成功:%s - %s",psi->index.c_str(),psi->comment.c_str());
-	}
-	return true;
-}
-///////////////////////AIndexSqlite 实现部分 结束//////////////////////////////////
-
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-ASettingsSqlite::ASettingsSqlite()
-{
-
-}
-
-ASettingsSqlite::~ASettingsSqlite()
-{
-
-}
-
-bool ASettingsSqlite::attach(HWND hParent,sqlite3* pdb)
-{
-	this->_pdb = pdb;
-	this->_hParent = hParent;
-
-	assert(::IsWindow(hParent) && pdb!=NULL);
-
-	std::string sql = "create table if not exists settings (idx integer primary key,name text,data blob);";
-	if(sqlite3_exec(_pdb,sql.c_str(),NULL,NULL,&_zerr) != SQLITE_OK){
-		AUtils::msgbox(_hParent,MB_ICONSTOP,NULL,"[sqlite.init] creation error!\n");
-		sqlite3_free(_zerr);
-		return false;
-	}
-	return true;
-}
-
-bool ASettingsSqlite::getSetting(const char* item,void** ppv,int* size)
-{
-	bool ret=false;
-	std::string sql = "select * from settings where name=\'";
-	sql += item;
-	sql += "\';";
-
-	if(sqlite3_prepare(_pdb,sql.c_str(),-1,&_pStmt,NULL) == SQLITE_OK){
-		if(sqlite3_step(_pStmt) == SQLITE_ROW){
-			int sz = sqlite3_column_bytes(_pStmt,2);
-			if(sz>0){
-				char* p = new char[sz];
-				memcpy(p,sqlite3_column_blob(_pStmt,2),sz);
-				*ppv = p;
-				*size = sz;
-				ret = true;
-			}
-		}
-		sqlite3_finalize(_pStmt);
-	}
-	return ret;
-}
-
-bool ASettingsSqlite::setSetting(const char* item,void* pv,int  size)
-{
-	bool ret=false;
-	int id;
-	std::stringstream ss;
-	std::string sql = "select * from settings where name=\'";
-	sql += item;
-	sql += "\';";
-
-	if(sqlite3_prepare(_pdb,sql.c_str(),-1,&_pStmt,NULL) == SQLITE_OK){
-		switch(sqlite3_step(_pStmt))
-		{
-		case SQLITE_DONE:
-			ss<<"insert into settings (name,data) values (\'"<<item<<"\',\?);";
-			break;
-		case SQLITE_ROW:
-			id = sqlite3_column_int(_pStmt,0);
-			ss<<"update settings set data=\? where idx="<<id<<";";
-			break;
-		default:
-			sqlite3_finalize(_pStmt);
-			return false;
-		}
-		sqlite3_finalize(_pStmt);
-		sql = ss.str();
-		if(sqlite3_prepare(_pdb,sql.c_str(),-1,&_pStmt,NULL) == SQLITE_OK){
-			if(sqlite3_bind_blob(_pStmt,1,pv,size,NULL) == SQLITE_OK){
-				if(sqlite3_step(_pStmt) == SQLITE_DONE){
-					ret = true;
+	sqlite3_stmt* stmt=0;
+	int rv;
+	string sql("select distinct category from tbl_index;");
+	rv = sqlite3_prepare(m_db,sql.c_str(),-1,&stmt,nullptr);
+	if(rv == SQLITE_OK){
+		cats->clear();
+		for(bool loop=true; loop ;){
+			switch(sqlite3_step(stmt))
+			{
+			case SQLITE_BUSY:
+			case SQLITE_ERROR:
+			case SQLITE_MISUSE:
+				sqlite3_finalize(stmt);
+				throw CExcept(sqlite3_errmsg(m_db),"CSQLiteImpl::getCategories()");
+			case SQLITE_ROW:
+				{
+					const char* cat = (char*)sqlite3_column_text(stmt,0);
+					cats->push_back(cat);
+					continue;
 				}
+			case SQLITE_DONE:
+				loop = false;
+				break;
 			}
 		}
+		sqlite3_finalize(stmt);
+		return true;
 	}
-	sqlite3_finalize(_pStmt);
-	return ret;
+	return false;
+}
+
+int __cdecl CSQLiteImpl::cbQeuryCallback(void* ud,int argc,char** argv,char** col)
+{
+	enum {kAbort=1,kContinue=0};
+	auto scs = static_cast<SqliteCallbackStruct*>(ud);
+	if(scs->type == SqliteCallbackStruct::kQueryCategory){
+		auto pqc = static_cast<CBS_QueryCategory*>(scs);
+		CIndexItem* pii = new CIndexItem;
+		pii->idx      = atoi(argv[0]);
+		pii->visible  = atoi(argv[3]);
+		pii->times    = argv[7];
+		pii->idxn     = argv[2];
+		pii->category = argv[1];
+		pii->comment  = argv[4];
+		pii->path     = argv[5];
+		pii->param    = argv[6];
+
+		pqc->V->push_back(pii);
+		return kContinue;
+	}
+	else if(scs->type == SqliteCallbackStruct::kQueryIndices){
+		auto pqi = static_cast<CBS_QueryIndices*>(scs);
+		CIndexItem* pii = new CIndexItem;
+		pii->idx      = atoi(argv[0]);
+		pii->visible  = atoi(argv[3]);
+		pii->times    = argv[7];
+		pii->idxn     = argv[2];
+		pii->category = argv[1];
+		pii->comment  = argv[4];
+		pii->path     = argv[5];
+		pii->param    = argv[6];
+
+		pqi->indices->push_back(pii);
+		//if(pii->idxn == pqi->find){
+		if(_stricmp(pii->idxn.c_str(),pqi->find.c_str()) == 0){
+			pqi->found = true;
+			return kAbort;	
+		}
+		else{
+			return kContinue;
+		}
+	}
+	else{
+		assert(0);
+		return 1;
+	}
+}
+
+bool CSQLiteImpl::QueryCategory(const char* cat,vector<CIndexItem*>* V)
+{
+	char* err;
+	CBS_QueryCategory qcs;
+	qcs.type = SqliteCallbackStruct::kQueryCategory;
+	qcs.that = this;
+	qcs.V = V;
+	qcs.cat = cat;
+
+	string sql("select * from tbl_index where category==\'");
+	sql += cat;
+	sql += "\' order by times desc;";
+
+	if(sqlite3_exec(m_db,sql.c_str(),cbQeuryCallback,&qcs,&err) == SQLITE_OK){
+		return true;
+	}
+	else{
+		string e(err);
+		sqlite3_free(err);
+		throw CExcept(e.c_str(),"CSQLiteImpl::QueryCategory()");
+	}
+	return false;
+}
+
+bool CSQLiteImpl::QueryIndices(const char* find,vector<CIndexItem*>* R,bool* found)
+{
+	char* err;
+	CBS_QueryIndices qi;
+	qi.type = SqliteCallbackStruct::kQueryIndices;
+	qi.that = this;
+	qi.found = false;
+	qi.indices = R;
+	qi.find = find;
+
+	string sql("select * from tbl_index where name like \'");
+	sql += find;
+	sql += "%\';";
+
+	int rv = sqlite3_exec(m_db,sql.c_str(),cbQeuryCallback,&qi,&err);
+	if(rv==SQLITE_OK || rv==SQLITE_ABORT){
+		*found = qi.found;
+		return true;
+	}
+	else{
+		string e(err);
+		sqlite3_free(err);
+		throw CExcept(e.c_str(),"CSQLiteImpl::QueryIndices()");
+	}
+	return false;
+}
+
+bool CSQLiteImpl::FreeVectoredIndexItems(vector<CIndexItem*>* R)
+{
+	auto s = R->begin();
+	auto e = R->end();
+	while( s != e ){
+		delete *s;
+		++s;
+	}
+	return true;
+}
+
+bool CSQLiteImpl::AddItem(CIndexItem* pii)
+{
+	bool bnew = pii->idx == -1;
+	stringstream ss;
+
+	int rv;
+	char* err;
+	if(bnew){
+		ss << "insert into tbl_index (category,name,visible,comment,path,param,times) values ("
+			<< "\'" << pii->category	<< "\',"
+			<< "\'" << pii->idxn		<< "\',"
+			<<		pii->visible		<< ","
+			<< "\'" << pii->comment		<< "\',"
+			<< "\'" << pii->path		<< "\',"
+			<< "\'" << pii->param		<< "\',"
+			<< "\'" <<pii->times << "\');";
+		string sql(ss.str());
+		rv = sqlite3_exec(m_db,sql.c_str(),nullptr,nullptr,&err);
+		if( rv != SQLITE_OK){
+			string t(err);
+			sqlite3_free(err);
+			throw CExcept("添加到数据库失败!","CSQLiteImpl::AddItem()");
+		}
+		pii->idx = (int)sqlite3_last_insert_rowid(m_db);
+		return true;
+	}
+	else{
+		ss << "update tbl_index set category=\'" << pii->category << "\',"
+			<< "name=\'"	<< pii->idxn		<< "\',"
+			<< "visible="	<< pii->visible		<< ","
+			<< "comment=\'"	<< pii->comment		<< "\',"
+			<< "path=\'"	<< pii->path		<< "\',"
+			<< "param=\'"	<< pii->param		<< "\',"
+			<< "times="		<< pii->times		<< " "
+			<< "where idx="	<< pii->idx			<< ";";
+		string sql(ss.str());
+		rv = sqlite3_exec(m_db,sql.c_str(),nullptr,nullptr,&err);
+		if(rv != SQLITE_OK){
+			string t(err);
+			sqlite3_free(err);
+			throw CExcept("更新数据库失败!","CSQLiteImpl::AddItem()");
+		}
+		return true;
+	}
+	return false;
+}
+
+bool CSQLiteImpl::UpdateTimes(CIndexItem* pii)
+{
+	stringstream ss;
+	ss << "update tbl_index set times="
+		<< pii->times 
+		<< " where idx="<< pii->idx;
+	string str(ss.str());
+
+	int rv;
+	char* err;
+	rv = sqlite3_exec(m_db,str.c_str(),nullptr,nullptr,&err);
+	if(rv != SQLITE_OK){
+		string t(err);
+		sqlite3_free(err);
+		throw CExcept("更新次数失败!","CSQLiteImpl::UpdateTimes()");
+	}
+	else{
+		return true;
+	}
 }

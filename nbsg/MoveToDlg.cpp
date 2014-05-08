@@ -3,7 +3,6 @@
 #include "resource.h"
 #include "Utils.h"
 
-#include "ChildIndexDlg.h"
 #include "SQLite.h"
 #include "MoveToDlg.h"
 
@@ -15,24 +14,6 @@ using namespace std;
 #include <UIlib.h>
 
 using namespace DuiLib;
-
-struct CDataList
-{
-public:
-	string strTable;
-	string strAlias;
-	string GetAll() const
-	{
-		return strTable+","+strAlias;
-	}
-	CDataList(const string& table,const string& alias)
-	{
-		strTable = table;
-		strAlias = alias;
-	}
-};
-
-typedef vector<CDataList*> CDataListVec;
 
 class CListCallback : public IListCallbackUI
 {
@@ -184,7 +165,9 @@ void CMoveToDlgImpl::InitWindow()
 
 void CMoveToDlgImpl::OnFinalMessage(HWND )
 {
+	__super::OnFinalMessage(GetHWND());
 	deinitTables();
+	delete this;
 }
 
 void CMoveToDlgImpl::initControls()
@@ -201,45 +184,6 @@ void CMoveToDlgImpl::initControls()
 	};
 	for(int i=0;li[i].ptr; i++){
 		*(CControlUI**)li[i].ptr = static_cast<CControlUI*>(m_PaintManager.FindControl(li[i].name));
-	}
-}
-
-void CMoveToDlgImpl::initTables()
-{
-	ASettingsSqlite set;
-	int size;
-	char* tables;
-	set.attach(GetHWND(),g_pSqliteBase->getPdb());
-	set.getSetting("index_list",(void**)&tables,&size);
-
-	std::string str(tables);
-	str += "\r\n";
-
-	try{
-		int cpos = 0;
-
-		std::string::size_type pos=0,last_pos=0;
-		while((pos=str.find_first_of('\n',last_pos))!=std::string::npos){
-			if(pos-last_pos==1){
-				last_pos = pos+1;
-				continue;
-			}
-
-			std::string all  = str.substr(last_pos,pos-last_pos);
-			all[all.length()-1]='\0';
-
-			std::string::size_type pos_2 = all.find_first_of(',');
-			std::string data_base = all.substr(0,pos_2);
-			std::string data_name = all.substr(pos_2+1);
-
-			m_DataListVec.push_back(new CDataList(data_base,data_name));
-
-			last_pos = pos+1;
-		}
-		delete[] tables;
-	}
-	catch(...){
-		AUtils::msgbox(GetHWND(),MB_ICONERROR,g_pApp->getAppName(),"索引列表不正确!");
 	}
 }
 

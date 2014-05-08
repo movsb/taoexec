@@ -7,6 +7,7 @@
 #include "Utils.h"
 #include "nbsg.h"
 #include "resource.h"
+#include <cassert>
 
 string APathLib::expandEnvString(const char* src)
 {
@@ -219,11 +220,11 @@ bool APathLib::shellExec(HWND hWnd,const char* exec,const char* param,const char
 	}
 
 
-	if(!isFileExists(exec)){
-		AUtils::msgbox(hWnd,MB_ICONEXCLAMATION,g_pApp->getAppName(),
-			"%s\n\n指定的文件不存在!",exec);
-		return false;
-	}
+// 	if(!isFileExists(exec)){
+// 		AUtils::msgbox(hWnd,MB_ICONEXCLAMATION,g_pApp->getAppName(),
+// 			"%s\n\n指定的文件不存在!",exec);
+// 		return false;
+// 	}
 	string s = APathLib::expandEnvString(exec);
 	if(dir==NULL){
 		folder = APathLib::getFileDir(s.c_str());

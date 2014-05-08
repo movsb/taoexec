@@ -1,82 +1,148 @@
-#if _MSC_VER == 1200
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0502
-#endif
-
-#include "SQLite.h"
-#include "nbsg.h"
-#include "resource.h"
-#include "EditBox.h"
-#include "Utils.h"
-#include "PathLib.h"
-#include "tips.h"
-#include "MainDlg.h"
-#include "Mini.h"
-
-#include "AddDlg.h"
-#include "ChildIndexDlg.h"
+#include <string>
+#include <vector>
 
 using namespace std;
 
-AMini::AMini(AWindowBase* parent):
-	m_bStandalone(parent==NULL),
-	m_hImc(0),
-	m_pEdit(new AEditBox),
-	m_pIndex(new AIndexSqlite)
+#include <uilib.h>
+using namespace DuiLib;
 
+#include "AddDlg.h"
+#include "PathLib.h"
+#include "SQLite.h"
+#include "Mini.h"
+#include "tips.h"
+#include "Utils.h"
+
+#include "resource.h"
+
+class CMiniImpl : public WindowImplBase
 {
-	if(m_bStandalone) AWindowBase::AddWindow(this);
-	this->SetParent(parent);
-	create();
+public:
+	CMiniImpl(CSQLite* db)
+	{
+		m_db = db;
+	}
+protected:
+	virtual CDuiString GetSkinFolder()
+	{
+		return "skin/";
+	}
+	virtual CDuiString GetSkinFile()
+	{
+		return "MiniDlg.xml";
+	}
+	virtual LPCTSTR GetWindowClassName(void) const
+	{
+		return "女孩不哭";
+	}
+	virtual LRESULT ResponseDefaultKeyEvent(WPARAM wParam)
+	{
+		return FALSE;
+	}
+
+	virtual void InitWindow();
+	virtual void OnFinalMessage( HWND hWnd )
+	{
+		__super::OnFinalMessage(hWnd);
+		delete this;
+	}
+	virtual LRESULT HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+
+	DUI_DECLARE_MESSAGE_MAP()
+	virtual void OnReturn(TNotifyUI& msg);
+	virtual void OnMenu(TNotifyUI& msg);
+	virtual void OnTimer(TNotifyUI& msg);
+
+private:
+	bool handleCommand(string str);
+	bool runShell(string cmd,string arg);
+	bool findCmd(const string& cmd,vector<CIndexItem*>* R);
+
+private:
+	void updatePosition();
+
+private:
+	CSQLite*	m_db;
+	CRichEditUI* m_rich;
+};
+
+DUI_BEGIN_MESSAGE_MAP(CMiniImpl,WindowImplBase)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_RETURN,OnReturn)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_MENU,OnMenu)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_TIMER,OnTimer)
+DUI_END_MESSAGE_MAP()
+
+CMini::CMini(CSQLite* db)
+{
+	CMiniImpl* pMini = new CMiniImpl(db);
+	pMini->Create(nullptr,"MINIWND",WS_POPUP,WS_EX_TOPMOST|WS_EX_TOOLWINDOW);
+	pMini->ShowWindow(true);
+}
+CMini::~CMini()
+{
+
 }
 
-AMini::~AMini(void)
+void CMiniImpl::OnReturn(TNotifyUI& msg)
 {
-	delete m_pEdit;
-	delete m_pIndex;
-}
-
-void AMini::updateMiniPos()
-{
-	RECT rc,rcTaskBar={0};
-	int cxScreen,cyScreen;
-	HWND hTaskBar;
-	int task_bar_height=0;
-	cxScreen=GetSystemMetrics(SM_CXSCREEN);
-	cyScreen=GetSystemMetrics(SM_CYSCREEN);
-	this->GetWindowRect(&rc);
-	hTaskBar=FindWindow("Shell_TrayWnd",NULL);
-	if(hTaskBar){
-		::GetWindowRect(hTaskBar,&rcTaskBar);
-		if(rcTaskBar.left==0 && rcTaskBar.top!=0){//在下边
-			task_bar_height = rcTaskBar.bottom-rcTaskBar.top;
+	if(msg.pSender == m_rich){
+		CDuiString str = m_rich->GetText();
+		if(handleCommand(string(str))){
+			m_rich->SetText("");
 		}
 	}
-	this->SetWindowPos(HWND_TOPMOST,(cxScreen-(rc.right-rc.left))/2,cyScreen-(rc.bottom-rc.top)-task_bar_height-5,0,0,SWP_NOSIZE);
 }
 
-bool AMini::RunShell(const string& cmd,const string& arg)
+void CMiniImpl::OnTimer(TNotifyUI& msg)
 {
-	int rv;
-	rv = (int)::ShellExecute(GetHwnd(),"open",cmd.c_str(),arg.c_str(),0,SW_SHOWNORMAL);
-	if(rv>32) return true;
-	AUtils::msgerr(GetHwnd(),"");
-	return false;
+	if(msg.pSender == m_rich){
+		
+	}
 }
 
-bool AMini::parseCommandString(std::string& str)
+void CMiniImpl::OnMenu(TNotifyUI& msg)
+{
+	if(msg.pSender == m_rich){
+		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDR_MENU_EDITBOX));
+		HMENU hMenuSub = ::GetSubMenu(hMenu,0);
+		::ClientToScreen(GetHWND(),&msg.ptMouse);
+		UINT id = ::TrackPopupMenu(hMenuSub,TPM_NONOTIFY|TPM_RETURNCMD|TPM_LEFTBUTTON,msg.ptMouse.x,msg.ptMouse.y,0,GetHWND(),nullptr);
+		switch(id)
+		{
+			
+		}
+		::DestroyMenu(hMenu);
+		return;
+	}
+}
+
+void CMiniImpl::InitWindow()
+{
+	m_rich = static_cast<CRichEditUI*>(m_PaintManager.FindControl("command"));
+	ImmAssociateContext(GetHWND(),NULL);
+	updatePosition();
+	::RegisterHotKey(GetHWND(),0,MOD_CONTROL|MOD_SHIFT,'Z');
+}
+
+bool CMiniImpl::runShell(string cmd,string arg)
+{
+	int rv = (int)::ShellExecute(GetHWND(),"open",cmd.c_str(),arg.c_str(),nullptr,SW_SHOWNORMAL);
+	if(rv >= 32) return true;
+	else{
+		AUtils::msgerr(GetHWND(),"");
+		return false;
+	}
+}
+
+bool CMiniImpl::handleCommand(string str)
 {
 	const char* p = str.c_str();
 	while(*p && isspace(*p)) p++;
-	str = str.substr((unsigned int)p-(unsigned int)str.c_str());
+
+	if(p != str.c_str())
+		str = str.substr((unsigned int)p-(unsigned int)str.c_str());
+
 	if(!str.size()){
-		m_pEdit->SetWindowText("");
-		return true;
-	}
-
-
-	if(str == "\\"){
-		APathLib::showDir(this->GetHwnd(),g_pApp->getProgramDirectory());
 		return true;
 	}
 
@@ -118,342 +184,119 @@ bool AMini::parseCommandString(std::string& str)
 
 	if(!cmd.size()) return false;
 
+	if(bshellrun){
+		return runShell(cmd,param);
+	}
+
 	if(cmd.find('\'')!=string::npos){
-		AUtils::msgbox(this->GetHwnd(),MB_ICONEXCLAMATION,NULL,"索引名不可以含有单引号!");
+		MessageBox(GetHWND(),"索引名不可以含有单引号!",nullptr,MB_ICONERROR);
 		return false;
 	}
 
 	if(bshellrun){
-		return RunShell(cmd,param);
+		return APathLib::shellExec(GetHWND(),cmd.c_str(),param.c_str(),nullptr);
 	}
 
-	CALLBACK_RESULT cr;
-	cr.findstr = cmd;
-	cr.found = false;
-	for(auto it=m_dbs.begin();it!=m_dbs.end();it++){
-		m_pIndex->setTableName(it->c_str());
-		m_pIndex->search(
-			cmd.c_str(),
-			reinterpret_cast<void*>(&cr),
-			(sqlite3_callback)m_SqliteThunk.Cdeclcall(this,&AMini::SqliteCallback)
-			);
+	vector<CIndexItem*> R;
+	bool found=false;
+	m_db->QueryIndices(cmd.c_str(),&R,&found);
 
-		if(cr.found){
+
+	if(!found){
+		if(R.size()>1){
+			ShowTips("索引过多~");
+			m_db->FreeVectoredIndexItems(&R);
+			return false;
+		}else if(R.size()==0){
+			ShowTips("未找到该索引~");
+			m_db->FreeVectoredIndexItems(&R);
+			return false;
+		}
+	}
+
+	auto item = R[R.size()-1];
+	bool ret = false;
+
+	if(param=="") param = item->param;
+	if(bviewdir){
+		ret = APathLib::showDir(GetHWND(),item->path.c_str());
+	}
+	else if(bmodify){
+		CAddDlg dlg(GetHWND(),CAddDlg::TYPE_MODIFY,item,m_db);
+	}
+	else{
+		ret = APathLib::shellExec(GetHWND(),item->path.c_str(),item->param.c_str(),0);
+		ret = ret && m_db->UpdateTimes(item);
+		if(ret){
+			ShowTips(item->comment.c_str());
+		}
+	}
+
+	m_db->FreeVectoredIndexItems(&R);
+
+	return ret;
+}
+
+void CMiniImpl::updatePosition()
+{
+	CDuiRect rc;
+	if(!::SystemParametersInfo(SPI_GETWORKAREA,0,&rc,0))
+		return;
+
+	SIZE sz = m_PaintManager.GetClientSize();
+	
+	::SetWindowPos(GetHWND(), 0, 
+		(rc.GetWidth()-sz.cx)/2, rc.GetHeight()-sz.cy-10,
+		0, 0,
+		SWP_NOSIZE|SWP_NOZORDER|(::IsWindowVisible(GetHWND())?SWP_SHOWWINDOW:SWP_HIDEWINDOW)
+		);
+}
+
+LRESULT CMiniImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+{
+	switch(uMsg)
+	{
+	case WM_DISPLAYCHANGE:
+		{
+			updatePosition();
+			break;
+		}
+	case WM_TIMER:
+		{
+			if(wParam == 256){
+				ShowWindow(false);
+				::KillTimer(GetHWND(),256);
+				bHandled = TRUE;
+				return 0;
+			}
+			break;
+		}
+	case WM_ACTIVATEAPP:
+		{
+			if(wParam == TRUE){
+				::KillTimer(GetHWND(),256);
+			}else{
+				::SetTimer(GetHWND(),256,5000,nullptr);
+			}
+			bHandled = TRUE;
+			return 0;
+		}
+	case WM_HOTKEY:
+		{
+			if(wParam == 0){
+				if(::IsWindowVisible(GetHWND())){
+					ShowWindow(false);
+					::KillTimer(GetHWND(),256);
+				}else{
+					ShowWindow(true,true);
+					m_rich->SetFocus();
+				}
+				bHandled = TRUE;
+				return 0;
+			}
 			break;
 		}
 	}
-
-	if(!cr.found){
-		if(cr.result.size()>1){
-			show_tips("索引过多~");
-			return false;
-		}else if(cr.result.size()==0){
-			show_tips("未找到该索引~");
-			return false;
-		}
-	}
-
-	/*if(cr.found || cr.result.size()==1){*/
-	bool ret = false;
-	CALLBACK_RESULT_ENTRY* pEntry = cr.result[cr.result.size()-1];
-	m_pIndex->setTableName(pEntry->strDatabase.c_str());
-	if(param=="") param = pEntry->index.param;
-	if(bviewdir){
-		ret=APathLib::showDir(this->GetHwnd(),pEntry->index.path.c_str());
-	}else if(bmodify){
-		CAddDlg dlg(this->GetHwnd(),pEntry->strDatabase.c_str(),CAddDlg::TYPE_MODIFY,(LPARAM)&pEntry->index);
-		return false;
-	}else{
-		ret=APathLib::shellExec(this->GetHwnd(),pEntry->index.path.c_str(),param.c_str(),APathLib::getFileDir(pEntry->index.path.c_str()).c_str());
-		ret = m_pIndex->UpdateTimes(pEntry->index.idx.c_str());
-	}
-	if(ret){
-		show_tips((char*)pEntry->index.comment.c_str());
-		m_pEdit->SetWindowText("");
-		if(m_bStandalone) this->ShowWindow(SW_HIDE);
-	}
-	
-	for(auto it=cr.result.begin();
-		it!=cr.result.end();
-		++it
-		)
-	{
-		delete *it;
-	}
-	return true;
-}
-
-bool AMini::create()
-{
-	void* pThunk = m_WndThunk.Stdcall(this,&AMini::WindowProc);
-	HWND h=CreateDialogParam(g_pApp->getInstance(),MAKEINTRESOURCE(IDD_MINI),this->GetParent()?this->GetParent()->GetHwnd():NULL,(DLGPROC)pThunk,0);
-	assert(h!=NULL);
-	//this->ShowWindow(SW_SHOW);
-	ShowWindow(m_bStandalone?SW_HIDE:SW_SHOW);
-	return true;
-}
-
-int __cdecl AMini::SqliteCallback(void* pv,int argc,char** argv,char** column)
-{
-	CALLBACK_RESULT* presult = reinterpret_cast<CALLBACK_RESULT*>(pv);
-	CALLBACK_RESULT_ENTRY* pEntry = new CALLBACK_RESULT_ENTRY;
-	m_pIndex->makeIndex(&pEntry->index,const_cast<const char**>(argv));
-	pEntry->strDatabase = m_pIndex->getTableName();
-	presult->result.push_back(pEntry);
-	//if(_stricmp(presult->zIndex,p->index.c_str())==0){
-	//if(presult->findstr == pEntry->index.index){
-	if(_stricmp(presult->findstr.c_str(),pEntry->index.index.c_str())==0){
-		presult->found = true;
-		return 1;
-	}else{
-		return 0;
-	}
-}
-
-INT_PTR AMini::DoDefault(UINT uMsg,WPARAM wParam,LPARAM lParam)
-{
-	return 0;
-}
-
-INT_PTR AMini::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
-{
-	if(!codeNotify && !hWndCtrl){
-// 		switch(ctrlID)
-// 		{
-// 		case IDM_MINI_MAINDLG:
-// 			{
-// 				new AMainDlg(NULL,true);
-// 				return 0;
-// 			}
-// 		case IDM_MINI_EXIT:
-// 			{
-// // 				if(g_pWindowManager->m_Windows.size()>1){
-// // 					AUtils::msgbox(this->GetHwnd(),MB_ICONEXCLAMATION,"提示","你必须关闭所有主窗口才能退出程序!");
-// // 					return 0;
-// // 				}
-// 				this->DestroyWindow();
-// 				return 0;
-// 			}
-// 		}
-// 		return 0;
-	}
-	return 0;
-}
-
-INT_PTR AMini::OnNull(LPARAM lParam)
-{
-	ControlMessage* pcm = reinterpret_cast<ControlMessage*>(lParam);
-	if(!pcm) return 0;
-
-	if(pcm->self == m_pEdit){
-		if(pcm->uMsg==WM_CHAR){
-			if(pcm->wParam==VK_RETURN){
-				m_pEdit->EnableWindow(false);
-				std::string str = m_pEdit->GetWindowText();
-				if(parseCommandString(str)){
-					m_pEdit->SetWindowText("");
-					m_pEdit->EnableWindow(TRUE);
-					ShowWindow(SW_HIDE);
-
-					return 0;
-				}
-				m_pEdit->EnableWindow(true);
-				m_pEdit->SetFocus();
-				return 0;
-			}else if(pcm->wParam == VK_TAB){
-				return 0;
-			}
-		}else if(pcm->uMsg == WM_CONTEXTMENU){
-			if(m_bStandalone){
-				HMENU hMain = (HMENU)pcm->lParam;
-				AppendMenu(hMain,MF_SEPARATOR,0,NULL);
-				AppendMenu(hMain,MF_STRING,2,"切换输入法");
-				AppendMenu(hMain,MF_SEPARATOR,0,NULL);
-				AppendMenu(hMain,MF_STRING,0,"新建主窗口");
-				AppendMenu(hMain,MF_STRING,1,"关闭小窗口");
-				return SetDlgResult(TRUE);
-			}else{
-				HMENU hMain = (HMENU)pcm->lParam;
-				AppendMenu(hMain,MF_SEPARATOR,0,NULL);
-				AppendMenu(hMain,MF_STRING,0,"新建小窗口");
-				return SetDlgResult(TRUE);
-			}
-		}
-		return 0;
-	}
-
-	if(pcm->uMsg == WM_CONTEXTMENU){
-		if(m_bStandalone){
-			if(pcm->lParam == 0){
-				AMainDlg* pmain = new AMainDlg(NULL,SW_SHOW==SW_SHOW);
-				return 0;
-			}else if(pcm->lParam == 1){
-				this->DestroyWindow();
-				//TODO:delete this;
-			}else if(pcm->lParam == 2){
-				if(m_hImc){
-					ImmAssociateContext(m_pEdit->GetHwnd(),m_hImc);
-					m_hImc=0;
-				}else{
-					m_hImc = ImmAssociateContext(m_pEdit->GetHwnd(),NULL);
-				}
-			}
-		}else{
-			if(pcm->lParam == 0){
-				AMini* pmini = new AMini(NULL);
-				return 0;
-			}
-		}
-		return 0;
-	}
-	return 0;
-}
-
-INT_PTR AMini::OnInitDialog(HWND hWnd,HWND hWndFocus,LPARAM lParam)
-{
-	m_hWnd = hWnd;
-	if(m_bStandalone) {
-		this->updateMiniPos();
-		::SetWindowLongPtr(hWnd,GWL_EXSTYLE,(LONG)(::GetWindowLongPtr(hWnd,GWL_EXSTYLE)|WS_EX_LAYERED));
-		::SetLayeredWindowAttributes(hWnd,0,125,LWA_ALPHA);
-		::RegisterHotKey(hWnd,0,MOD_CONTROL|MOD_SHIFT,0x5A);
-		//TODO:取消注册
-	}
-	if(m_bStandalone) this->SetStyle(this->GetStyle()&~WS_CHILD|WS_POPUP);
-	else			  this->SetStyle(this->GetStyle()&~WS_POPUP|WS_CHILD);
-
-	if(m_bStandalone){
-
-	}else{
-		this->SetStyle(this->GetStyle()&~WS_POPUP);
-		this->SetStyle(this->GetStyle()|WS_CHILD);
-		::SetParent(this->GetHwnd(),this->GetParent()->GetHwnd());
-	}
-
-	m_pEdit->attach(this,IDC_MINI_EDIT);
-	m_pEdit->SubClass();
-
-	if(m_bStandalone) m_hImc=ImmAssociateContext(m_pEdit->GetHwnd(),NULL);
-
-	m_pIndex->setTableName("nbs");//只是为了不报错误
-	m_pIndex->attach(this->GetHwnd(),g_pSqliteBase->getPdb());
-
-	ASettingsSqlite settings;
-	char* index=0;
-	int  size;
-	settings.attach(hWnd,g_pSqliteBase->getPdb());
-	if(settings.getSetting("index_list",(void**)&index,&size)){
-		try{
-			std::string::size_type pos=0,last_pos=0;
-			std::string str(index);
-			while((pos=str.find_first_of('\n',last_pos))!=std::string::npos){
-				if(pos-last_pos==1){
-					last_pos = pos+1;
-					continue;
-				}
-
-				std::string all  = str.substr(last_pos,pos-last_pos);
-				std::string data_base = all.substr(0,all.find_first_of(','));
-
-				m_dbs.push_back(data_base);
-
-				last_pos = pos+1;
-			}
-
-			delete[] index;
-		}
-		catch(...){
-			AUtils::msgbox(this->GetHwnd(),MB_ICONERROR,g_pApp->getAppName(),"索引列表不正确!");
-		}
-	}
-
-	this->DragAcceptFiles(TRUE);
-	m_pEdit->SetFocus();
-
-	return FALSE;
-}
-
-INT_PTR AMini::OnDropFiles(HDROP hDrop)
-{
-	char file[MAX_PATH]={0};
-	string str = m_pEdit->GetWindowText();
-	str += " ";
-	DragQueryFile(hDrop,0,file,sizeof(file));
-	str += file;
-	m_pEdit->SetWindowText(str.c_str());
-	return 0;
-}
-
-INT_PTR AMini::OnDestroy()
-{
-	return 0;
-}
-
-INT_PTR AMini::OnNcDestroy()
-{
-	if(m_bStandalone) AWindowBase::DeleteWindow(this);
-	return 0;
-}
-
-INT_PTR AMini::OnHotKey(WPARAM id)
-{
-	switch(id)
-	{
-	case 0:
-		{
-			if(::IsWindowVisible(this->GetHwnd())){
-				this->ShowWindow(SW_HIDE);
-			}else{
-				this->ShowWindow(SW_SHOWNORMAL);
-				if(::GetForegroundWindow()!=this->GetHwnd()){
-					this->SetWindowForeground();
-				}
-				SetActiveWindow(m_pEdit->GetHwnd());
-			}
-			return 0;
-		}
-	}
-	return 0;
-}
-
-INT_PTR AMini::OnDisplayChange(WPARAM imageDepth,int cxScreen,int cyScreen)
-{
-	if(m_bStandalone){
-		this->updateMiniPos();
-	}
-	return 0;
-}
-
-INT_PTR AMini::OnActivateApp(bool bActivate,DWORD dwThreadID)
-{
-	if(m_bStandalone){
-		if(bActivate){
-			KillTimer(this->GetHwnd(),0);
-			return 0;
-		}else{
-			//this->ShowWindow(SW_HIDE);
-			//如果5秒钟内没有再次激活窗口的话就自动隐藏
-			SetTimer(this->GetHwnd(),0,5000,NULL);
-			return 0;
-		}
-	}
-	return 0;
-}
-
-INT_PTR AMini::OnSize(int width,int height)
-{
-	m_pEdit->SetWindowPos(0,0,width,height);
-	return 0;
-}
-
-INT_PTR AMini::OnTimer(int nID,VOID (CALLBACK* TimerProc)(HWND hwnd,UINT uMsg,UINT_PTR idEvent,DWORD dwTime))
-{
-	if(m_bStandalone){
-		if(nID==0){
-			this->ShowWindow(SW_HIDE);
-			KillTimer(this->GetHwnd(),0);
-			return 0;
-		}
-	}
+	bHandled = FALSE;
 	return 0;
 }

@@ -1,9 +1,10 @@
+#include <string>
+#include <vector>
+using namespace std;
+
 #include "Utils.h"
 #include "SQLite.h"
-#include "nbsg.h"
 #include "PathLib.h"
-#include "Str.h"
-#include "ChildIndexDlg.h"
 #include "AddDlg.h"
 
 #include <Uilib.h>
@@ -13,11 +14,11 @@ using namespace DuiLib;
 class CAddDlgImpl : public WindowImplBase
 {
 public:
-	CAddDlgImpl(const char* table,CAddDlg::TYPE type,LPARAM lParam)
+	CAddDlgImpl(CAddDlg::TYPE type,CIndexItem* pii,CSQLite* db)
 	{
 		m_type = type;
-		m_lParam = lParam;
-		m_pCurTable = table;
+		m_pii = pii;
+		m_db = db;
 	}
 protected:
 	virtual CDuiString GetSkinFolder()
@@ -32,135 +33,89 @@ protected:
 	{
 		return "女孩不哭";
 	}
-	virtual void OnClick(TNotifyUI& msg);
-	virtual void InitWindow();
+	virtual void OnFinalMessage( HWND hWnd )
+	{
+		__super::OnFinalMessage(hWnd);
+		delete this;
+	}
+	virtual LRESULT ResponseDefaultKeyEvent(WPARAM wParam)
+	{
+		return FALSE;
+	}
 
+	DUI_DECLARE_MESSAGE_MAP()
+	virtual void OnClick(TNotifyUI& msg);
+	virtual void Notify(TNotifyUI& msg);
+	virtual void InitWindow();
 
 private:
 	void initFromParam()
 	{
-		string path(""),args(""),desc("");
+		string path(""),args(""),desc
+			("");
 		if(m_type == CAddDlg::TYPE::TYPE_PATH){
-			const char* file = (const char*)m_lParam;
-			DWORD dwAttr = ::GetFileAttributes(file);
-			if(dwAttr == INVALID_FILE_ATTRIBUTES) return;
-
-			if(dwAttr & FILE_ATTRIBUTE_DIRECTORY){
-				path = file;
-				APathLib::getNameString(file,desc);
-			}else{
-				if(APathLib::IsLink(file)){
-					if(APathLib::ParseLnk(AStr(file,false).toWchar(),path,args,desc)){
-						if(desc == ""){
-							APathLib::getFileDescription(path.c_str(),desc);
-							if(desc == ""){
-								APathLib::getNameString(file,desc);
-							}
-						}
-					}
-				}else{
-					path = file;
-					APathLib::getFileDescription(file,desc);
-					if(desc == ""){
-						APathLib::getNameString(file,desc);
-					}
-				}
-			}
-
+// 			const char* file = (const char*)m_lParam;
+// 			DWORD dwAttr = ::GetFileAttributes(file);
+// 			if(dwAttr == INVALID_FILE_ATTRIBUTES) return;
+// 
+// 			if(dwAttr & FILE_ATTRIBUTE_DIRECTORY){
+// 				path = file;
+// 				APathLib::getNameString(file,desc);
+// 			}else{
+// 				if(APathLib::IsLink(file)){
+// 					if(APathLib::ParseLnk(AStr(file,false).toWchar(),path,args,desc)){
+// 						if(desc == ""){
+// 							APathLib::getFileDescription(path.c_str(),desc);
+// 							if(desc == ""){
+// 								APathLib::getNameString(file,desc);
+// 							}
+// 						}
+// 					}
+// 				}else{
+// 					path = file;
+// 					APathLib::getFileDescription(file,desc);
+// 					if(desc == ""){
+// 						APathLib::getNameString(file,desc);
+// 					}
+// 				}
+// 			}
 			preIndex	->SetText("");
 			preComment	->SetText(desc.c_str());
 			prePath		->SetText(path.c_str());
 			preParam	->SetText(args.c_str());
 			preTimes	->SetText("0");
+			if(m_tbls.size())
+				pcboClass->SelectItem(0);
 		}else if(m_type == CAddDlg::TYPE::TYPE_MODIFY){
-			auto param = reinterpret_cast<AChildIndexDlg::LPARAM_STRUCT*>(m_lParam);
+			preIndex	->SetText(m_pii->idxn.c_str());
+			preComment	->SetText(m_pii->comment.c_str());
+			prePath		->SetText(m_pii->path.c_str());
+			preParam	->SetText(m_pii->param.c_str());
+			preTimes	->SetText(m_pii->times.c_str());
 
-			preIndex	->SetText(param->si.index.c_str());
-			preComment	->SetText(param->si.comment.c_str());
-			prePath		->SetText(param->si.path.c_str());
-			preParam	->SetText(param->si.param.c_str());
-			preTimes	->SetText(param->si.times.c_str());
+			int i=0;
+			auto s=m_tbls.begin();
+			auto e=m_tbls.end();
+			for(; s != e; s++,i++){
+				if(m_pii->category == *s){
+					pcboClass->SelectItem(i);
+					m_editClass->SetText(s->c_str());
+					break;
+				}
+			}
+			if(i>=m_tbls.size()){
+				assert(0);
+			}
 		}else if(m_type == CAddDlg::TYPE::TYPE_NEW){
-			assert(m_lParam == 0);
+			assert(m_pii==nullptr);
 			preIndex	->SetText("");
 			preComment	->SetText("");
 			prePath		->SetText("");
 			preParam	->SetText("");
 			preTimes	->SetText("0");
-		}
-	}
-	void initTables()
-	{
-		ASettingsSqlite set;
-		int size;
-		char* tables;
-		set.attach(GetHWND(),g_pSqliteBase->getPdb());
-		set.getSetting("index_list",(void**)&tables,&size);
-
-		std::string str(tables);
-		str += "\r\n";
-
-		//取得个数
-		int n=1;
-		std::string::size_type pos=-1;
-		while((pos=str.find('\n',pos+1))!=std::string::npos){
-			n++;
-		}
-		//根据个数分配空间,前面是指针数组,后面是数据
-		m_zTables = new char[size+(n+1)*sizeof(char*)];
-
-		try{
-			int cindex=0;
-			int cpos = 0;
-			char* cptr=m_zTables+(n+1)*sizeof(char*);
-
-			std::string::size_type pos=0,last_pos=0;
-			while((pos=str.find_first_of('\n',last_pos))!=std::string::npos){
-				if(pos-last_pos==1){
-					last_pos = pos+1;
-					continue;
-				}
-
-				std::string all  = str.substr(last_pos,pos-last_pos);
-				all[all.length()-1]='\0';
-
-				std::string::size_type pos_2 = all.find_first_of(',');
-				std::string data_base = all.substr(0,pos_2);
-				std::string data_name = all.substr(pos_2+1);
-
-				((char**)m_zTables)[cindex] = cptr;
-				memcpy(cptr,data_base.c_str(),data_base.size()+1);
-
-				cindex++;
-				cptr += data_base.size()+1;
-
-				//ComboBox_AddString(hComboType,all.c_str());
-				CListLabelElementUI* ele = new CListLabelElementUI;
-				ele->SetText(all.c_str());
-				ele->SetPadding(CDuiRect(3,0,0,0));
-				pcboClass->Add(ele);
-
-				last_pos = pos+1;
-			}
-			delete[] tables;
-
-			((char**)m_zTables)[cindex] = NULL;
-		}
-		catch(...){
-			AUtils::msgbox(GetHWND(),MB_ICONERROR,g_pApp->getAppName(),"索引列表不正确!");
-		}
-
-		if(!m_pCurTable || m_pCurTable[0] == '\0'){
-			pcboClass->SelectItem(0);
-		}else{
-			int i=0;
-			char** p = (char**)m_zTables;
-			while(p[i] != NULL){
-				if(strcmp(p[i],m_pCurTable) == 0){
-					pcboClass->SelectItem(i);
-					break;
-				}
-				i++;
+			if(m_tbls.size()){
+				pcboClass->SelectItem(0);
+				m_editClass->SetText(m_tbls[0].c_str());
 			}
 		}
 	}
@@ -176,24 +131,29 @@ private:
 	CRichEditUI* preTimes;
 	CComboBoxUI* pcboClass;
 
+	CEditUI* m_editClass;
+
 private:
 	CAddDlg::TYPE m_type;
-	LPARAM m_lParam;
-	const char* m_pCurTable;	//初始化时传递进来的表名
-	char* m_zTables;			//所有的表名
+	CIndexItem*	  m_pii;
+	CSQLite*	  m_db;
+	vector<string> m_tbls;
 
 private:
 	bool bNeedFree;				//忘了哪个地方要用到了,...反正有用
 };
 
-CAddDlg::CAddDlg(HWND parent,const char* table,TYPE type,LPARAM lParam)
+DUI_BEGIN_MESSAGE_MAP(CAddDlgImpl,WindowImplBase)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_CLICK,OnClick)
+DUI_END_MESSAGE_MAP()
+
+CAddDlg::CAddDlg(HWND parent,TYPE type,CIndexItem* pii,CSQLite* db)
 {
 	assert(parent!=NULL && "CAddDlg::CAddDlg()");
-	CAddDlgImpl* pFrame = new CAddDlgImpl(table,type,lParam);
-	pFrame->Create(parent,NULL, WS_VISIBLE, WS_EX_WINDOWEDGE);	
+	CAddDlgImpl* pFrame = new CAddDlgImpl(type,pii,db);
+	HWND hWnd = pFrame->Create(parent,NULL, WS_VISIBLE, WS_EX_WINDOWEDGE);	
 	pFrame->CenterWindow();
 	pFrame->ShowModal();
-	delete pFrame;
 }
 
 CAddDlg::~CAddDlg()
@@ -216,19 +176,33 @@ void CAddDlgImpl::InitWindow()
 		{&preParam,		"richParam"},
 		{&preTimes,		"richTimes"},
 		{&pcboClass,	"cboClass"},
+		{&m_editClass,	"edtClass"},
 		{0,0}
 	};
 	for(int i=0;li[i].ptr; i++){
 		*(CControlUI**)li[i].ptr = static_cast<CControlUI*>(m_PaintManager.FindControl(li[i].name));
 	}
-	initTables();
+
+	//m_editClass->SetPos(pcboClass->GetPos());
+	
+	m_db->GetCategories(&m_tbls);
+
+	auto s = m_tbls.begin();
+	auto e = m_tbls.end();
+	for(; s!=e; s++){
+		CListLabelElementUI* list = new CListLabelElementUI;
+		list->SetAttribute("font","0");
+		list->SetText(s->c_str());
+		list->SetPadding(CDuiRect(3,0,0,0));
+		pcboClass->Add(list);
+	}
 	initFromParam();
 }
 
 void CAddDlgImpl::OnClick(TNotifyUI& msg)
 {
 	if(msg.pSender == pbtnClose || msg.pSender->GetName()==_T("closebtn")){
-		::DestroyWindow(GetHWND());
+		Close();
 	}
 	else if(msg.pSender == pbtnBrowse){
 		char str[MAX_PATH];
@@ -297,56 +271,41 @@ void CAddDlgImpl::OnClick(TNotifyUI& msg)
 			return ;
 		}
 
-		AIndexSqlite::SQLITE_INDEX si;
-		AIndexSqlite::SQLITE_INDEX* lastpsi = NULL;
-
-		lastpsi = reinterpret_cast<AIndexSqlite::SQLITE_INDEX*>(m_lParam);
-
-		if(m_type == CAddDlg::TYPE_PATH || m_type == CAddDlg::TYPE_NEW){
-			si.idx[0] = '.';
-		}else{//修改
-			//strcpy(si.idx,lastpsi->idx);
-			si.idx = lastpsi->idx;
+		if(!m_pii) m_pii = new CIndexItem;	//Constructed
+		m_pii->idxn = strIndex;
+		m_pii->comment = strComment;
+		m_pii->path = strPath;
+		m_pii->param = strParam;
+		m_pii->times = buf_times;
+		m_pii->category = m_tbls[pcboClass->GetCurSel()];
+		bool bnew = m_pii->idx == -1;
+		bool rb = m_db->AddItem(m_pii);
+		if(rb){
+			::MessageBox(GetHWND(),bnew?"添加成功!":"修改成功!","",MB_OK);
+			return;
 		}
-
-		si.index   = strIndex.GetData();
-		si.comment = strComment.GetData();
-		si.path    = strPath.GetData();
-		si.param   = strParam.GetData();
-		si.times   = strTimes.GetData();
-
-		const char* selTable = ((char**)m_zTables)[pcboClass->GetCurSel()];
-		BOOL bChangeTable = m_type==CAddDlg::TYPE_MODIFY && strcmp(selTable,m_pCurTable);
-
-		AIndexSqlite is;
-		is.setTableName(selTable); //---采用新选择的表了
-		is.attach(GetHWND(),g_pSqliteBase->getPdb());
-
-		if(bChangeTable){
-			//更改了表名,不管怎样idx都应该为空
-			si.idx[0] = '.';
+		else{
+			::MessageBox(GetHWND(),"保存失败!","",MB_ICONERROR);
+			return;
 		}
-
-		if(is.add(&si)){
-			if(m_type !=  CAddDlg::TYPE_MODIFY){//如果是新增的话,更改标志为修改
-				m_type = CAddDlg::TYPE_MODIFY;
-				bNeedFree = TRUE;
-				lastpsi = new AIndexSqlite::SQLITE_INDEX;
-				*lastpsi = si;
-				m_lParam = (LPARAM)lastpsi;
-			}else if(m_type == CAddDlg::TYPE_MODIFY){
-				if(bChangeTable){
-					AIndexSqlite is;
-					is.setTableName(m_pCurTable);
-					is.attach(GetHWND(),g_pSqliteBase->getPdb());
-					is.deleteIndex((char*)lastpsi->idx.c_str());
-				}
-				//memcpy((void*)m_lParam,&si,sizeof(si));
-				*reinterpret_cast<AIndexSqlite::SQLITE_INDEX*>(m_lParam) = si;
-			}
-			//添加成功,更改为当前的表名
-			m_pCurTable = selTable;
-		}
-		return;
 	}
+}
+
+void CAddDlgImpl::Notify(TNotifyUI& msg)
+{
+	if(msg.sType == DUI_MSGTYPE_SETFOCUS){
+		if(typeid(*msg.pSender) == typeid(CRichEditUI)){
+			auto ctrl = static_cast<CRichEditUI*>(msg.pSender);
+			ctrl->SetBkColor(0xFFFFFFFF);
+			ctrl->SetTextColor(0xFF000000);
+		}
+	}
+	else if(msg.sType == DUI_MSGTYPE_KILLFOCUS){
+		if(typeid(*msg.pSender) == typeid(CRichEditUI)){
+			auto ctrl = static_cast<CRichEditUI*>(msg.pSender);
+			ctrl->SetBkColor(0x00000000);
+			ctrl->SetTextColor(0xFFFFFFFF);
+		}
+	}
+	return __super::Notify(msg);
 }

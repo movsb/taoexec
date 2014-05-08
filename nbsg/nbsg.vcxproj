@@ -84,67 +84,37 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>comctl32.lib;sqlite3/sqlite3.lib;version.lib;imm32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;sqlite3/sqlite3.lib;version.lib;imm32.lib;../bin/duilib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AddDlg.cpp" />
     <ClCompile Include="App.cpp" />
-    <ClCompile Include="ChildSettingsDlg.cpp" />
-    <ClCompile Include="Button.cpp" />
-    <ClCompile Include="ChildFileDlg.cpp" />
-    <ClCompile Include="ChildIndexDlg.cpp" />
-    <ClCompile Include="debug.c" />
-    <ClCompile Include="EditBox.cpp" />
-    <ClCompile Include="Encode.cpp" />
+    <ClCompile Include="Except.cpp" />
+    <ClCompile Include="ico_from_exe\ByteArray.cpp" />
+    <ClCompile Include="ico_from_exe\icon_from_exe.cpp" />
     <ClCompile Include="MainDlg.cpp" />
-    <ClCompile Include="ListView.cpp" />
-    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Mini.cpp" />
-    <ClCompile Include="MoveToDlg.cpp" />
     <ClCompile Include="nbsg.cpp" />
     <ClCompile Include="PathLib.cpp" />
-    <ClCompile Include="plugin.cpp" />
-    <ClCompile Include="reg.cpp" />
-    <ClCompile Include="ShellContextMenu.cpp" />
     <ClCompile Include="SQLite.cpp" />
-    <ClCompile Include="Str.cpp" />
-    <ClCompile Include="TabCtrl.cpp" />
-    <ClCompile Include="Thunk.cpp" />
-    <ClCompile Include="tips.c" />
+    <ClCompile Include="tips.cpp" />
     <ClCompile Include="Utils.cpp" />
-    <ClCompile Include="WindowBase.cpp" />
-    <ClCompile Include="WindowManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AddDlg.h" />
     <ClInclude Include="App.h" />
-    <ClInclude Include="ChildSettingsDlg.h" />
-    <ClInclude Include="Button.h" />
-    <ClInclude Include="ChildFileDlg.h" />
-    <ClInclude Include="ChildIndexDlg.h" />
-    <ClInclude Include="debug.h" />
-    <ClInclude Include="EditBox.h" />
-    <ClInclude Include="Encode.h" />
+    <ClInclude Include="Except.h" />
+    <ClInclude Include="ico_from_exe\ByteArray.h" />
+    <ClInclude Include="ico_from_exe\icon_from_exe.h" />
     <ClInclude Include="MainDlg.h" />
-    <ClInclude Include="ListView.h" />
-    <ClInclude Include="Memory.h" />
     <ClInclude Include="Mini.h" />
-    <ClInclude Include="MoveToDlg.h" />
     <ClInclude Include="nbsg.h" />
     <ClInclude Include="PathLib.h" />
-    <ClInclude Include="plugin.h" />
-    <ClInclude Include="reg.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="ShellContextMenu.h" />
     <ClInclude Include="SQLite.h" />
-    <ClInclude Include="Str.h" />
-    <ClInclude Include="TabCtrl.h" />
-    <ClInclude Include="Thunk.h" />
     <ClInclude Include="tips.h" />
     <ClInclude Include="Utils.h" />
-    <ClInclude Include="WindowBase.h" />
-    <ClInclude Include="WindowManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="nbsg.rc" />

@@ -11,21 +11,15 @@
     <Filter Include="Window">
       <UniqueIdentifier>{bc039f19-64fa-4e75-a4a5-bc7658b75a86}</UniqueIdentifier>
     </Filter>
+    <Filter Include="class\ico_from_exe">
+      <UniqueIdentifier>{43c3a724-7a43-4720-9900-85c636b07764}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PathLib.cpp">
       <Filter>class</Filter>
     </ClCompile>
-    <ClCompile Include="Memory.cpp">
-      <Filter>class</Filter>
-    </ClCompile>
     <ClCompile Include="SQLite.cpp">
-      <Filter>class</Filter>
-    </ClCompile>
-    <ClCompile Include="debug.c">
-      <Filter>class</Filter>
-    </ClCompile>
-    <ClCompile Include="Encode.cpp">
       <Filter>class</Filter>
     </ClCompile>
     <ClCompile Include="Utils.cpp">
@@ -37,78 +31,33 @@
     <ClCompile Include="App.cpp">
       <Filter>class</Filter>
     </ClCompile>
-    <ClCompile Include="WindowManager.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="WindowBase.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="ListView.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
     <ClCompile Include="AddDlg.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="Str.cpp">
-      <Filter>class</Filter>
-    </ClCompile>
-    <ClCompile Include="Thunk.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="Mini.cpp">
       <Filter>Window</Filter>
     </ClCompile>
     <ClCompile Include="MainDlg.cpp">
       <Filter>Window</Filter>
     </ClCompile>
-    <ClCompile Include="ChildIndexDlg.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="EditBox.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="Button.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="ChildFileDlg.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="TabCtrl.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="ChildSettingsDlg.cpp">
-      <Filter>Window</Filter>
-    </ClCompile>
-    <ClCompile Include="tips.c">
+    <ClCompile Include="tips.cpp">
       <Filter>class</Filter>
     </ClCompile>
-    <ClCompile Include="reg.cpp">
+    <ClCompile Include="Except.cpp">
       <Filter>class</Filter>
     </ClCompile>
-    <ClCompile Include="MoveToDlg.cpp">
+    <ClCompile Include="Mini.cpp">
       <Filter>Window</Filter>
     </ClCompile>
-    <ClCompile Include="ShellContextMenu.cpp">
-      <Filter>Window</Filter>
+    <ClCompile Include="ico_from_exe\ByteArray.cpp">
+      <Filter>class\ico_from_exe</Filter>
     </ClCompile>
-    <ClCompile Include="plugin.cpp">
-      <Filter>class</Filter>
+    <ClCompile Include="ico_from_exe\icon_from_exe.cpp">
+      <Filter>class\ico_from_exe</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PathLib.h">
       <Filter>class</Filter>
     </ClInclude>
-    <ClInclude Include="Memory.h">
-      <Filter>class</Filter>
-    </ClInclude>
     <ClInclude Include="SQLite.h">
-      <Filter>class</Filter>
-    </ClInclude>
-    <ClInclude Include="debug.h">
-      <Filter>class</Filter>
-    </ClInclude>
-    <ClInclude Include="Encode.h">
       <Filter>class</Filter>
     </ClInclude>
     <ClInclude Include="Utils.h">
@@ -121,62 +70,26 @@
       <Filter>class</Filter>
     </ClInclude>
     <ClInclude Include="resource.h" />
-    <ClInclude Include="WindowManager.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="WindowBase.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="ListView.h">
-      <Filter>Window</Filter>
-    </ClInclude>
     <ClInclude Include="AddDlg.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="Str.h">
-      <Filter>class</Filter>
-    </ClInclude>
-    <ClInclude Include="Thunk.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="Mini.h">
       <Filter>Window</Filter>
     </ClInclude>
     <ClInclude Include="MainDlg.h">
       <Filter>Window</Filter>
     </ClInclude>
-    <ClInclude Include="ChildIndexDlg.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="EditBox.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="Button.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="ChildFileDlg.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="TabCtrl.h">
-      <Filter>Window</Filter>
-    </ClInclude>
-    <ClInclude Include="ChildSettingsDlg.h">
-      <Filter>Window</Filter>
-    </ClInclude>
     <ClInclude Include="tips.h">
       <Filter>class</Filter>
     </ClInclude>
-    <ClInclude Include="reg.h">
+    <ClInclude Include="Except.h">
       <Filter>class</Filter>
     </ClInclude>
-    <ClInclude Include="MoveToDlg.h">
+    <ClInclude Include="Mini.h">
       <Filter>Window</Filter>
     </ClInclude>
-    <ClInclude Include="ShellContextMenu.h">
-      <Filter>Window</Filter>
+    <ClInclude Include="ico_from_exe\ByteArray.h">
+      <Filter>class\ico_from_exe</Filter>
     </ClInclude>
-    <ClInclude Include="plugin.h">
-      <Filter>class</Filter>
+    <ClInclude Include="ico_from_exe\icon_from_exe.h">
+      <Filter>class\ico_from_exe</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

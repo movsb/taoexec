@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Window size="400,40">
+	<Font name="微软雅黑" size="20" />
+	<VerticalLayout name="main_vert" bkimage="tips_bg.png">
+		<RichEdit name="rich" padding="2,2,2,2" enabled="false" mouse="false" readonly="true" align="center" textcolor="0xFFFFFFFF" font="0" />
+	</VerticalLayout>
+</Window>

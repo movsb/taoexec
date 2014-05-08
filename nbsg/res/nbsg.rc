@@ -1,0 +1,160 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Chinese (Simplified, PRC) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404b0"
+        BEGIN
+            VALUE "CompanyName", "女孩不哭 <Email:anhbk@qq.com>"
+            VALUE "FileDescription", "Make it Simple!"
+            VALUE "FileVersion", "1.0.0.1"
+            VALUE "InternalName", "nbsg.exe"
+            VALUE "LegalCopyright", "Copyright (C) 2013"
+            VALUE "OriginalFilename", "nbsg.exe"
+            VALUE "ProductName", "nbsg"
+            VALUE "ProductVersion", "1.0.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDM_MENU_MAIN MENU
+BEGIN
+    POPUP "popupmenu"
+    BEGIN
+        POPUP "索引选项"
+        BEGIN
+            MENUITEM "添加索引",                        IDM_INDEX_ADD
+            MENUITEM "修改索引",                        IDM_INDEX_MODIFY
+            MENUITEM "移除选项",                        IDM_INDEX_REMOVE_MULTI
+            MENUITEM SEPARATOR
+            MENUITEM "移动到...",                      IDM_INDEX_MOVETO
+        END
+        POPUP "查看选项"
+        BEGIN
+            MENUITEM "查看详细",                        IDM_VIEW_DETAIL
+            MENUITEM "文件目录",                        IDM_VIEW_DIR
+            MENUITEM "复制路径",                        IDM_VIEW_COPYDIR
+            MENUITEM "复制参数",                        IDM_VIEW_COPYPARAM
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "刷新索引",                        IDM_INDEX_UPDATE
+    END
+END
+
+IDR_MENU_EDITBOX MENU
+BEGIN
+    POPUP "popupmenu"
+    BEGIN
+        MENUITEM "复制(&C)\tCtrl+C",              IDM_EDITBOX_COPY
+        MENUITEM "剪切(&X)\tCtrl+X",              IDM_EDITBOX_CUT
+        MENUITEM "粘贴(&P)\tCtrl+P",              IDM_EDITBOX_PASTE
+        MENUITEM "删除(&D)\tDELETE",              IDM_EDITBOX_DELETE
+        MENUITEM SEPARATOR
+        MENUITEM "撤销(&U)\tCtrl+Z",              IDM_EDITBOX_UNDO
+        MENUITEM "全选(&A)\tCtrl+A",              IDM_EDITBOX_SELALL
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON                    "100.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RT_MANIFEST
+//
+
+1                       RT_MANIFEST             "xps.manifest"
+#endif    // Chinese (Simplified, PRC) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

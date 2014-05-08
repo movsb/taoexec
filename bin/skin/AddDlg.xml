@@ -1,87 +1,68 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<Window size="250,240" caption="0,0,0,30">
-	<Default name="Button" value="normalimage=&quot;file='btn.png' source='0,0,96,24' corner='5,11,5,11'&quot; pushedimage=&quot;file='btn.png' source='0,48,96,72' corner='5,11,5,11'&quot; disabledimage=&quot;file='btn.png' source='0,72,96,96' corner='5,11,5,11'&quot;" />
-	<!-- 背景 -->
-	<HorizontalLayout bkimage="file='bg0.png' corner='0,0,320,380'">
-		<VerticalLayout bkimage="file='border.png' corner='5,5,5,5'" inset="1,0,1,1" hole="true">
-			<!-- 整体 -->
-			<VerticalLayout>
-				<!-- 标题栏 -->
-				<HorizontalLayout height="22">
-					<VerticalLayout width="100" inset="2,2,0,0">
-						<Label text="新增/编辑 索引" textcolor="#FFFFFFFF"/>
-					</VerticalLayout>
-					<VerticalLayout />
-					<VerticalLayout width="39">
-						<Button name="closebtn" width="39"  normalimage="file='btn_close_normal.png'" hotimage="btn_close_highlight.png" pushedimage="btn_close_down.png"  />
-					</VerticalLayout>
-				</HorizontalLayout>
-				<!-- 上边缘-->
-				<VerticalLayout height="10" />
-				<!-- 上部分 -->
-				<VerticalLayout>
-					<!-- 索引 -->
-					<HorizontalLayout>
-						<Text text="索引:" textcolor="0xFFFFFFFF" />
-						<RichEdit name="richIndex" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" />
-						<Control width="10" />						
-					</HorizontalLayout>
-					<!-- 说明 -->
-					<HorizontalLayout>
-						<Text text="说明:" textcolor="0xFFFFFFFF" />
-						<RichEdit name="richComment" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" />					
-						<Control width="10" />		
-					</HorizontalLayout>
-					<!-- 路径 -->
-					<HorizontalLayout>
-						<Text text="路径:" textcolor="0xFFFFFFFF" />
-						<RichEdit name="richPath" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true"  bordersize="1" />					
-						<Control width="5" />
-						<Button name="btnBrowse" text="浏览" width="30" height="20" />
-						<Control width="10" />
-					</HorizontalLayout>
-					<!-- 参数 -->
-					<HorizontalLayout>
-						<Text text="参数:" textcolor="0xFFFFFFFF" />
-						<RichEdit name="richParam" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" />
-						<Control width="10" />
-					</HorizontalLayout>	
-					<!-- 次数 -->
-					<HorizontalLayout>
-						<Text text="次数:" textcolor="0xFFFFFFFF" />
-						<RichEdit name="richTimes" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" />
-						<Control width="10" />		
-					</HorizontalLayout>
-					<!-- 表 -->
-					<HorizontalLayout>
-						<Text text="分类:" textcolor="0xFFFFFFFF" />
-						<Combo name="cboClass" height="20" dropboxsize="0,300" itemaltbk="true" normalimage="file='Combo_nor.bmp' corner='2,2,24,2'" pushedimage="file='Combo_over.bmp' corner='2,2,24,2'" textpadding="3,3,3,3">
-						</Combo>
-						<Control width="40" />
-					</HorizontalLayout>
-				</VerticalLayout>
-				<!-- 中间 -->
-				<VerticalLayout height="5">
-					<HorizontalLayout>
-						<Control width="5" />
-						<Control height="1" bkcolor="0xFFE0E0E0" />
-						<Control width="5" />
-					</HorizontalLayout>
-					<HorizontalLayout>
-						<Control height="2" />
-					</HorizontalLayout>
-				</VerticalLayout>
-				<!-- 下面按钮部分 -->
-				<VerticalLayout height="30">
-					<HorizontalLayout>
-						<Control />
-						<Button name="btnSave" text="保存" width="40" height="20" textcolor="0xFFFF0000" />
-						<Control width="10" />
-						<Button name="btnClose" text="关闭" width="40" height="20" />
-						<Control width="10" />
-					</HorizontalLayout>
-				</VerticalLayout>
+<Window size="250,220" caption="0,0,0,40" roundcorner="4,4,4,4">
+	<Font name="微软雅黑" size="12" />
+	<Font name="微软雅黑" size="16" />
+	<Default name="Button" value="font=&quot;0&quot; normalimage=&quot;file='btn.png' source='0,0,96,24' corner='5,11,5,11'&quot; pushedimage=&quot;file='btn.png' source='0,48,96,72' corner='5,11,5,11'&quot; disabledimage=&quot;file='btn.png' source='0,72,96,96' corner='5,11,5,11'&quot;" />
+	<!-- 整体 -->
+	<VerticalLayout bkimage="file='tips_bg.png'">
+		<!-- 标题栏 -->
+		<HorizontalLayout height="40">
+			<VerticalLayout width="120" inset="2,2,0,0">
+				<Label text="新增/编辑 索引" textcolor="#FFFFFFFF" font="1"/>
 			</VerticalLayout>
+			<VerticalLayout />
+			<VerticalLayout width="39">
+				<Button name="closebtn" width="39" height="20" normalimage="file='btn_close_normal.png'" hotimage="btn_close_highlight.png" pushedimage="btn_close_down.png"  />
+			</VerticalLayout>
+		</HorizontalLayout>
+		<!-- 中间部分 -->
+		<VerticalLayout inset="5,5,5,5" bkimage="file='a.png' fade='150'">
+			<!-- 索引 -->
+			<HorizontalLayout>
+				<Text text="索引:" textcolor="0xFFFFFFFF" font="0"/>
+				<RichEdit name="richIndex" textcolor="0xFFFFFFFF" inset="4,2,2,2" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" font="0" height="22"/>					
+			</HorizontalLayout>
+			<!-- 说明 -->
+			<HorizontalLayout>
+				<Text text="说明:" textcolor="0xFFFFFFFF" font="0"/>
+				<RichEdit name="richComment" textcolor="0xFFFFFFFF" inset="4,2,2,2" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" font="0" height="22"/>					
+			</HorizontalLayout>
+			<!-- 路径 -->
+			<HorizontalLayout>
+				<Text text="路径:" textcolor="0xFFFFFFFF" font="0"/>
+				<RichEdit name="richPath" textcolor="0xFFFFFFFF" inset="4,2,2,2" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true"  bordersize="1" font="0" height="22"/>					
+				<Control width="5" />
+				<Button name="btnBrowse" text="浏览" width="30" height="20" />
+			</HorizontalLayout>
+			<!-- 参数 -->
+			<HorizontalLayout>
+				<Text text="参数:" textcolor="0xFFFFFFFF" font="0"/>
+				<RichEdit name="richParam" textcolor="0xFFFFFFFF" inset="4,2,2,2" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" font="0" height="22"/>
+			</HorizontalLayout>	
+			<!-- 次数 -->
+			<HorizontalLayout>
+				<Text text="次数:" textcolor="0xFFFFFFFF" font="0"/>
+				<RichEdit name="richTimes" textcolor="0xFFFFFFFF" inset="4,2,2,2" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" font="0" height="22"/>
+			</HorizontalLayout>
+			<!-- 表 -->
+			<HorizontalLayout>
+				<Text text="分类:" textcolor="0xFFFFFFFF" font="0"/>
+				<Combo name="cboClass" height="20" dropboxsize="0,300" itemaltbk="true" normalimage="file='Combo_nor.bmp' corner='2,2,24,2'" pushedimage="file='Combo_over.bmp' corner='2,2,24,2'" textpadding="3,3,3,3">
+				</Combo>
+				<RichEdit name="edtClass" float="true" pos="30,0,218,20" font="0" textcolor="0xFFFFFFFF" inset="4,1,1,1" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" font="0"/>
+			</HorizontalLayout>
 		</VerticalLayout>
-	</HorizontalLayout>
+		
+		<!-- 下面按钮部分 -->
+		<VerticalLayout height="30">
+			<Control />
+			<HorizontalLayout height="20" inset="10,0,10,0">
+				<Control />
+				<Button name="btnSave" text="保存" width="40" height="20" textcolor="0xFFFF0000" />
+				<Control width="10" />
+				<Button name="btnClose" text="关闭" width="40" height="20" />
+			</HorizontalLayout>
+			<Control />
+		</VerticalLayout>
+	</VerticalLayout>
 </Window>

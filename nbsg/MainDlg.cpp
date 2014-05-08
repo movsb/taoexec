@@ -1,293 +1,364 @@
 #include <string>
+#include <vector>
+#include <sstream>
 #include <windows.h>
+
 using namespace std;
-#include "resource.h"
-#include "nbsg.h"
-#include "ChildIndexDlg.h"
-#include "ChildFileDlg.h"
-#include "ChildSettingsDlg.h"
-#include "TabCtrl.h"
-#include "EditBox.h"
+
 #include "Utils.h"
-#include "Mini.h"
+#include "SQLite.h"
+#include "PathLib.h"
+
+#include "AddDlg.h"
 #include "MainDlg.h"
+#include "ico_from_exe/icon_from_exe.h"
 
-RECT AMainDlg::m_RectWnd = {-1,-1,700,500};
+#include <UIlib.h>
 
-AMainDlg::AMainDlg(const char* cmd,bool show):
-	m_pTabCtrl(new ATabCtrl)
-	//m_pMini(new AMini(this))
+using namespace DuiLib;
+
+class CIconButtonUI : public CButtonUI
 {
-	AWindowBase::AddWindow(this);
-	m_bAutoHide = TRUE;
-	debug_out(("AMainDlg::AMainDlg()\n"));
-	create(cmd,show);
-}
+public:
+	CIconButtonUI():
+		m_hIcon(0)
+	{
 
-AMainDlg::~AMainDlg()
-{
-	delete m_pTabCtrl;
-	delete m_pMini;
-	debug_out(("AMainDlg::~AMainDlg()\n"));
-}
+	}
+	~CIconButtonUI()
+	{
+		::DestroyIcon(m_hIcon);
+	}
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////// 
-////////////////////////////////////////////////////////////////////////// 
-void AMainDlg::SetAutoHide(BOOL bAutoHide)
-{
-	m_bAutoHide = bAutoHide;
-}
-void AMainDlg::AddNewTab(AWindowBase* pWindow,const char* szTabName)
-{
-	assert(pWindow != NULL && szTabName != NULL);
+	virtual LPCTSTR GetClass() const
+	{
+		return _T("IconButtonUI");
+	}
+	virtual LPVOID GetInterface(LPCTSTR pstrName)
+	{
+		if( _tcscmp(pstrName, "IconButton") == 0 ) return this;
+		return __super::GetInterface(pstrName);
+	}
+	virtual UINT GetControlFlags() const
+	{
+		return (IsKeyboardEnabled() ? UIFLAG_TABSTOP : 0) | (IsEnabled() ? UIFLAG_SETCURSOR : 0);
+	}
 
-	TabInfo* pti = new TabInfo;
-	pti->pWindow = pWindow;
+	virtual void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
+	{
+		if(_tcscmp(pstrName,_T("path"))==0) m_strPath = pstrValue;
 
-	TCITEM tci = {0};
-	tci.mask = TCIF_TEXT;
-	tci.pszText = (LPTSTR)szTabName;
-	tci.lParam = reinterpret_cast<LPARAM>(pti);
+		else return __super::SetAttribute(pstrName,pstrValue);
+	}
 
-	this->AdjustTabPageSize(pWindow);
-	pWindow->ShowWindow(SW_HIDE);
+	void PaintText(HDC hDC)
+	{
 
-	pti->iItem = m_pTabCtrl->InsertItem(m_pTabCtrl->GetItemCount(),&tci);
+	}
+	void PaintStatusImage(HDC hDC)
+	{
 
-	m_Pages.push_back(pti);
-}
-
-void AMainDlg::AdjustTabPageSize(AWindowBase* pWindow)
-{
-	RECT rcThis;
-	RECT rcTab;
-	this->GetClientRect(&rcThis);
-	m_pTabCtrl->GetClientRect(&rcTab);
-
-	if(pWindow){
-		pWindow->SetWindowPos(0,rcTab.bottom,rcThis.right,rcThis.bottom-rcTab.bottom);
-	}else{
-		TabPagesIter iter;
-		for(iter=m_Pages.begin(); iter!= m_Pages.end(); ++iter){
-			assert((*iter)->pWindow != NULL);
-			AdjustTabPageSize((*iter)->pWindow);//一定不能为NULL, 否则递归就死循环了
+		if(!m_hIcon){
+			m_hIcon = APathLib::getFileIcon(m_strPath);
+			if(!m_hIcon)
+				m_hIcon = APathLib::GetClsidIcon(m_strPath.GetData());
+			if(!m_hIcon)
+				m_hIcon = (HICON)INVALID_HANDLE_VALUE;
 		}
-		//debug_out(("重新为%d个窗口计算大小...\n",m_Pages.size()));
+		if(m_hIcon == (HICON)INVALID_HANDLE_VALUE)
+			return;
+		::DrawIconEx(hDC,m_rcPaint.left,m_rcPaint.top,m_hIcon,GetFixedWidth(),GetFixedHeight(),0,nullptr,DI_NORMAL);
+		return __super::PaintStatusImage(hDC);
+
 	}
-}
+private:
+	HICON m_hIcon;
+	CDuiString m_strPath;
+};
 
-void AMainDlg::ShowTabPage(int nPage)
+class CIndexListUI : public CTileLayoutUI,public IDialogBuilderCallback
 {
-	AWindowBase* hShow=0;
-	assert(nPage < m_pTabCtrl->GetItemCount());
-	for(TabPagesIter iter=m_Pages.begin(); iter!=m_Pages.end(); iter++){
-		TabInfo* pinfo = *iter;
-// 		if(pinfo->iItem == nPage){
-// 			pinfo->pWindow->ShowWindow(SW_SHOW);
-// 		}else{
-// 			pinfo->pWindow->ShowWindow(SW_HIDE);
-// 		}
-		pinfo->pWindow->ShowWindow(SW_HIDE);
-		if(pinfo->iItem == nPage) hShow = pinfo->pWindow;
+private:
+	virtual CControlUI* CreateControl(LPCTSTR pstrClass)
+	{
+		if(_tcscmp(pstrClass,"IconButton")==0) return new CIconButtonUI;
+		return nullptr;
 	}
-	if(hShow) hShow->ShowWindow(SW_SHOW);
-}
 
+public:
+	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI& pm)
+	{
+		SetItemSize(CSize(80,80));
+		CDialogBuilder builder;
+		SetManager(&pm,0,false);
+		auto pContainer = static_cast<CContainerUI*>(builder.Create("ListItem.xml",0,this));
+		assert(pContainer);
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//以下是消息处理函数
+		db->QueryCategory(cat,&m_iiVec);
 
-INT_PTR AMainDlg::OnClose()
-{
-	for(TabPagesIter iter=m_Pages.begin(); iter!=m_Pages.end(); ++iter){
-		TabInfo* info = *iter;
-		info->pWindow->DestroyWindow();	//子窗口都是由CreateDialog*创建的,需要由DestroyWindow销毁,而不是EndDialog
-		delete info->pWindow;
+		int i=0;
+		auto s = m_iiVec.begin();
+		auto e = m_iiVec.end();
 
-		m_pTabCtrl->DeleteItem(info->iItem);
-		delete info;
+		for(; s != e;
+			s++,i++){
+			if(pContainer==NULL) pContainer = static_cast<CContainerUI*>(builder.Create(this));
+			if(pContainer != NULL){
+				auto pBtn = (CButtonUI*)static_cast<CHorizontalLayoutUI*>(pContainer->GetItemAt(0))->GetItemAt(0);
+				auto pTxt = pContainer->GetItemAt(1);
+				pBtn->SetAttribute("path",(*s)->path.c_str());
+				pBtn->SetTag(i);
+				pTxt->SetText((*s)->comment.c_str());
+				Add(pContainer);
+				pContainer = nullptr;
+			}
+		}
+		SetAttribute("vscrollbar","true");
+		//SetAttribute("vscrollbarstyle",GetVerticalScrollBar());
 	}
-	m_pMini->DestroyWindow();
 
-	this->GetWindowRect(&m_RectWnd);
-	if(IsZoomed(this->GetHwnd())) m_RectWnd.left=m_RectWnd.top=-2;
-	if(IsIconic(this->GetHwnd())) m_RectWnd.left=m_RectWnd.top=-1;
-
-	AWindowBase::DeleteWindow(this);
-	this->DestroyWindow();
-	//this->EndDialog(0);
-	return 0;
-}
-
-INT_PTR AMainDlg::OnNCDestroy()
-{
-	
-	return 0;
-}
-
-INT_PTR AMainDlg::OnSize(int width,int height)
-{
-	RECT rcDlg,rcTab,rcMini;
-	this->GetClientRect(&rcDlg);
-	m_pTabCtrl->GetClientRect(&rcTab);
-	m_pMini->GetClientRect(&rcMini);
-
-	//DWM可能会窗口变得更小
-	//this->GetWindowRect(&rcThis);
-	//if(rcThis.right-rcThis.left < 400) rcThis.right += rcThis.left+400;
-	//if(rcThis.bottom-rcThis.top < 300) rcThis.bottom += rcThis.top+300;
-	
-	m_pTabCtrl->SetWindowPos(0,0,rcDlg.right-rcMini.right-1-1,rcTab.bottom);
-	m_pMini->SetWindowPos(rcDlg.right-rcMini.right-1,0+1,rcMini.right,rcTab.bottom-1-1);
-
-	this->AdjustTabPageSize();
-	return 0;
-}
-
-INT_PTR AMainDlg::OnSizing(WPARAM wParam,LPRECT pRect)
-{
-	int width = pRect->right-pRect->left;
-	int height = pRect->bottom-pRect->top;
-
-	if(width<400)  pRect->right = pRect->left + 400;
-	if(height<300) pRect->bottom = pRect->top + 300;
-
-	return TRUE;
-}
-
-INT_PTR AMainDlg::OnHotKey(WPARAM id)
-{
-	return 0;
-}
-
-INT_PTR AMainDlg::OnUser(UINT uMsg,WPARAM wParam,LPARAM lParam)
-{
-	return 0;
-}
-
-INT_PTR AMainDlg::OnApp(UINT uMsg,WPARAM wParam,LPARAM lParam)
-{
-	return 0;
-}
-
-INT_PTR AMainDlg::OnInitDialog(HWND hWnd,HWND hWndFocus,LPARAM lParam)
-{
-	m_hWnd = hWnd;
-
-	m_pTabCtrl->attach(this,IDD_MAIN_TAB);
-	m_pTabCtrl->SubClass();
-	m_pTabCtrl->ShowWindow(SW_SHOW);
-
-	m_pMini = new AMini(this);
-
-	//从上次关闭的位置显示窗口
-	if(m_RectWnd.left==-1&&m_RectWnd.top==-1) this->CenterWindow(NULL);
-	else if(m_RectWnd.left==-2&&m_RectWnd.top==-2) ShowWindow(SW_MAXIMIZE);
-	else this->SetWindowPos(NULL,m_RectWnd.left,m_RectWnd.top,m_RectWnd.right-m_RectWnd.left,m_RectWnd.bottom-m_RectWnd.top,SWP_NOZORDER);
-
-	this->SetWindowText("求妹子~");
-	this->ShowWindow(SW_SHOWNORMAL);
-
-	AChildSettingsDlg* pSettings = new AChildSettingsDlg(this);
-
-	AddNewTab(pSettings,pSettings->GetWindowText().c_str());
-
-	ShowTabPage(0);
-
-	return FALSE;
-}
-
-INT_PTR AMainDlg::OnNotify(LPNMHDR phdr)
-{
-	if(phdr->idFrom == m_pTabCtrl->GetCtrlID()){
-		if(phdr->code==TCN_SELCHANGING){
-			int cur_sel = m_pTabCtrl->GetCurSel();
-			assert(cur_sel!=-1);
-			return SetDlgResult(FALSE);
-		}else if(phdr->code==TCN_SELCHANGE){
-			int cur_sel = m_pTabCtrl->GetCurSel();
-			assert(cur_sel!=-1);
-			ShowTabPage(cur_sel);
-			return 0;
-		}else if(phdr->code == NM_RCLICK){
-
-			return 0;
+	~CIndexListUI()
+	{
+		auto s = m_iiVec.begin();
+		auto e = m_iiVec.end();
+		for(; s != e; s ++){
+			delete *s;
 		}
 	}
-	return 0;
+
+	void SetIcon(CButtonUI* pbtn,const CIndexItem* item)
+	{
+		stringstream ss;
+		ss << "./icons/" << item->idx << ".ico";
+		string ico(ss.str());
+		if(GetFileAttributes(ico.c_str()) == INVALID_FILE_ATTRIBUTES){
+			if(item->path.find(".exe")!=string::npos || item->path.find(".dll")!=string::npos){
+				try{
+					CIconFromExe ife;
+					ife.LoadExe(item->path.c_str());
+					vector<string> ids;
+					ife.EnumIcons(&ids);
+					if(ids.size()){
+						ife.SaveIcon(ids[0].c_str(),ico.c_str());
+					}
+				}
+				catch(const char* s){
+					::MessageBox(NULL,s,0,0);
+				}
+			}
+		}
+		if(GetFileAttributes(ico.c_str()) != INVALID_FILE_ATTRIBUTES){
+			pbtn->SetAttribute("normalimage",ico.c_str());
+			pbtn->SetAttribute("bkimage",ico.c_str());
+		}
+	}
+
+	vector<CIndexItem*> m_iiVec;
+};
+
+class CMainDlgImpl : public WindowImplBase
+{
+public:
+	CMainDlgImpl(CSQLite* db)
+	{
+		m_db = db;
+	}
+protected:
+	virtual CDuiString GetSkinFolder()
+	{
+		return "skin/";
+	}
+	virtual CDuiString GetSkinFile()
+	{
+		return "MainDlg.xml";
+	}
+	virtual LPCTSTR GetWindowClassName(void) const
+	{
+		return "女孩不哭";
+	}
+
+	virtual void InitWindow();
+	virtual LRESULT OnSysCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	virtual void OnFinalMessage( HWND hWnd )
+	{
+		__super::OnFinalMessage(hWnd);
+		delete this;
+	}
+
+	DUI_DECLARE_MESSAGE_MAP()
+	virtual void OnClick(TNotifyUI& msg);
+	virtual void OnSelectChanged(TNotifyUI& msg);
+	virtual void OnTimer(TNotifyUI& msg);
+	virtual void OnMenu(TNotifyUI& msg);
+
+public:
+	const vector<string>& GetCategory() const {return m_catVec;}
+
+private:
+	bool addTab(const char* name,int tag,const char* category);
+
+private:
+	CSQLite*		m_db;
+
+	CHorizontalLayoutUI*	m_pTabList;
+	CTabLayoutUI*			m_pTabPage;
+
+	CButtonUI* m_pbtnClose;
+	CButtonUI* m_pbtnMin;
+	CButtonUI* m_pbtnRestore;
+	CButtonUI* m_pbtnMax;
+
+	vector<string>			m_catVec;
+	vector<CIndexListUI*>	m_listVec;
+	vector<COptionUI*>		m_optVec;
+};
+
+CMainDlg::CMainDlg(CSQLite* db)
+{
+	CMainDlgImpl* pFrame = new CMainDlgImpl(db);
+	pFrame->Create(NULL,"Software Manager",UI_WNDSTYLE_FRAME|WS_SIZEBOX,WS_EX_WINDOWEDGE);
+	pFrame->CenterWindow();
+	pFrame->ShowWindow(true);
 }
 
-INT_PTR AMainDlg::OnCommand(int codeNotify,int ctrlID,HWND hWndCtrl)
+CMainDlg::~CMainDlg()
 {
-	return 0;
+
 }
 
-bool AMainDlg::create(const char* cmd,bool nShowCmd)
+DUI_BEGIN_MESSAGE_MAP(CMainDlgImpl, WindowImplBase)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_CLICK,OnClick)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_SELECTCHANGED,OnSelectChanged)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_TIMER,OnTimer)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_MENU,OnMenu)
+DUI_END_MESSAGE_MAP()
+
+void CMainDlgImpl::OnClick(TNotifyUI& msg)
 {
-	void* pWndThunk = m_WndThunk.Stdcall(this,&AMainDlg::WindowProc);
-	CreateDialogParam(g_pApp->getInstance(),MAKEINTRESOURCE(IDD_MAIN),NULL,(DLGPROC)pWndThunk,0);
-	this->ShowWindow(nShowCmd);
+	if(msg.pSender->GetName() == "listItemBtn"){
+		int tag = msg.pSender->GetTag();
+		auto pList = m_listVec[m_pTabPage->GetCurSel()];
+		auto elem = pList->m_iiVec[tag];
+		APathLib::shellExec(GetHWND(),elem->path.c_str(),elem->param.c_str(),0);
+	}
+
+
+	CDuiString n = msg.pSender->GetName();
+	if(n == "closebtn"){
+		Close(0);
+		return;
+	}
+	else if(n == "minbtn"){
+		SendMessage(WM_SYSCOMMAND,SC_MINIMIZE);
+	}
+	else if(n == "maxbtn"){
+		SendMessage(WM_SYSCOMMAND,SC_MAXIMIZE);
+	}
+	else if(n == "restorebtn"){
+		SendMessage(WM_SYSCOMMAND,SC_RESTORE);
+	}
+}
+
+void CMainDlgImpl::OnSelectChanged(TNotifyUI& msg)
+{
+	if(msg.pSender->GetUserData() == "index_list_option"){
+		auto pOpt = static_cast<COptionUI*>(msg.pSender);
+		m_pTabPage->SelectItem(m_listVec[pOpt->GetTag()]);
+	}
+}
+
+void CMainDlgImpl::OnTimer(TNotifyUI& msg)
+{
+	//MessageBox(GetHWND(),0,0,0);
+}
+
+void CMainDlgImpl::OnMenu(TNotifyUI& msg)
+{
+	if(msg.pSender->GetUserData() == "index_list_option"){
+		auto pOpt = static_cast<COptionUI*>(msg.pSender);
+		::MessageBox(GetHWND(),pOpt->GetText(),"",0);
+	}
+}
+
+void CMainDlgImpl::InitWindow()
+{	
+	struct{
+		void* ptr;
+		const char*  name;
+	} li[] = {
+		{&m_pbtnMin,		"minbtn"},
+		{&m_pbtnMax,		"maxbtn"},
+		{&m_pbtnRestore,	"restorebtn"},
+		{&m_pbtnClose,		"closebtn"},
+		{0,0}
+	};
+	for(int i=0;li[i].ptr; i++){
+		*(CControlUI**)li[i].ptr = static_cast<CControlUI*>(m_PaintManager.FindControl(li[i].name));
+	}
+
+	m_pTabList = static_cast<CHorizontalLayoutUI*>(m_PaintManager.FindControl(_T("tabs")));
+	m_pTabPage = static_cast<CTabLayoutUI*>(m_PaintManager.FindControl(_T("switch")));
+
+	m_db->GetCategories(&m_catVec);
+
+	int x=0;
+	for(auto it=m_catVec.begin(); it!=m_catVec.end(); it++){
+		addTab(it->c_str(),x++,"index_list_option");
+	}
+
+	assert(m_optVec.size() == m_listVec.size());
+	
+	if(m_optVec.size()){
+		m_optVec[0]->Selected(true);
+		m_pTabPage->SelectItem(0);
+	}
+
+	//m_PaintManager.SetTimer(m_pbtnMin,0,5000);
+}
+
+bool CMainDlgImpl::addTab(const char* name,int tag,const char* category)
+{
+	COptionUI* pOption = new COptionUI;
+	pOption->SetAttribute("text",name);
+	pOption->SetAttribute("width","60");
+	pOption->SetAttribute("textcolor","0xFF386382");
+	pOption->SetAttribute("normalimage","file='tabbar_normal.png' fade='50'");
+	pOption->SetAttribute("hotimage","tabbar_hover.png");
+	pOption->SetAttribute("pushedimage","tabbar_pushed.png");
+	pOption->SetAttribute("selectedimage","file='tabbar_pushed.png' fade='150'");
+	pOption->SetAttribute("group","contenttab");
+	pOption->SetAttribute("menu","true");
+
+	if(!m_pTabList->Add(pOption)) 
+		return false;
+
+	pOption->SetUserData(category);
+	pOption->SetTag(tag);
+	m_optVec.push_back(pOption);
+
+	CIndexListUI* pList = new CIndexListUI(m_db,name,m_PaintManager);
+	m_pTabPage->Add(pList);
+	m_listVec.push_back(pList);
+
 	return true;
 }
 
-INT_PTR AMainDlg::OnNull(LPARAM lParam)
+LRESULT CMainDlgImpl::OnSysCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
-	ControlMessage* pcm = reinterpret_cast<ControlMessage*>(lParam);
-	if(!pcm) return 0;
-
-	if(pcm->self == NULL){
-		switch(pcm->uMsg-WM_USER)
+	BOOL bZoomed = ::IsZoomed(m_hWnd);
+	LRESULT lRes = CWindowWnd::HandleMessage(uMsg, wParam, lParam);
+	if (::IsZoomed(m_hWnd) != bZoomed)
+	{
+		if (!bZoomed)
 		{
-		case 0:
-			this->SetAutoHide((BOOL)pcm->lParam);
-			return 0;
-		case 1:
-			this->AddNewTab(reinterpret_cast<AWindowBase*>(pcm->wParam),reinterpret_cast<const char*>(pcm->lParam));
-			return 0;
-		default:
-			debug_out(("错误:遇到未处理的WM_NULL消息...\n"));
-			return 0;
+			m_pbtnMax->SetVisible(false);
+			m_pbtnRestore->SetVisible(true);
+		}
+		else 
+		{
+			m_pbtnMax->SetVisible(true);
+			m_pbtnRestore->SetVisible(false);
 		}
 	}
-
-	if(pcm->self == m_pTabCtrl){
-		switch(pcm->uMsg)
-		{
-		case WM_MOUSEWHEEL:
-			{
-				int delta = pcm->lParam;
-				int cnt = m_pTabCtrl->GetItemCount();
-				int cur = m_pTabCtrl->GetCurSel();
-
-				if(cnt <= 1) return SetDlgResult(0);
-
-				if(delta < 0){
-					cur++;
-					if(cur>cnt-1) cur = 0;
-				}else if(delta > 0){
-					cur--;
-					if(cur < 0){
-						cur = cnt - 1;
-					}
-				}
-
-				ShowTabPage(cur);
-				m_pTabCtrl->SetCurSel(cur);
-
-				return SetDlgResult(0);
-			}
-		default:
-			return SetDlgResult(pcm->self->DoDefault(pcm));
-		}
-	}
-	return 0;
-}
-
-INT_PTR AMainDlg::DoDefault(UINT uMsg,WPARAM wParam,LPARAM lParam)
-{
-	return 0;
+	return lRes;
 }
