@@ -12,8 +12,8 @@ using namespace DuiLib;
 #include "Mini.h"
 #include "tips.h"
 #include "Utils.h"
-
-#include "resource.h"
+ 
+#include "res/resource.h"
 
 class CMiniImpl : public WindowImplBase
 {

@@ -5,11 +5,11 @@ using namespace std;
 #include "Utils.h"
 #include "SQLite.h"
 #include "PathLib.h"
-#include "AddDlg.h"
 
 #include <Uilib.h>
-
 using namespace DuiLib;
+
+#include "AddDlg.h"
 
 class CAddDlgImpl : public WindowImplBase
 {
@@ -19,6 +19,13 @@ public:
 		m_type = type;
 		m_pii = pii;
 		m_db = db;
+	}
+	CAddDlg::DLGCODE GetDlgCode() const
+	{
+		return m_dlgcode;
+	}
+	CIndexItem* GetIndexItem() const{
+		return m_pii;
 	}
 protected:
 	virtual CDuiString GetSkinFolder()
@@ -36,12 +43,14 @@ protected:
 	virtual void OnFinalMessage( HWND hWnd )
 	{
 		__super::OnFinalMessage(hWnd);
-		delete this;
+		//delete this;	//因为还要取返回码,所以不在此删除
 	}
 	virtual LRESULT ResponseDefaultKeyEvent(WPARAM wParam)
 	{
 		return FALSE;
 	}
+
+
 
 	DUI_DECLARE_MESSAGE_MAP()
 	virtual void OnClick(TNotifyUI& msg);
@@ -107,15 +116,20 @@ private:
 				assert(0);
 			}
 		}else if(m_type == CAddDlg::TYPE::TYPE_NEW){
-			assert(m_pii==nullptr);
 			preIndex	->SetText("");
 			preComment	->SetText("");
 			prePath		->SetText("");
 			preParam	->SetText("");
 			preTimes	->SetText("0");
 			if(m_tbls.size()){
-				pcboClass->SelectItem(0);
-				m_editClass->SetText(m_tbls[0].c_str());
+				int i=0;
+				for(auto s=m_tbls.begin(),e=m_tbls.end(); s!=e; ++s,++i){
+					if(*s == (char*)m_pii){
+						break;
+					}
+				}
+				pcboClass->SelectItem(i);
+				m_editClass->SetText(m_tbls[i].c_str());
 			}
 		}
 	}
@@ -137,10 +151,11 @@ private:
 	CAddDlg::TYPE m_type;
 	CIndexItem*	  m_pii;
 	CSQLite*	  m_db;
-	vector<string> m_tbls;
+	vector<string> m_tbls;		//已改成分类, 名字还没改
 
 private:
 	bool bNeedFree;				//忘了哪个地方要用到了,...反正有用
+	CAddDlg::DLGCODE m_dlgcode;
 };
 
 DUI_BEGIN_MESSAGE_MAP(CAddDlgImpl,WindowImplBase)
@@ -150,17 +165,25 @@ DUI_END_MESSAGE_MAP()
 CAddDlg::CAddDlg(HWND parent,TYPE type,CIndexItem* pii,CSQLite* db)
 {
 	assert(parent!=NULL && "CAddDlg::CAddDlg()");
-	CAddDlgImpl* pFrame = new CAddDlgImpl(type,pii,db);
-	HWND hWnd = pFrame->Create(parent,NULL, WS_VISIBLE, WS_EX_WINDOWEDGE);	
-	pFrame->CenterWindow();
-	pFrame->ShowModal();
+	m_impl = new CAddDlgImpl(type,pii,db);
+	m_impl->Create(parent,NULL, WS_VISIBLE, WS_EX_WINDOWEDGE);	
+	m_impl->CenterWindow();
+	m_impl->ShowModal();
 }
 
 CAddDlg::~CAddDlg()
 {
-
+	delete m_impl;
 }
 
+CAddDlg::DLGCODE CAddDlg::GetDlgCode() const
+{
+	return m_impl->GetDlgCode();
+}
+CIndexItem* CAddDlg::GetIndexItem() const
+{
+	return m_impl->GetIndexItem();
+}
 void CAddDlgImpl::InitWindow()
 {
 	struct{
@@ -183,8 +206,6 @@ void CAddDlgImpl::InitWindow()
 		*(CControlUI**)li[i].ptr = static_cast<CControlUI*>(m_PaintManager.FindControl(li[i].name));
 	}
 
-	//m_editClass->SetPos(pcboClass->GetPos());
-	
 	m_db->GetCategories(&m_tbls);
 
 	auto s = m_tbls.begin();
@@ -193,7 +214,7 @@ void CAddDlgImpl::InitWindow()
 		CListLabelElementUI* list = new CListLabelElementUI;
 		list->SetAttribute("font","0");
 		list->SetText(s->c_str());
-		list->SetPadding(CDuiRect(3,0,0,0));
+		list->SetPadding(CDuiRect(5,0,5,0));
 		pcboClass->Add(list);
 	}
 	initFromParam();
@@ -202,6 +223,7 @@ void CAddDlgImpl::InitWindow()
 void CAddDlgImpl::OnClick(TNotifyUI& msg)
 {
 	if(msg.pSender == pbtnClose || msg.pSender->GetName()==_T("closebtn")){
+		m_dlgcode = CAddDlg::kCancel;
 		Close();
 	}
 	else if(msg.pSender == pbtnBrowse){
@@ -282,6 +304,8 @@ void CAddDlgImpl::OnClick(TNotifyUI& msg)
 		bool rb = m_db->AddItem(m_pii);
 		if(rb){
 			::MessageBox(GetHWND(),bnew?"添加成功!":"修改成功!","",MB_OK);
+			m_dlgcode = CAddDlg::kOK;
+			Close();
 			return;
 		}
 		else{

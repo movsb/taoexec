@@ -28,6 +28,7 @@ public:
 	bool RenameCategory(const char* from, const char* to);
 	bool FreeVectoredIndexItems(vector<CIndexItem*>* R);
 	bool AddItem(CIndexItem* pii);
+	bool DeleteItem(int idx);
 	bool UpdateTimes(CIndexItem* pii);
 
 private:
@@ -97,6 +98,10 @@ bool CSQLite::FreeVectoredIndexItems(vector<CIndexItem*>* R)
 bool CSQLite::AddItem(CIndexItem* pii)
 {
 	return m_sqlite->AddItem(pii);
+}
+bool CSQLite::DeleteItem(int idx)
+{
+	return m_sqlite->DeleteItem(idx);
 }
 bool CSQLite::UpdateTimes(CIndexItem* pii)
 {
@@ -331,6 +336,26 @@ bool CSQLiteImpl::AddItem(CIndexItem* pii)
 		return true;
 	}
 	return false;
+}
+
+bool CSQLiteImpl::DeleteItem(int idx)
+{
+	stringstream ss;
+	ss << "delete from tbl_index where idx=";
+	ss << idx << ";";
+	string sql(ss.str());
+
+	int rv;
+	char* err;
+	rv = sqlite3_exec(m_db,sql.c_str(),nullptr,nullptr,&err);
+	if(rv != SQLITE_OK){
+		string t(err);
+		sqlite3_free(err);
+		throw CExcept("É¾³ýÊ§°Ü!",__FUNCTION__);
+	}
+	else{
+		return true;
+	}
 }
 
 bool CSQLiteImpl::UpdateTimes(CIndexItem* pii)

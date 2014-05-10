@@ -6,7 +6,7 @@
 #include "PathLib.h"
 #include "Utils.h"
 #include "nbsg.h"
-#include "resource.h"
+#include "res/resource.h"
 #include <cassert>
 
 string APathLib::expandEnvString(const char* src)

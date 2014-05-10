@@ -8,6 +8,8 @@
 #define IDR_MENU_EDITBOX                123
 #define IDR_MENU2                       124
 #define IDM_TABMENU                     124
+#define IDR_MENU3                       125
+#define IDM_INDEXTAB_MENU               125
 #define IDC_ADD_BATCH                   1005
 #define IDC_ADD_NEW                     1006
 #define IDC_LIST2                       1016
@@ -58,13 +60,21 @@
 #define MENU_TAB_CLOSETAB               40070
 #define MENU_TAB                        40071
 #define MENU_TAB_DELETETAB              40072
+#define ID_40073                        40073
+#define ID_40074                        40074
+#define MENU_TAB_NEWTAB                 40075
+#define MENU_TAB_NEWINDEX               40076
+#define ID_TAB40077                     40077
+#define ID_TAB40078                     40078
+#define MENU_TABINDEX_NEWINDEX          40079
+#define MENU_TABINDEX_REFRESH_INDICES   40080
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        125
-#define _APS_NEXT_COMMAND_VALUE         40073
+#define _APS_NEXT_RESOURCE_VALUE        126
+#define _APS_NEXT_COMMAND_VALUE         40081
 #define _APS_NEXT_CONTROL_VALUE         1040
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

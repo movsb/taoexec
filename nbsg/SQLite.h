@@ -34,6 +34,7 @@ public:
 	bool QueryIndices(const char* find,vector<CIndexItem*>* R,bool* found);
 	bool FreeVectoredIndexItems(vector<CIndexItem*>* R);
 	bool AddItem(CIndexItem* pii);
+	bool DeleteItem(int idx);
 	bool UpdateTimes(CIndexItem* pii);
 	
 private:
