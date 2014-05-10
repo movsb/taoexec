@@ -8,7 +8,7 @@
 	<VerticalLayout bkimage="file='中分.jpg' corner='600,600,0,0'">
 		<HorizontalLayout height="30">
 			<VerticalLayout inset="10,0,0,0" mouse="false" mousechild="false">
-				<Text text="Software Manager" textcolor="0xFFFFFFFF" font="0"/>
+				<Text name="title" text="Software Manager" textcolor="0xFFFFFFFF" font="0"/>
 			</VerticalLayout>
 			<Control />
 			<VerticalLayout width="95">

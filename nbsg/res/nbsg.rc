@@ -127,6 +127,16 @@ BEGIN
     END
 END
 
+IDM_TABMENU MENU
+BEGIN
+    POPUP "标签栏菜单"
+    BEGIN
+        MENUITEM "更改名字",                        MENU_TAB_RENAME
+        MENUITEM "关闭标签",                        MENU_TAB_CLOSETAB
+        MENUITEM "删除标签",                        MENU_TAB_DELETETAB
+    END
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

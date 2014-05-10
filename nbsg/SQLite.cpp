@@ -25,6 +25,7 @@ public:
 	bool QueryCategory(const char* cat,vector<CIndexItem*>* V);
 	bool QueryIndices(const char* find,vector<CIndexItem*>* R,bool* found);
 	bool GetCategories(vector<string>* cats);
+	bool RenameCategory(const char* from, const char* to);
 	bool FreeVectoredIndexItems(vector<CIndexItem*>* R);
 	bool AddItem(CIndexItem* pii);
 	bool UpdateTimes(CIndexItem* pii);
@@ -84,6 +85,10 @@ bool CSQLite::QueryIndices(const char* find,vector<CIndexItem*>* R,bool* found)
 bool CSQLite::GetCategories(vector<string>* cats)
 {
 	return m_sqlite->GetCategories(cats);
+}
+bool CSQLite::RenameCategory(const char* from, const char* to)
+{
+	return m_sqlite->RenameCategory(from,to);
 }
 bool CSQLite::FreeVectoredIndexItems(vector<CIndexItem*>* R)
 {
@@ -343,6 +348,32 @@ bool CSQLiteImpl::UpdateTimes(CIndexItem* pii)
 		string t(err);
 		sqlite3_free(err);
 		throw CExcept("更新次数失败!","CSQLiteImpl::UpdateTimes()");
+	}
+	else{
+		return true;
+	}
+}
+
+bool CSQLiteImpl::RenameCategory(const char* from, const char* to)
+{
+	assert(strchr(from,'\'')==0);
+	assert(strchr(to,'\'')==0);
+
+	stringstream ss;
+	ss << "update tbl_index set category=\'"
+		<< to
+		<< "\' "
+		<< "where category=\'"
+		<< from
+		<< "\';";
+	string str(ss.str());
+	int rv;
+	char* err;
+	rv = sqlite3_exec(m_db,str.c_str(),0,0,&err);
+	if(rv!=SQLITE_OK){
+		string t(err);
+		sqlite3_free(err);
+		throw CExcept("重命名分类失败!",__FUNCTION__);
 	}
 	else{
 		return true;

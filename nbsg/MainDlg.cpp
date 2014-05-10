@@ -5,17 +5,50 @@
 
 using namespace std;
 
-#include "Utils.h"
-#include "SQLite.h"
-#include "PathLib.h"
-
-#include "AddDlg.h"
-#include "MainDlg.h"
-#include "ico_from_exe/icon_from_exe.h"
-
 #include <UIlib.h>
 
 using namespace DuiLib;
+
+#include "res/resource.h"
+
+#include "Utils.h"
+#include "SQLite.h"
+#include "PathLib.h"
+#include "Except.h"
+
+#include "AddDlg.h"
+#include "MainDlg.h"
+#include "InputBox.h"
+
+class CMouseWheelOptionUI : public COptionUI
+{
+public:
+	virtual LPCTSTR GetClass() const override
+	{
+		return _T("MouseWheelOptionUI");
+	}
+	virtual LPVOID GetInterface(LPCTSTR pstrName) override
+	{
+		if( _tcscmp(pstrName, _T("MouseWheelOption")) == 0 ) return this;
+		return __super::GetInterface(pstrName);
+	}
+	virtual void DoEvent(TEventUI& event) override
+	{
+		if(IsMouseEnabled() && event.Type>UIEVENT__MOUSEBEGIN && event.Type<UIEVENT__MOUSEEND)
+		{
+			if(event.Type == UIEVENT_SCROLLWHEEL){
+				TNotifyUI msg;
+				msg.pSender = this;
+				msg.sType = DUI_MSGTYPE_SCROLL;
+				msg.wParam = event.wParam;
+				msg.lParam = event.lParam;
+				GetManager()->SendNotify(msg);
+				return;
+			}
+		}
+		return __super::DoEvent(event);
+	}
+};
 
 class CIconButtonUI : public CButtonUI
 {
@@ -58,7 +91,7 @@ public:
 	void PaintStatusImage(HDC hDC)
 	{
 
-		if(!m_hIcon){
+		if(m_hIcon==NULL){
 			m_hIcon = APathLib::getFileIcon(m_strPath);
 			if(!m_hIcon)
 				m_hIcon = APathLib::GetClsidIcon(m_strPath.GetData());
@@ -126,30 +159,10 @@ public:
 		}
 	}
 
-	void SetIcon(CButtonUI* pbtn,const CIndexItem* item)
+	void RenameIndexItemsCategory(const char* to)
 	{
-		stringstream ss;
-		ss << "./icons/" << item->idx << ".ico";
-		string ico(ss.str());
-		if(GetFileAttributes(ico.c_str()) == INVALID_FILE_ATTRIBUTES){
-			if(item->path.find(".exe")!=string::npos || item->path.find(".dll")!=string::npos){
-				try{
-					CIconFromExe ife;
-					ife.LoadExe(item->path.c_str());
-					vector<string> ids;
-					ife.EnumIcons(&ids);
-					if(ids.size()){
-						ife.SaveIcon(ids[0].c_str(),ico.c_str());
-					}
-				}
-				catch(const char* s){
-					::MessageBox(NULL,s,0,0);
-				}
-			}
-		}
-		if(GetFileAttributes(ico.c_str()) != INVALID_FILE_ATTRIBUTES){
-			pbtn->SetAttribute("normalimage",ico.c_str());
-			pbtn->SetAttribute("bkimage",ico.c_str());
+		for(auto s=m_iiVec.begin(),e=m_iiVec.end(); s!=e; ++s){
+			(*s)->category = to;
 		}
 	}
 
@@ -190,9 +203,12 @@ protected:
 	virtual void OnSelectChanged(TNotifyUI& msg);
 	virtual void OnTimer(TNotifyUI& msg);
 	virtual void OnMenu(TNotifyUI& msg);
-
-public:
-	const vector<string>& GetCategory() const {return m_catVec;}
+	virtual void Notify(TNotifyUI& msg)
+	{
+		m_PaintManager.FindControl("title")->SetText(msg.sType);
+		return __super::Notify(msg);
+	}
+	virtual void OnScroll(TNotifyUI& msg);
 
 private:
 	bool addTab(const char* name,int tag,const char* category);
@@ -208,9 +224,8 @@ private:
 	CButtonUI* m_pbtnRestore;
 	CButtonUI* m_pbtnMax;
 
-	vector<string>			m_catVec;
-	vector<CIndexListUI*>	m_listVec;
-	vector<COptionUI*>		m_optVec;
+	vector<CIndexListUI*>			m_listVec;
+	vector<CMouseWheelOptionUI*>	m_optVec;
 };
 
 CMainDlg::CMainDlg(CSQLite* db)
@@ -231,6 +246,7 @@ DUI_BEGIN_MESSAGE_MAP(CMainDlgImpl, WindowImplBase)
 	DUI_ON_MSGTYPE(DUI_MSGTYPE_SELECTCHANGED,OnSelectChanged)
 	DUI_ON_MSGTYPE(DUI_MSGTYPE_TIMER,OnTimer)
 	DUI_ON_MSGTYPE(DUI_MSGTYPE_MENU,OnMenu)
+	DUI_ON_MSGTYPE(DUI_MSGTYPE_SCROLL,OnScroll)
 DUI_END_MESSAGE_MAP()
 
 void CMainDlgImpl::OnClick(TNotifyUI& msg)
@@ -262,7 +278,7 @@ void CMainDlgImpl::OnClick(TNotifyUI& msg)
 void CMainDlgImpl::OnSelectChanged(TNotifyUI& msg)
 {
 	if(msg.pSender->GetUserData() == "index_list_option"){
-		auto pOpt = static_cast<COptionUI*>(msg.pSender);
+		auto pOpt = static_cast<CMouseWheelOptionUI*>(msg.pSender);
 		m_pTabPage->SelectItem(m_listVec[pOpt->GetTag()]);
 	}
 }
@@ -275,8 +291,79 @@ void CMainDlgImpl::OnTimer(TNotifyUI& msg)
 void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 {
 	if(msg.pSender->GetUserData() == "index_list_option"){
-		auto pOpt = static_cast<COptionUI*>(msg.pSender);
-		::MessageBox(GetHWND(),pOpt->GetText(),"",0);
+		auto pOpt = static_cast<CMouseWheelOptionUI*>(msg.pSender);
+		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_TABMENU)); //TODO:destroy
+		HMENU hSub0 = ::GetSubMenu(hMenu,0);
+		::ClientToScreen(GetHWND(),&msg.ptMouse);
+		UINT id = (UINT)::TrackPopupMenu(hSub0,TPM_LEFTBUTTON|TPM_NONOTIFY|TPM_RETURNCMD,msg.ptMouse.x,msg.ptMouse.y,0,GetHWND(),nullptr);
+		if(id==0) return;
+		if(id == MENU_TAB_RENAME){
+			class CRenameCallback : public IInputBoxCallback
+			{
+			private:
+				virtual bool CheckReturn(LPCTSTR str,LPCTSTR* msg) override
+				{
+					if(_tcschr(str,_T('\''))){
+						*msg = _T("新名字中不能包含单引号字符!");
+						return false;
+					}
+					
+					return true;
+				}
+			};
+			CRenameCallback rcb;
+			CInputBox input(GetHWND(),
+				_T("重命名"),
+				_T("请输入新名字"),
+				pOpt->GetText(),
+				&rcb);
+			if(rcb.GetDlgCode() == CInputBox::kCancel || rcb.GetDlgCode()== CInputBox::kClose)
+				return;
+			
+			try{
+				m_db->RenameCategory(pOpt->GetText(),rcb.GetStr());
+				pOpt->SetText(rcb.GetStr());
+				m_listVec[pOpt->GetTag()]->RenameIndexItemsCategory(rcb.GetStr());
+			}
+			catch(CExcept* e)
+			{
+				::MessageBox(GetHWND(),e->desc.c_str(),nullptr,MB_ICONEXCLAMATION);
+			}
+			return;
+		}
+		else{
+
+		}
+	}
+}
+
+void CMainDlgImpl::OnScroll(TNotifyUI& msg)
+{
+	if(msg.pSender->GetUserData() == "index_list_option"){
+		CMouseWheelOptionUI* pOptSelected=0;
+		for(auto s=m_optVec.begin(),e=m_optVec.end(); s!=e; ++s){
+			if((*s)->IsSelected()){
+				pOptSelected = *s;
+				break;
+			}
+		}
+		if(!pOptSelected) return;
+
+		int count = m_listVec.size();
+		int sel = m_pTabList->GetItemIndex(pOptSelected);
+		if(msg.wParam == SB_LINEUP){
+			sel--;
+			if(sel<0)
+				sel = count-1;
+		}
+		else if(msg.wParam == SB_LINEDOWN){
+			sel++;
+			if(sel>count-1)
+				sel = 0;
+		}
+		m_optVec[sel]->Selected(true);
+		m_pTabPage->SelectItem(m_listVec[sel]);
+		return;
 	}
 }
 
@@ -299,10 +386,11 @@ void CMainDlgImpl::InitWindow()
 	m_pTabList = static_cast<CHorizontalLayoutUI*>(m_PaintManager.FindControl(_T("tabs")));
 	m_pTabPage = static_cast<CTabLayoutUI*>(m_PaintManager.FindControl(_T("switch")));
 
-	m_db->GetCategories(&m_catVec);
+	vector<string>	catVec;
+	m_db->GetCategories(&catVec);
 
 	int x=0;
-	for(auto it=m_catVec.begin(); it!=m_catVec.end(); it++){
+	for(auto it=catVec.begin(); it!=catVec.end(); it++){
 		addTab(it->c_str(),x++,"index_list_option");
 	}
 
@@ -318,7 +406,7 @@ void CMainDlgImpl::InitWindow()
 
 bool CMainDlgImpl::addTab(const char* name,int tag,const char* category)
 {
-	COptionUI* pOption = new COptionUI;
+	auto pOption = new CMouseWheelOptionUI;
 	pOption->SetAttribute("text",name);
 	pOption->SetAttribute("width","60");
 	pOption->SetAttribute("textcolor","0xFF386382");

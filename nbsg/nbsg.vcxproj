@@ -91,8 +91,7 @@
     <ClCompile Include="AddDlg.cpp" />
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Except.cpp" />
-    <ClCompile Include="ico_from_exe\ByteArray.cpp" />
-    <ClCompile Include="ico_from_exe\icon_from_exe.cpp" />
+    <ClCompile Include="InputBox.cpp" />
     <ClCompile Include="MainDlg.cpp" />
     <ClCompile Include="Mini.cpp" />
     <ClCompile Include="nbsg.cpp" />
@@ -105,29 +104,29 @@
     <ClInclude Include="AddDlg.h" />
     <ClInclude Include="App.h" />
     <ClInclude Include="Except.h" />
-    <ClInclude Include="ico_from_exe\ByteArray.h" />
-    <ClInclude Include="ico_from_exe\icon_from_exe.h" />
+    <ClInclude Include="InputBox.h" />
     <ClInclude Include="MainDlg.h" />
     <ClInclude Include="Mini.h" />
     <ClInclude Include="nbsg.h" />
     <ClInclude Include="PathLib.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="res\resource.h" />
     <ClInclude Include="SQLite.h" />
     <ClInclude Include="tips.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="nbsg.rc" />
-  </ItemGroup>
-  <ItemGroup>
     <Image Include="100.ico" />
+    <Image Include="res\100.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Manifest Include="xps.manifest" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="notes.txt" />
     <Text Include="update.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="res\nbsg.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="res\xps.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

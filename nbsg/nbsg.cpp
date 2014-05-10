@@ -3,14 +3,15 @@
 #include <string>
 using namespace std;
 #include "nbsg.h"
-#include "MainDlg.h"
-#include "Mini.h"
 #include "PathLib.h"
-#include "resource.h"
+#include "res/resource.h"
 #include "SQLite.h"
 #include <UiLib.h>
-
 using namespace DuiLib;
+
+#include "MainDlg.h"
+#include "Mini.h"
+#include "InputBox.h"
 
 
 AApp* g_pApp;
@@ -26,9 +27,9 @@ int CALLBACK WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine
 
 	CSQLite* db = new CSQLite;
 	db->Open("./data.db");
-
+	
 	CMainDlg* dlg = new CMainDlg(db);
-	CMini* mini = new CMini(db);
+	//CMini* mini = new CMini(db);
 
 	CPaintManagerUI::MessageLoop();
 
