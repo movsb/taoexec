@@ -94,6 +94,7 @@
     <ClCompile Include="InputBox.cpp" />
     <ClCompile Include="MainDlg.cpp" />
     <ClCompile Include="Mini.cpp" />
+    <ClCompile Include="MyUtil.cpp" />
     <ClCompile Include="nbsg.cpp" />
     <ClCompile Include="PathLib.cpp" />
     <ClCompile Include="SQLite.cpp" />
@@ -107,6 +108,7 @@
     <ClInclude Include="InputBox.h" />
     <ClInclude Include="MainDlg.h" />
     <ClInclude Include="Mini.h" />
+    <ClInclude Include="MyUtil.h" />
     <ClInclude Include="nbsg.h" />
     <ClInclude Include="PathLib.h" />
     <ClInclude Include="resource.h" />
@@ -116,17 +118,16 @@
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="100.ico" />
     <Image Include="res\100.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="update.txt" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\nbsg.rc" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="res\xps.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\updates.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

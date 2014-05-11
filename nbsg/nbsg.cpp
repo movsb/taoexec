@@ -25,6 +25,13 @@ int CALLBACK WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine
 
 	CPaintManagerUI::SetInstance(GetModuleHandle(NULL));
 
+#ifdef _DEBUG
+	AllocConsole();
+	freopen("CONIN$","r",stdin);
+	freopen("CONOUT$","w",stdout);
+	freopen("CONOUT$","w",stderr);
+#endif
+
 	CSQLite* db = new CSQLite;
 	db->Open("./data.db");
 	

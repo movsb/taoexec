@@ -46,6 +46,9 @@
     <ClCompile Include="InputBox.cpp">
       <Filter>Window</Filter>
     </ClCompile>
+    <ClCompile Include="MyUtil.cpp">
+      <Filter>Window</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PathLib.h">
@@ -84,20 +87,17 @@
     <ClInclude Include="InputBox.h">
       <Filter>Window</Filter>
     </ClInclude>
-    <ClInclude Include="res\resource.h" />
+    <ClInclude Include="res\resource.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="MyUtil.h">
+      <Filter>Window</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="100.ico">
-      <Filter>Resource</Filter>
-    </Image>
     <Image Include="res\100.ico">
       <Filter>Resource</Filter>
     </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="update.txt">
-      <Filter>Resource</Filter>
-    </Text>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\nbsg.rc">
@@ -108,5 +108,8 @@
     <Manifest Include="res\xps.manifest">
       <Filter>Resource</Filter>
     </Manifest>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\updates.txt" />
   </ItemGroup>
 </Project>

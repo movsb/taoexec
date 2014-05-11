@@ -17,6 +17,7 @@ using namespace DuiLib;
 #include "SQLite.h"
 #include "PathLib.h"
 #include "Except.h"
+#include "MyUtil.h"
 
 #include "AddDlg.h"
 #include "MainDlg.h"
@@ -120,6 +121,34 @@ private:
 		return nullptr;
 	}
 
+	virtual void DoEvent(TEventUI& event) override
+	{
+		if(IsMouseEnabled() && event.Type>UIEVENT__MOUSEBEGIN && event.Type<UIEVENT__MOUSEEND)
+		{
+			auto CheckScrollBar = [](CScrollBarUI* pScroll,WPARAM msevt)->bool
+			{
+				return !pScroll
+					|| pScroll->IsVisible() == false
+					|| (pScroll->GetScrollPos()==0 && msevt==SB_LINEUP)
+					|| (pScroll->GetScrollPos()==pScroll->GetScrollRange() && msevt==SB_LINEDOWN);
+			};
+			if(event.Type == UIEVENT_SCROLLWHEEL
+				&& CheckScrollBar(GetVerticalScrollBar(),event.wParam)
+				&& CheckScrollBar(GetHorizontalScrollBar(),event.wParam)
+				)
+			{
+				TNotifyUI msg;
+				msg.pSender = this;
+				msg.sType = DUI_MSGTYPE_SCROLL;
+				msg.wParam = event.wParam;	//SB_LINEDOWN && SB_LINEUP
+				msg.lParam = event.lParam;
+				GetManager()->SendNotify(msg);
+				return;	//__super不处理,所以直接返回了
+			}
+		}
+		return __super::DoEvent(event);
+	}
+
 private:
 	CDialogBuilder	m_builder;
 	CSQLite*		m_db;
@@ -148,6 +177,7 @@ public:
 		auto s = m_iiVec.begin();
 		auto e = m_iiVec.end();
 		for(; s != e; s ++){
+			//printf("deleting items %s\n",(*s)->comment.c_str());
 			delete *s;
 		}
 	}
@@ -224,6 +254,10 @@ public:
 	{
 		m_db = db;
 	}
+	~CMainDlgImpl()
+	{
+
+	}
 protected:
 	virtual CDuiString GetSkinFolder()
 	{
@@ -239,11 +273,13 @@ protected:
 	}
 
 	virtual void InitWindow();
+	LRESULT HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	virtual LRESULT OnSysCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	virtual void OnFinalMessage( HWND hWnd )
 	{
 		__super::OnFinalMessage(hWnd);
 		delete this;
+		::PostQuitMessage(0);
 	}
 
 	DUI_DECLARE_MESSAGE_MAP()
@@ -368,23 +404,9 @@ void CMainDlgImpl::OnClick(TNotifyUI& msg)
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto elem = pList->FindIndexList(tag);
 		APathLib::shellExec(GetHWND(),elem->path.c_str(),elem->param.c_str(),0);
-	}
-
-
-	CDuiString n = msg.pSender->GetName();
-	if(n == "closebtn"){
-		Close(0);
 		return;
 	}
-	else if(n == "minbtn"){
-		SendMessage(WM_SYSCOMMAND,SC_MINIMIZE);
-	}
-	else if(n == "maxbtn"){
-		SendMessage(WM_SYSCOMMAND,SC_MAXIMIZE);
-	}
-	else if(n == "restorebtn"){
-		SendMessage(WM_SYSCOMMAND,SC_RESTORE);
-	}
+	return __super::OnClick(msg);
 }
 
 void CMainDlgImpl::OnSelectChanged(TNotifyUI& msg)
@@ -635,7 +657,9 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 
 void CMainDlgImpl::OnScroll(TNotifyUI& msg)
 {
-	if(msg.pSender->GetUserData() == "index_list_option"){
+	if(msg.pSender->GetUserData() == _T("index_list_option")
+		|| msg.pSender->GetUserData() == _T("index_list_tilelayout"))
+	{
 		int sel = -1;
 		UINT sz = m_tm.Size();
 		for(UINT i=0; i<sz; ++i){
@@ -692,6 +716,8 @@ void CMainDlgImpl::InitWindow()
 		m_pTabPage->SelectItem(m_tm.GetAt(0).list);
 		m_tm.GetAt(0).option->Selected(true);
 	}
+
+	::DragAcceptFiles(GetHWND(),TRUE);
 }
 
 bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
@@ -712,11 +738,51 @@ bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
 
 	auto pList = new CIndexListUI(m_db,name,m_PaintManager);
 	pList->SetTag(tag);
+	pList->SetUserData(group);
 
 	m_pTabList->Add(pOption);
 	m_pTabPage->Add(pList);
 	m_tm.Add(pOption,pList);
 	return true;
+}
+
+LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+{
+
+	switch(uMsg)
+	{
+	case WM_DROPFILES:
+		{
+			HDROP hDrop = (HDROP)wParam;
+			POINT pt;
+			::GetCursorPos(&pt);
+			::ScreenToClient(GetHWND(),&pt);
+			auto pTile = static_cast<CIndexListUI*>(m_PaintManager.FindControl(pt));
+			if(typeid(CIndexListUI) != typeid(*pTile))
+				goto brk;
+			vector<string> files;
+			CDropFiles drop(hDrop, &files);
+
+			auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
+			auto pOpt = m_tm.FindOption(pList);
+
+			for(string& f : files){
+				CIndexItem ii;
+				ii.category = pOpt->GetText();
+				ii.path = f;
+				CAddDlg dlg(GetHWND(),CAddDlg::TYPE_PATH,&ii,m_db);
+				if(dlg.GetDlgCode() != CInputBox::kOK)
+					continue;
+				CIndexItem* pii = dlg.GetIndexItem();
+				pList->AddItem(pii,true);
+			}
+			bHandled = TRUE;
+			return 0;
+		}
+	}
+brk:
+	bHandled = FALSE;
+	return 0;
 }
 
 LRESULT CMainDlgImpl::OnSysCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)

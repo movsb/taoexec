@@ -5,6 +5,7 @@ using namespace std;
 #include "Utils.h"
 #include "SQLite.h"
 #include "PathLib.h"
+#include "MyUtil.h"
 
 #include <Uilib.h>
 using namespace DuiLib;
@@ -60,41 +61,66 @@ protected:
 private:
 	void initFromParam()
 	{
-		string path(""),args(""),desc
-			("");
 		if(m_type == CAddDlg::TYPE::TYPE_PATH){
-// 			const char* file = (const char*)m_lParam;
-// 			DWORD dwAttr = ::GetFileAttributes(file);
-// 			if(dwAttr == INVALID_FILE_ATTRIBUTES) return;
-// 
-// 			if(dwAttr & FILE_ATTRIBUTE_DIRECTORY){
-// 				path = file;
-// 				APathLib::getNameString(file,desc);
-// 			}else{
-// 				if(APathLib::IsLink(file)){
-// 					if(APathLib::ParseLnk(AStr(file,false).toWchar(),path,args,desc)){
-// 						if(desc == ""){
-// 							APathLib::getFileDescription(path.c_str(),desc);
-// 							if(desc == ""){
-// 								APathLib::getNameString(file,desc);
-// 							}
-// 						}
-// 					}
-// 				}else{
-// 					path = file;
-// 					APathLib::getFileDescription(file,desc);
-// 					if(desc == ""){
-// 						APathLib::getNameString(file,desc);
-// 					}
-// 				}
-// 			}
+			string path,args,desc;
+			const char* file = m_pii->path.c_str();
+			DWORD dwAttr = ::GetFileAttributes(file);
+			if(dwAttr == INVALID_FILE_ATTRIBUTES) return;
+				
+			if(dwAttr & FILE_ATTRIBUTE_DIRECTORY){
+				path = file;
+				APathLib::getNameString(file,desc);
+			}else{
+				if(APathLib::IsLink(file)){
+					wstring wstr;
+					CCharset::Acp2Unicode(string(file),&wstr);
+					if(APathLib::ParseLnk(wstr.c_str(),path,args,desc)){
+						if(desc == ""){
+							APathLib::getFileDescription(path.c_str(),desc);
+							if(desc == ""){
+								APathLib::getNameString(file,desc);
+							}
+						}
+					}
+				}else{
+					path = file;
+					APathLib::getFileDescription(file,desc);
+					if(desc == ""){
+						APathLib::getNameString(file,desc);
+					}
+				}
+			}
+		
+		
+			CIndexItem& ii = *m_pii;
 			preIndex	->SetText("");
 			preComment	->SetText(desc.c_str());
 			prePath		->SetText(path.c_str());
 			preParam	->SetText(args.c_str());
 			preTimes	->SetText("0");
-			if(m_tbls.size())
-				pcboClass->SelectItem(0);
+
+			int i=0;
+			auto s=m_tbls.begin(),e=m_tbls.end();
+			for(; s!=e; ++s,++i){
+				if(*s == m_pii->category){
+					break;
+				}
+			}
+			if(s!=e){
+				pcboClass->SelectItem(i);
+				m_editClass->SetText(m_tbls[i].c_str());
+			}
+			else{
+				CListLabelElementUI* list = new CListLabelElementUI;
+				list->SetAttribute("font","0");
+				list->SetText(m_pii->category.c_str());
+				list->SetPadding(CDuiRect(5,0,5,0));
+				pcboClass->Add(list);
+				m_tbls.push_back(m_pii->category);
+				pcboClass->SelectItem(pcboClass->GetCount()-1);
+			}
+			//ATTENTION!!!
+			m_pii = nullptr;
 		}else if(m_type == CAddDlg::TYPE::TYPE_MODIFY){
 			preIndex	->SetText(m_pii->idxn.c_str());
 			preComment	->SetText(m_pii->comment.c_str());
@@ -121,15 +147,26 @@ private:
 			prePath		->SetText("");
 			preParam	->SetText("");
 			preTimes	->SetText("0");
-			if(m_tbls.size()){
-				int i=0;
-				for(auto s=m_tbls.begin(),e=m_tbls.end(); s!=e; ++s,++i){
-					if(*s == (char*)m_pii){
-						break;
-					}
+
+			int i=0;
+			auto s=m_tbls.begin(),e=m_tbls.end();
+			for(; s!=e; ++s,++i){
+				if(*s == (char*)m_pii){
+					break;
 				}
+			}
+			if(s!=e){
 				pcboClass->SelectItem(i);
 				m_editClass->SetText(m_tbls[i].c_str());
+			}
+			else{
+				CListLabelElementUI* list = new CListLabelElementUI;
+				list->SetAttribute("font","0");
+				list->SetText((char*)m_pii);
+				list->SetPadding(CDuiRect(5,0,5,0));
+				pcboClass->Add(list);
+				m_tbls.push_back((char*)m_pii);
+				pcboClass->SelectItem(pcboClass->GetCount()-1);
 			}
 		}
 	}
@@ -154,7 +191,6 @@ private:
 	vector<string> m_tbls;		//已改成分类, 名字还没改
 
 private:
-	bool bNeedFree;				//忘了哪个地方要用到了,...反正有用
 	CAddDlg::DLGCODE m_dlgcode;
 };
 

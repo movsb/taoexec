@@ -19,7 +19,7 @@
 			</VerticalLayout>
 		</HorizontalLayout>
 		<VerticalLayout inset="10,10,10,10">
-			<HorizontalLayout name="tabs" height="26" bkcolor="0xFF00FF00" menu="true">
+			<HorizontalLayout name="tabs" height="26" menu="true">
 				<!-- 标签页插入这里 -->
 			</HorizontalLayout>
 			<HorizontalLayout inset="5,5,5,5" bordersize="1">
