@@ -1,14 +1,11 @@
-#include <string>
-#include <vector>
+#include "StdAfx.h"
 using namespace std;
+using namespace DuiLib;
 
 #include "Utils.h"
 #include "SQLite.h"
 #include "PathLib.h"
 #include "MyUtil.h"
-
-#include <Uilib.h>
-using namespace DuiLib;
 
 #include "AddDlg.h"
 
@@ -128,7 +125,7 @@ private:
 			preParam	->SetText(m_pii->param.c_str());
 			preTimes	->SetText(m_pii->times.c_str());
 
-			int i=0;
+			UINT i=0;
 			auto s=m_tbls.begin();
 			auto e=m_tbls.end();
 			for(; s != e; s++,i++){

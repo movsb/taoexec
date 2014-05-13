@@ -1,18 +1,16 @@
-#define NBSG_CPP
-#include <vector>
-#include <string>
-using namespace std;
+#include "StdAfx.h"
+
+#include "App.h"
 #include "nbsg.h"
 #include "PathLib.h"
 #include "res/resource.h"
 #include "SQLite.h"
-#include <UiLib.h>
+
 using namespace DuiLib;
 
 #include "MainDlg.h"
 #include "Mini.h"
 #include "InputBox.h"
-
 
 AApp* g_pApp;
 
@@ -26,10 +24,7 @@ int CALLBACK WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine
 	CPaintManagerUI::SetInstance(GetModuleHandle(NULL));
 
 #ifdef _DEBUG
-	AllocConsole();
-	freopen("CONIN$","r",stdin);
-	freopen("CONOUT$","w",stdout);
-	freopen("CONOUT$","w",stderr);
+
 #endif
 
 	CSQLite* db = new CSQLite;
@@ -40,7 +35,10 @@ int CALLBACK WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine
 
 	CPaintManagerUI::MessageLoop();
 
+	delete dlg;
+
 	db->Close();
+	delete db;
 
 	delete g_pApp;
 

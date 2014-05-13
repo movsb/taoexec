@@ -1,13 +1,14 @@
-#if _MSC_VER == 1200
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0502
-#endif
+#include "StdAfx.h"
+
+#include <shlobj.h>
 
 #include "PathLib.h"
 #include "Utils.h"
 #include "nbsg.h"
 #include "res/resource.h"
 #include <cassert>
+
+using namespace std;
 
 string APathLib::expandEnvString(const char* src)
 {
@@ -372,8 +373,8 @@ HICON APathLib::GetClsidIcon(string guid_str)
 	if(RegOpenKeyEx(HKEY_CLASSES_ROOT,"CLSID",0,KEY_READ,&hKey) == ERROR_SUCCESS){
 		char icon[300];
 		DWORD dwIcon = sizeof(icon);
-#if _MSC_VER>1200
-		if(RegGetValue(hKey,string(guid_str+"\\DefaultIcon").c_str(),NULL,RRF_RT_REG_SZ,NULL,icon,&dwIcon) == ERROR_SUCCESS){
+#if 0//_MSC_VER>1200
+		if(::RegGetValue(hKey,string(guid_str+"\\DefaultIcon").c_str(),NULL,RRF_RT_REG_SZ,NULL,icon,&dwIcon) == ERROR_SUCCESS){
 #else
 		//if(RegQueryValueEx(hKey,string(guid_str+"\\DefaultIcon").c_str(),NULL,NULL,(unsigned char*)icon,&dwIcon) == ERROR_SUCCESS){
 		if(RegQueryValue(hKey,string(guid_str+"\\DefaultIcon").c_str(),(LPSTR)icon,(PLONG)&dwIcon) == ERROR_SUCCESS){

@@ -1,5 +1,5 @@
+#include "StdAfx.h"
 #include "MyUtil.h"
-#include <windows.h>
 
 CDropFiles::CDropFiles(HDROP hDrop,std::vector<std::string>* files)
 {

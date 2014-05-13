@@ -55,11 +55,14 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CRT_SECURE_NO_WARNINGS;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Users\YangTao\Desktop\duilib\DuiLib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
+      <TreatSpecificWarningsAsErrors>4296;%(TreatSpecificWarningsAsErrors)</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -70,14 +73,16 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CRT_SECURE_NO_WARNINGS;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>C:\Users\YangTao\Desktop\duilib\DuiLib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
+      <TreatSpecificWarningsAsErrors>4296;%(TreatSpecificWarningsAsErrors)</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -89,17 +94,41 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AddDlg.cpp" />
-    <ClCompile Include="App.cpp" />
-    <ClCompile Include="Except.cpp" />
+    <ClCompile Include="App.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Except.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="InputBox.cpp" />
     <ClCompile Include="MainDlg.cpp" />
     <ClCompile Include="Mini.cpp" />
     <ClCompile Include="MyUtil.cpp" />
     <ClCompile Include="nbsg.cpp" />
     <ClCompile Include="PathLib.cpp" />
-    <ClCompile Include="SQLite.cpp" />
+    <ClCompile Include="SQLite.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="StdAfx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="tips.cpp" />
-    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="Utils.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AddDlg.h" />
@@ -114,6 +143,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="res\resource.h" />
     <ClInclude Include="SQLite.h" />
+    <ClInclude Include="StdAfx.h" />
     <ClInclude Include="tips.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>

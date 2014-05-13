@@ -49,6 +49,9 @@
     <ClCompile Include="MyUtil.cpp">
       <Filter>Window</Filter>
     </ClCompile>
+    <ClCompile Include="StdAfx.cpp">
+      <Filter>class</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PathLib.h">
@@ -92,6 +95,9 @@
     </ClInclude>
     <ClInclude Include="MyUtil.h">
       <Filter>Window</Filter>
+    </ClInclude>
+    <ClInclude Include="StdAfx.h">
+      <Filter>class</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

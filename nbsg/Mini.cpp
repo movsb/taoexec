@@ -1,9 +1,6 @@
-#include <string>
-#include <vector>
+#include "StdAfx.h"
 
 using namespace std;
-
-#include <uilib.h>
 using namespace DuiLib;
 
 #include "AddDlg.h"
@@ -109,7 +106,8 @@ void CMiniImpl::OnMenu(TNotifyUI& msg)
 		UINT id = ::TrackPopupMenu(hMenuSub,TPM_NONOTIFY|TPM_RETURNCMD|TPM_LEFTBUTTON,msg.ptMouse.x,msg.ptMouse.y,0,GetHWND(),nullptr);
 		switch(id)
 		{
-			
+		default:
+			break;
 		}
 		::DestroyMenu(hMenu);
 		return;

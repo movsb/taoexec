@@ -1,11 +1,6 @@
 #ifndef __PATHLIB_H__
 #define __PATHLIB_H__
 
-#include <iostream>
-#include <string>
-#include <Windows.h>
-#include <shlobj.h>
-
 using namespace std;
 
 class APathLib

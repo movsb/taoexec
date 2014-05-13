@@ -1,8 +1,8 @@
-#include <UIlib.h>
+#include "StdAfx.h"
+
 using namespace DuiLib;
 
 #include "InputBox.h"
-
 
 class CInputBoxImpl : public WindowImplBase
 {

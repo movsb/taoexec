@@ -1,11 +1,8 @@
-#include <Windows.h>
-#include <cstdarg>
-#include <cstdio>
-#include "tips.h"
-
-#include <UIlib.h>
+#include "StdAfx.h"
 
 using namespace DuiLib;
+
+#include "tips.h"
 
 class CTipsDlg : public WindowImplBase
 {

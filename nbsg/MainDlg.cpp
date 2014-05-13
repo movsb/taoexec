@@ -1,14 +1,6 @@
-#include <string>
-#include <vector>
-#include <map>
-#include <list>
-#include <sstream>
-#include <windows.h>
+#include "StdAfx.h"
 
 using namespace std;
-
-#include <UIlib.h>
-
 using namespace DuiLib;
 
 #include "res/resource.h"
@@ -154,11 +146,11 @@ private:
 	CSQLite*		m_db;
 
 public:
-	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI& pm):
+	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI* pm):
 		m_db(db)
 	{
 		SetItemSize(CSize(80,80));
-		SetManager(&pm,0,false);
+		SetManager(pm,0,false);
 		delete m_builder.Create("ListItem.xml",0,this);
 
 		db->QueryCategory(cat,&m_iiVec);
@@ -332,7 +324,7 @@ private:
 		}
 		IndexListOptionMap GetAt(UINT index)
 		{
-			int i=0;
+			UINT i=0;
 			auto s=m_Pages.begin();
 			for(;i!=index;){
 				++s;
@@ -426,7 +418,7 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 {
 	if(msg.pSender->GetUserData() == "index_list_option"){
 		auto pOpt = static_cast<CMouseWheelOptionUI*>(msg.pSender);
-		auto pList = m_tm.FindList(pOpt);
+		//auto pList = m_tm.FindList(pOpt);
 
 		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_TABMENU)); //TODO:destroy
 		HMENU hSub0 = ::GetSubMenu(hMenu,0);
@@ -661,8 +653,8 @@ void CMainDlgImpl::OnScroll(TNotifyUI& msg)
 		|| msg.pSender->GetUserData() == _T("index_list_tilelayout"))
 	{
 		int sel = -1;
-		UINT sz = m_tm.Size();
-		for(UINT i=0; i<sz; ++i){
+		int sz = (int)m_tm.Size();
+		for(int i=0; i<sz; ++i){
 			if(m_tm.GetAt(i).option->IsSelected()){
 				sel = i;
 				break;
@@ -699,11 +691,11 @@ void CMainDlgImpl::InitWindow()
 		{0,0}
 	};
 	for(int i=0;li[i].ptr; i++){
-		*(CControlUI**)li[i].ptr = static_cast<CControlUI*>(m_PaintManager.FindControl(li[i].name));
+		*(CControlUI**)li[i].ptr = (GetManager()->FindControl(li[i].name));
 	}
 
-	m_pTabList = static_cast<CHorizontalLayoutUI*>(m_PaintManager.FindControl(_T("tabs")));
-	m_pTabPage = static_cast<CTabLayoutUI*>(m_PaintManager.FindControl(_T("switch")));
+	m_pTabList = FindControl(_T("tabs"))->ToHorizontalLayoutUI();
+	m_pTabPage = FindControl(_T("switch"))->ToTabLayoutUI();
 
 	vector<string>	catVec;
 	m_db->GetCategories(&catVec);
@@ -736,7 +728,7 @@ bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
 	pOption->SetUserData(group);
 	pOption->SetTag(tag);
 
-	auto pList = new CIndexListUI(m_db,name,m_PaintManager);
+	auto pList = new CIndexListUI(m_db,name,GetManager());
 	pList->SetTag(tag);
 	pList->SetUserData(group);
 
@@ -757,7 +749,7 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 			POINT pt;
 			::GetCursorPos(&pt);
 			::ScreenToClient(GetHWND(),&pt);
-			auto pTile = static_cast<CIndexListUI*>(m_PaintManager.FindControl(pt));
+			auto pTile = static_cast<CIndexListUI*>(GetManager()->FindControl(pt));
 			if(typeid(CIndexListUI) != typeid(*pTile))
 				goto brk;
 			vector<string> files;
