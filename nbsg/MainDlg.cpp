@@ -722,7 +722,9 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 	}// if btn
 
 	if(msg.pSender->GetName() == "switch"){
-		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
+		auto isel = m_pTabPage->GetCurSel();
+		if(isel == -1) return;
+		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(isel));
 		auto pOpt = m_tm.FindOption(pList);
 
 		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_INDEXTAB_MENU));

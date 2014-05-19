@@ -21,7 +21,7 @@ string APathLib::expandEnvString(const char* src)
 	ExpandEnvironmentStrings(src,expand,len+1+1);
 
 	string s = expand;
-	delete expand;
+	delete[] expand;
 	return s;
 }
 

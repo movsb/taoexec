@@ -126,17 +126,11 @@ private:
 			preTimes	->SetText(m_pii->times.c_str());
 
 			UINT i=0;
-			auto s=m_tbls.begin();
-			auto e=m_tbls.end();
-			for(; s != e; s++,i++){
-				if(m_pii->category == *s){
+			for(string& it : m_tbls){
+				if(m_pii->category == it){
 					pcboClass->SelectItem(i);
-					//m_editClass->SetText(s->c_str());
 					break;
 				}
-			}
-			if(i>=m_tbls.size()){
-				assert(0);
 			}
 		}else if(m_type == CAddDlg::TYPE::TYPE_NEW){
 			preIndex	->SetText("");
@@ -243,12 +237,9 @@ void CAddDlgImpl::InitWindow()
 
 	m_db->GetCategories(&m_tbls);
 
-	auto s = m_tbls.begin();
-	auto e = m_tbls.end();
-	for(; s!=e; s++){
+	for(string& s : m_tbls){
 		CListLabelElementUI* list = new CListLabelElementUI;
-		//list->SetAttribute("font","0");
-		list->SetText(s->c_str());
+		list->SetText(s.c_str());
 		list->SetPadding(CDuiRect(5,0,5,0));
 		pcboClass->Add(list);
 	}
