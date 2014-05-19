@@ -18,14 +18,10 @@ int CALLBACK WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine
 {
 
 	g_pApp = new AApp;
-
 	g_pApp->setInstance(hInstance);
 
 	CPaintManagerUI::SetInstance(GetModuleHandle(NULL));
-
-#ifdef _DEBUG
-
-#endif
+	CPaintManagerUI::StartupGdiPlus();
 
 	CSQLite* db = new CSQLite;
 	db->Open("./data.db");
@@ -39,6 +35,8 @@ int CALLBACK WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine
 
 	db->Close();
 	delete db;
+
+	CPaintManagerUI::ShutdownGdiPlus();
 
 	delete g_pApp;
 

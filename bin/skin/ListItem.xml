@@ -1,10 +1,9 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <Window>
-	<VerticalLayout width="80" height="80">
+	<ListItem width="80" height="80" hotimage="file='btn_hot.png' corner='2,8,2,2'" menu="true" inset="4,4,4,4">
 		<HorizontalLayout height="32" width="80" inset="24,0,24,0">
-			<IconButton name="listItemBtn" hotimage="btn_hot.png" menu="true" width="32" height="32"/>
+			<IconButton width="32" height="32" mouse="false"/>
 		</HorizontalLayout>
-		<Text name="listItemText" text="<null>" align="center" width="80" height="36" endellipsis="true" font="1" />
-		<Control height="10" />
-	</VerticalLayout>
+		<Text align="center" width="80" height="36" font="1" mouse="false"/>
+	</ListItem>
 </Window>

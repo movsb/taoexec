@@ -105,7 +105,7 @@ private:
 			}
 			if(s!=e){
 				pcboClass->SelectItem(i);
-				m_editClass->SetText(m_tbls[i].c_str());
+				//m_editClass->SetText(m_tbls[i].c_str());
 			}
 			else{
 				CListLabelElementUI* list = new CListLabelElementUI;
@@ -131,7 +131,7 @@ private:
 			for(; s != e; s++,i++){
 				if(m_pii->category == *s){
 					pcboClass->SelectItem(i);
-					m_editClass->SetText(s->c_str());
+					//m_editClass->SetText(s->c_str());
 					break;
 				}
 			}
@@ -154,17 +154,19 @@ private:
 			}
 			if(s!=e){
 				pcboClass->SelectItem(i);
-				m_editClass->SetText(m_tbls[i].c_str());
+				//m_editClass->SetText(m_tbls[i].c_str());
 			}
 			else{
 				CListLabelElementUI* list = new CListLabelElementUI;
-				list->SetAttribute("font","0");
+				//list->SetAttribute("font","0");
 				list->SetText((char*)m_pii);
 				list->SetPadding(CDuiRect(5,0,5,0));
 				pcboClass->Add(list);
 				m_tbls.push_back((char*)m_pii);
 				pcboClass->SelectItem(pcboClass->GetCount()-1);
 			}
+			m_pii = nullptr;
+
 		}
 	}
 
@@ -179,7 +181,7 @@ private:
 	CRichEditUI* preTimes;
 	CComboBoxUI* pcboClass;
 
-	CEditUI* m_editClass;
+	//CEditUI* m_editClass;
 
 private:
 	CAddDlg::TYPE m_type;
@@ -232,7 +234,7 @@ void CAddDlgImpl::InitWindow()
 		{&preParam,		"richParam"},
 		{&preTimes,		"richTimes"},
 		{&pcboClass,	"cboClass"},
-		{&m_editClass,	"edtClass"},
+		//{&m_editClass,	"edtClass"},
 		{0,0}
 	};
 	for(int i=0;li[i].ptr; i++){
@@ -245,7 +247,7 @@ void CAddDlgImpl::InitWindow()
 	auto e = m_tbls.end();
 	for(; s!=e; s++){
 		CListLabelElementUI* list = new CListLabelElementUI;
-		list->SetAttribute("font","0");
+		//list->SetAttribute("font","0");
 		list->SetText(s->c_str());
 		list->SetPadding(CDuiRect(5,0,5,0));
 		pcboClass->Add(list);

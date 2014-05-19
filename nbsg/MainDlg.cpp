@@ -15,22 +15,83 @@ using namespace DuiLib;
 #include "MainDlg.h"
 #include "InputBox.h"
 
-class CMouseWheelOptionUI : public COptionUI
+class CListItem : public CVerticalLayoutUI
+{
+public:
+	CListItem()
+		: m_dwState(0)
+	{
+
+	}
+	virtual LPCTSTR GetClass() const override
+	{
+		return _T("ListItemUI");
+	}
+	virtual LPVOID GetInterface(LPCTSTR pstrName) override
+	{
+		if(_tcscmp(pstrName, _T("ListItem")) == 0) return this;
+		return __super::GetInterface(pstrName);
+	}
+
+	virtual void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue) override
+	{
+		if(_tcscmp(pstrName, _T("hotimage")) == 0) m_hotimage = pstrValue;
+
+		else return __super::SetAttribute(pstrName, pstrValue);
+	}
+
+	virtual void DoEvent(TEventUI& event) override
+	{
+		if(event.Type == UIEVENT_MOUSEENTER){
+			m_dwState |= UISTATE_HOT;
+			Invalidate();
+		}
+		else if(event.Type == UIEVENT_MOUSELEAVE){
+			m_dwState &= ~UISTATE_HOT;
+			Invalidate();
+		}
+		else if(event.Type == UIEVENT_BUTTONDOWN){
+			GetManager()->SendNotify(this, DUI_MSGTYPE_CLICK);
+		}
+		else if(event.Type == UIEVENT_CONTEXTMENU){
+			GetManager()->SendNotify(this, DUI_MSGTYPE_MENU);
+			return;
+		}
+		return __super::DoEvent(event);
+	}
+
+	virtual void PaintStatusImage(HDC hDC)
+	{
+		if(m_dwState & UISTATE_HOT){
+			if(!m_hotimage.IsEmpty()){
+				if(!DrawImage(hDC, m_hotimage)){
+					m_hotimage.Empty();
+				}
+			}
+		}
+	}
+
+protected:
+	DWORD			m_dwState;
+	CDuiString		m_hotimage;
+};
+
+class CMouseWheelHorzUI : public CHorizontalLayoutUI
 {
 public:
 	virtual LPCTSTR GetClass() const override
 	{
-		return _T("MouseWheelOptionUI");
+		return _T("MouseWheelHorzUI");
 	}
 	virtual LPVOID GetInterface(LPCTSTR pstrName) override
 	{
-		if( _tcscmp(pstrName, _T("MouseWheelOption")) == 0 ) return this;
+		if(_tcscmp(pstrName, _T("MouseWheelHorz")) == 0) return this;
 		return __super::GetInterface(pstrName);
 	}
+
 	virtual void DoEvent(TEventUI& event) override
 	{
-		if(IsMouseEnabled() && event.Type>UIEVENT__MOUSEBEGIN && event.Type<UIEVENT__MOUSEEND)
-		{
+		if(IsMouseEnabled() && event.Type>UIEVENT__MOUSEBEGIN && event.Type<UIEVENT__MOUSEEND){
 			if(event.Type == UIEVENT_SCROLLWHEEL){
 				TNotifyUI msg;
 				msg.pSender = this;
@@ -69,7 +130,7 @@ public:
 	}
 	virtual UINT GetControlFlags() const
 	{
-		return (IsKeyboardEnabled() ? UIFLAG_TABSTOP : 0) | (IsEnabled() ? UIFLAG_SETCURSOR : 0);
+		return 0;
 	}
 
 	virtual void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
@@ -86,7 +147,7 @@ public:
 	void PaintStatusImage(HDC hDC)
 	{
 
-		if(m_hIcon==NULL){
+		if(m_hIcon == NULL){
 			m_hIcon = APathLib::getFileIcon(m_strPath);
 			if(!m_hIcon)
 				m_hIcon = APathLib::GetClsidIcon(m_strPath.GetData());
@@ -109,7 +170,8 @@ class CIndexListUI : public CTileLayoutUI,public IDialogBuilderCallback
 private:
 	virtual CControlUI* CreateControl(LPCTSTR pstrClass)
 	{
-		if(_tcscmp(pstrClass,"IconButton")==0) return new CIconButtonUI;
+		if(_tcscmp(pstrClass,_T("IconButton"))==0) return new CIconButtonUI;
+		else if(_tcscmp(pstrClass, _T("ListItem")) == 0) return new CListItem;
 		return nullptr;
 	}
 
@@ -155,33 +217,26 @@ public:
 
 		db->QueryCategory(cat,&m_iiVec);
 
-		auto s = m_iiVec.begin();
-		auto e = m_iiVec.end();
+		for(auto& s : m_iiVec)
+			AddItem(s);
 
-		for(; s != e; s++){
-			AddItem(*s);
-		}
 		SetAttribute("vscrollbar","true");
 	}
 
 	~CIndexListUI()
 	{
-		auto s = m_iiVec.begin();
-		auto e = m_iiVec.end();
-		for(; s != e; s ++){
-			//printf("deleting items %s\n",(*s)->comment.c_str());
-			delete *s;
-		}
+		for(auto p : m_iiVec)
+			delete p;
 	}
 
 	void AddItem(const CIndexItem* pii, bool bAddToVector=false)
 	{
 		CIconButtonUI* pBtn;
 		CTextUI* pText;
-		CContainerUI* pContainer = CreateContainer(&pBtn,&pText);
+		auto pContainer = (CListItem*)CreateContainer(&pBtn,&pText);
 		pBtn->SetAttribute("path",pii->path.c_str());
-		pBtn->SetTag(pii->idx);
 		pText->SetText(pii->comment.c_str());
+		pContainer->SetTag(pii->idx);
 		Add(pContainer);
 		if(bAddToVector){
 			m_iiVec.push_back(const_cast<CIndexItem*>(pii));
@@ -204,9 +259,9 @@ public:
 
 	CContainerUI* CreateContainer(CIconButtonUI** ppBtn,CTextUI** ppText)
 	{
-		auto pContainer = static_cast<CContainerUI*>(m_builder.Create(this));
-		*ppBtn = (CIconButtonUI*)static_cast<CHorizontalLayoutUI*>(pContainer->GetItemAt(0))->GetItemAt(0);
-		*ppText = (CTextUI*)static_cast<CHorizontalLayoutUI*>(pContainer->GetItemAt(1));
+		auto pContainer = m_builder.Create(this)->ToContainerUI();
+		*ppBtn = (CIconButtonUI*)pContainer->GetItemAt(0)->ToHorizontalLayoutUI()->GetItemAt(0);
+		*ppText = pContainer->ToHorizontalLayoutUI()->GetItemAt(1)->ToTextUI();
 		return pContainer;
 	}
 
@@ -250,6 +305,12 @@ public:
 	{
 
 	}
+	virtual CControlUI* CreateControl(LPCTSTR pstrClass) override
+	{
+		if(_tcscmp(pstrClass, _T("MouseWheelHorz")) == 0) return new CMouseWheelHorzUI;
+
+		else return __super::CreateControl(pstrClass);
+	}
 protected:
 	virtual CDuiString GetSkinFolder()
 	{
@@ -266,7 +327,7 @@ protected:
 
 	virtual void InitWindow();
 	LRESULT HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-	virtual LRESULT OnSysCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	virtual LRESULT OnSysCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) override;
 	virtual void OnFinalMessage( HWND hWnd )
 	{
 		__super::OnFinalMessage(hWnd);
@@ -292,7 +353,7 @@ private:
 	CSQLite*		m_db;
 	UINT			m_tag;
 
-	CHorizontalLayoutUI*	m_pTabList;
+	CMouseWheelHorzUI*		m_pTabList;
 	CTabLayoutUI*			m_pTabPage;
 
 	CButtonUI* m_pbtnClose;
@@ -305,16 +366,16 @@ private:
 	private:
 		struct IndexListOptionMap
 		{
-			CIndexListUI*			list;
-			CMouseWheelOptionUI*	option;
-			IndexListOptionMap(CIndexListUI* li,CMouseWheelOptionUI* op)
+			CIndexListUI*	list;
+			COptionUI*		option;
+			IndexListOptionMap(CIndexListUI* li,COptionUI* op)
 			{
 				list = li;
 				option = op;
 			}
 		};
 	public:
-		void Add(CMouseWheelOptionUI* op, CIndexListUI* li)
+		void Add(COptionUI* op, CIndexListUI* li)
 		{
 			m_Pages.push_back(IndexListOptionMap(li,op));
 		}
@@ -332,7 +393,7 @@ private:
 			}
 			return *s;
 		}
-		CIndexListUI* FindList(CMouseWheelOptionUI* op)
+		CIndexListUI* FindList(COptionUI* op)
 		{
 			for(auto s=m_Pages.begin(); s!=m_Pages.end(); ++s){
 				if(s->option == op){
@@ -341,16 +402,20 @@ private:
 			}
 			return nullptr;
 		}
-		CMouseWheelOptionUI* FindOption(CIndexListUI* li)
+		COptionUI* FindOption(CIndexListUI* li)
 		{
 			for(auto s=m_Pages.begin(); s!=m_Pages.end(); ++s){
 				if(s->list == li){
 					return s->option;
 				}
 			}
+			for(auto& i : m_Pages){
+				if(i.list == li)
+					return i.option;
+			}
 			return nullptr;
 		}
-		void Remove(CMouseWheelOptionUI* op)
+		void Remove(COptionUI* op)
 		{
 			for(auto s=m_Pages.begin(); s!=m_Pages.end(); ++s){
 				if(s->option == op){
@@ -391,11 +456,14 @@ DUI_END_MESSAGE_MAP()
 
 void CMainDlgImpl::OnClick(TNotifyUI& msg)
 {
-	if(msg.pSender->GetName() == "listItemBtn"){
+	if(_tcscmp(msg.pSender->GetClass(), _T("ListItemUI")) == 0){
 		int tag = msg.pSender->GetTag();
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto elem = pList->FindIndexList(tag);
-		APathLib::shellExec(GetHWND(),elem->path.c_str(),elem->param.c_str(),0);
+		if(APathLib::shellExec(GetHWND(),elem->path.c_str(),elem->param.c_str(),0)){
+			//SendMessage(WM_SYSCOMMAND, SC_MINIMIZE);
+			::ShowWindow(*this, SW_MINIMIZE);
+		}
 		return;
 	}
 	return __super::OnClick(msg);
@@ -404,7 +472,7 @@ void CMainDlgImpl::OnClick(TNotifyUI& msg)
 void CMainDlgImpl::OnSelectChanged(TNotifyUI& msg)
 {
 	if(msg.pSender->GetUserData() == "index_list_option"){
-		auto pOpt = static_cast<CMouseWheelOptionUI*>(msg.pSender);
+		auto pOpt = static_cast<COptionUI*>(msg.pSender);
 		m_pTabPage->SelectItem(m_tm.FindList(pOpt));
 	}
 }
@@ -416,13 +484,27 @@ void CMainDlgImpl::OnTimer(TNotifyUI& msg)
 
 void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 {
-	if(msg.pSender->GetUserData() == "index_list_option"){
-		auto pOpt = static_cast<CMouseWheelOptionUI*>(msg.pSender);
-		//auto pList = m_tm.FindList(pOpt);
-
-		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_TABMENU)); //TODO:destroy
+	if(msg.pSender->GetUserData() == _T("index_list_option")){
+		GetManager()->SendNotify(/*msg.pSender*/ m_pTabList, DUI_MSGTYPE_MENU);
+		return;
+	}
+	if(typeid(*msg.pSender) == typeid(CMouseWheelHorzUI)){
+		auto pOption = GetManager()->FindSubControlByPoint(msg.pSender, msg.ptMouse)->ToOptionUI();
+		if(pOption == msg.pSender) pOption = nullptr;
+		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_TABMENU));
+		yagc gc(hMenu,[](void* p){return ::DestroyMenu(HMENU(p))!=FALSE;});
 		HMENU hSub0 = ::GetSubMenu(hMenu,0);
-		::ClientToScreen(GetHWND(),&msg.ptMouse);
+		auto EnableOptionMenu = [](HMENU hMenu,bool bEnable)->void
+		{
+			UINT flag = bEnable ? MF_ENABLED : MF_DISABLED|MF_GRAYED;
+			::EnableMenuItem(hMenu, MENU_TAB_RENAME,		flag);
+			::EnableMenuItem(hMenu, MENU_TAB_CLOSETAB,		flag);
+			::EnableMenuItem(hMenu, MENU_TAB_DELETETAB,		flag);
+			::EnableMenuItem(hMenu, MENU_TAB_NEWTAB,		MF_ENABLED);
+		};
+		EnableOptionMenu(hSub0, pOption != nullptr);
+
+		::ClientToScreen(GetHWND(), &msg.ptMouse);
 		UINT id = (UINT)::TrackPopupMenu(hSub0,TPM_LEFTBUTTON|TPM_NONOTIFY|TPM_RETURNCMD,msg.ptMouse.x,msg.ptMouse.y,0,GetHWND(),nullptr);
 		if(id==0) return;
 		if(id == MENU_TAB_RENAME){
@@ -435,8 +517,8 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 						*msg = _T("新名字中不能包含单引号字符!");
 						return false;
 					}
-					for(auto s=m_V->begin(),e=m_V->end(); s!=e; ++s){
-						if(_tcscmp(str,s->c_str()) == 0
+					for(string& s : *m_V){
+						if(_tcscmp(str,s.c_str()) == 0
 							&& str != m_filter)
 						{
 							*msg = _T("新名字不能与现有名重复!");
@@ -455,25 +537,36 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 				vector<string>* m_V;
 				string m_filter;
 			};
+
 			vector<string>	catVec;
-			m_db->GetCategories(&catVec);
+			try{
+				m_db->GetCategories(&catVec);
+			}
+			catch(CExcept* e){
+				::MessageBox(GetHWND(),e->desc.c_str(), nullptr, MB_ICONERROR);
+				return;
+			}
+
 			CRenameCallback rcb;
-			rcb.SetCats(&catVec,pOpt->GetText().GetData());
+			CDuiString origin = pOption->GetText();
+			rcb.SetCats(&catVec, origin.GetData());
+
 			CInputBox input(GetHWND(),
 				_T("重命名"),
 				_T("请输入新名字"),
-				pOpt->GetText(),
+				origin.GetData(),
 				&rcb);
-			if(rcb.GetDlgCode() == CInputBox::kCancel || rcb.GetDlgCode()== CInputBox::kClose)
+
+			if(rcb.GetDlgCode() != CInputBox::kOK)
 				return;
 
-			if(rcb.GetStr() == pOpt->GetText())
+			if(rcb.GetStr() == origin.GetData())
 				return;
-			
+
 			try{
-				m_db->RenameCategory(pOpt->GetText(),rcb.GetStr());
-				pOpt->SetText(rcb.GetStr());
-				m_tm.FindList(pOpt)->RenameIndexItemsCategory(rcb.GetStr());
+				m_db->RenameCategory(origin.GetData(), rcb.GetStr());
+				pOption->SetText(rcb.GetStr());
+				m_tm.FindList(pOption)->RenameIndexItemsCategory(rcb.GetStr());
 			}
 			catch(CExcept* e)
 			{
@@ -482,9 +575,9 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			return;
 		}
 		else if(id == MENU_TAB_CLOSETAB){
-			auto pList = m_tm.FindList(pOpt);
-			m_tm.Remove(pOpt);
-			m_pTabList->Remove(pOpt);
+			auto pList = m_tm.FindList(pOption);
+			m_tm.Remove(pOption);
+			m_pTabList->Remove(pOption);
 			m_pTabPage->Remove(pList);
 		}
 		else if(id == MENU_TAB_NEWTAB){
@@ -497,8 +590,8 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 						*msg = _T("标签名中不能包含单引号字符!");
 						return false;
 					}
-					for(auto s=m_V->begin(),e=m_V->end(); s!=e; ++s){
-						if(_tcscmp(str,s->c_str()) == 0){
+					for(string& s : *m_V){
+						if(_tcscmp(str,s.c_str()) == 0){
 							*msg = _T("新名字不能与现有名重复!");
 							return false;
 						}
@@ -515,7 +608,14 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			};
 
 			vector<string>	catVec;
-			m_db->GetCategories(&catVec);
+			try{
+				m_db->GetCategories(&catVec);
+			}
+			catch(CExcept* e){
+				::MessageBox(GetHWND(),e->desc.c_str(), nullptr, MB_ICONERROR);
+				return;
+			}
+
 			CNewTabCallback cb;
 			cb.SetCats(&catVec);
 
@@ -524,22 +624,23 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 				_T("请输入新的标签名:"),
 				_T(""),
 				&cb);
+
 			if(cb.GetDlgCode() != CInputBox::kOK)
 				return;
+
 			addTab(cb.GetStr(),GetTag(),"index_list_option");
 			return;
 		}
-		else{
 
-		}
-		return;
+		else return;
 	}
 
-	if(msg.pSender->GetName() == "listItemBtn"){
+	if(_tcscmp(msg.pSender->GetClass(), _T("ListItemUI")) == 0){ 
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto elem = pList->FindIndexList(msg.pSender->GetTag());
 
-		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_MENU_MAIN)); //TODO:destroy
+		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_MENU_MAIN));
+		yagc gc(hMenu,[](void* ptr){return ::DestroyMenu(HMENU(ptr))!=FALSE;});
 		HMENU hSub0 = ::GetSubMenu(hMenu,0);
 		::ClientToScreen(GetHWND(),&msg.ptMouse);
 		UINT id = (UINT)::TrackPopupMenu(hSub0,TPM_LEFTBUTTON|TPM_NONOTIFY|TPM_RETURNCMD,msg.ptMouse.x+1,msg.ptMouse.y+1,0,GetHWND(),nullptr);
@@ -569,9 +670,8 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			}
 		case IDM_INDEX_REMOVE_MULTI:
 			{
-				CContainerUI* p = (CContainerUI*)msg.pSender->GetParent()->GetParent();
 				try{
-					pList->RemoveItem(p,msg.pSender->GetTag());
+					pList->RemoveItem(msg.pSender->ToContainerUI(),msg.pSender->GetTag());
 				}
 				catch(CExcept* e)
 				{
@@ -618,13 +718,15 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 				return;
 			}
 		}//switch(id)
+		return;
 	}// if btn
 
 	if(msg.pSender->GetName() == "switch"){
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto pOpt = m_tm.FindOption(pList);
 
-		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_INDEXTAB_MENU)); //TODO:destroy
+		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_INDEXTAB_MENU));
+		yagc gc(hMenu, [](void* ptr){return ::DestroyMenu(HMENU(ptr))!=FALSE;});
 		HMENU hSub0 = ::GetSubMenu(hMenu,0);
 		::ClientToScreen(GetHWND(),&msg.ptMouse);
 		UINT id = (UINT)::TrackPopupMenu(hSub0,TPM_LEFTBUTTON|TPM_NONOTIFY|TPM_RETURNCMD,msg.ptMouse.x+1,msg.ptMouse.y+1,0,GetHWND(),nullptr);
@@ -649,8 +751,8 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 
 void CMainDlgImpl::OnScroll(TNotifyUI& msg)
 {
-	if(msg.pSender->GetUserData() == _T("index_list_option")
-		|| msg.pSender->GetUserData() == _T("index_list_tilelayout"))
+	if(msg.pSender == m_pTabList
+		|| msg.pSender->GetUserData() == _T("index_list_option"))
 	{
 		int sel = -1;
 		int sz = (int)m_tm.Size();
@@ -691,17 +793,17 @@ void CMainDlgImpl::InitWindow()
 		{0,0}
 	};
 	for(int i=0;li[i].ptr; i++){
-		*(CControlUI**)li[i].ptr = (GetManager()->FindControl(li[i].name));
+		*(CControlUI**)li[i].ptr = GetManager()->FindControl(li[i].name);
 	}
 
-	m_pTabList = FindControl(_T("tabs"))->ToHorizontalLayoutUI();
+	m_pTabList = static_cast<CMouseWheelHorzUI*>(FindControl(_T("tabs")));
 	m_pTabPage = FindControl(_T("switch"))->ToTabLayoutUI();
 
 	vector<string>	catVec;
 	m_db->GetCategories(&catVec);
 
-	for(auto it=catVec.begin(); it!=catVec.end(); it++){
-		addTab(it->c_str(),GetTag(),"index_list_option");
+	for(string& s : catVec){
+		addTab(s.c_str(),GetTag(),"index_list_option");
 	}
 	
 	if(m_tm.Size()){
@@ -714,7 +816,7 @@ void CMainDlgImpl::InitWindow()
 
 bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
 {
-	auto pOption = new CMouseWheelOptionUI;
+	auto pOption = new COptionUI;
 	pOption->SetAttribute("text",name);
 	pOption->SetAttribute("width","60");
 	pOption->SetAttribute("textcolor","0xFF386382");
@@ -724,6 +826,7 @@ bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
 	pOption->SetAttribute("selectedimage","file='tabbar_pushed.png' fade='150'");
 	pOption->SetAttribute("group","contenttab");
 	pOption->SetAttribute("menu","true");
+	pOption->SetAttribute("font", "1");
 
 	pOption->SetUserData(group);
 	pOption->SetTag(tag);
@@ -771,6 +874,9 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 			bHandled = TRUE;
 			return 0;
 		}
+// 	case WM_KILLFOCUS:
+// 		SendMessage(WM_SYSCOMMAND, SC_MINIMIZE);
+// 		goto brk;
 	}
 brk:
 	bHandled = FALSE;

@@ -47,9 +47,9 @@
 			<!-- 表 -->
 			<HorizontalLayout>
 				<Text text="分类:" textcolor="0xFFFFFFFF" font="0"/>
-				<Combo name="cboClass" height="20" dropboxsize="0,300" itemaltbk="true" normalimage="file='Combo_nor.bmp' corner='2,2,24,2'" pushedimage="file='Combo_over.bmp' corner='2,2,24,2'" textpadding="3,3,3,3">
+				<Combo name="cboClass" height="20" dropboxsize="0,300" itemaltbk="true" normalimage="file='Combo_nor.bmp' corner='2,2,24,2'" pushedimage="file='Combo_over.bmp' corner='2,2,24,2'" textpadding="3,3,3,3" itemfont="0">
 				</Combo>
-				<RichEdit name="edtClass" float="true" pos="30,0,218,20" font="0" textcolor="0xFFFFFFFF" inset="4,1,1,1" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" font="0"/>
+				<!-- RichEdit name="edtClass" float="true" pos="30,0,218,20" font="0" textcolor="0xFFFFFFFF" inset="4,1,1,1" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" bordersize="1" font="0"/ -->
 			</HorizontalLayout>
 		</VerticalLayout>
 		
