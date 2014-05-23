@@ -25,6 +25,28 @@ string APathLib::expandEnvString(const char* src)
 	return s;
 }
 
+bool APathLib::GetDirectoryFiles(const char* dir, vector<string>* files)
+{
+	WIN32_FIND_DATA fd;
+	HANDLE hFile = INVALID_HANDLE_VALUE;
+
+	string find(dir);
+	find += "*.*";
+	hFile = ::FindFirstFile(find.c_str(), &fd);
+	if(hFile != INVALID_HANDLE_VALUE){
+		do{
+			string f(dir);
+			f += fd.cFileName;
+			if(!(::GetFileAttributes(f.c_str()) & (FILE_ATTRIBUTE_DIRECTORY))){
+				files->push_back(f);
+			}
+		}while(::FindNextFile(hFile, &fd));
+		::FindClose(hFile);
+		return true;
+	}
+	return false;
+}
+
 bool APathLib::isFileExists(const char* pszFile,bool bExpandEnvVar)
 {
 	bool b = GetFileAttributes(pszFile)!=INVALID_FILE_ATTRIBUTES;

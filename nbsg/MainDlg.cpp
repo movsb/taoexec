@@ -14,6 +14,76 @@ using namespace DuiLib;
 #include "MainDlg.h"
 #include "InputBox.h"
 
+class CSlideImageClientUI : public CVerticalLayoutUI
+{
+public:
+	CSlideImageClientUI()
+		: m_iTimeout(60*5)
+		, m_iCurrent(-1)
+	{}
+
+	virtual LPCTSTR GetClass() const override
+	{
+		return _T("SlideImageClientUI");
+	}
+	virtual LPVOID GetInterface(LPCTSTR pstrName) override
+	{
+		if(_tcscmp(pstrName, _T("SlideImageClient")) == 0) return this;
+		return __super::GetInterface(pstrName);
+	}
+
+	virtual void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue) override
+	{
+		if(_tcscmp(pstrName, _T("imgdir")) == 0) m_strDir = pstrValue;
+		else if(_tcscmp(pstrName, _T("timeout")) == 0) m_iTimeout = _ttoi(pstrValue);
+
+		else return __super::SetAttribute(pstrName, pstrValue);
+	}
+
+	virtual void DoInit() override
+	{
+		CDuiString path = CPaintManagerUI::GetInstancePath()+"skin/";
+		path += m_strDir;
+		SMART_ENSURE(APathLib::GetDirectoryFiles(path,&m_files),==true)(m_strDir).Warning();
+		SMART_ENSURE(m_files.size(),>0);
+		if(m_files.size()){
+			setNextSlideImage();
+		}
+		SMART_ENSURE(GetManager()->SetTimer(this, 0, m_iTimeout*1000), == true)(m_iTimeout).Fatal();
+	}
+
+	virtual void DoEvent(TEventUI& event) override
+	{
+		if(event.Type == UIEVENT_TIMER){
+			if(event.wParam == 0){
+				setNextSlideImage();
+				return;
+			}
+		}
+		return __super::DoEvent(event);
+	}
+
+private:
+	void setNextSlideImage()
+	{
+		CDuiString previous = GetBkImage();
+		int iNext = ++m_iCurrent % m_files.size();
+		SetBkImage(m_files[iNext].c_str());
+		if(!_tcslen(GetBkImage())){
+			SetBkImage(previous);
+		}
+		else{
+			GetManager()->RemoveImage(previous);
+		}
+	}
+
+private:
+	int				m_iTimeout;
+	CDuiString		m_strDir;
+	vector<string>	m_files;
+	int				m_iCurrent;
+};
+
 class CIndexListItemUI : public CVerticalLayoutUI
 {
 public:
@@ -309,6 +379,7 @@ public:
 	virtual CControlUI* CreateControl(LPCTSTR pstrClass) override
 	{
 		if(_tcscmp(pstrClass, _T("MouseWheelHorz")) == 0) return new CMouseWheelHorzUI;
+		else if(_tcscmp(pstrClass, _T("SlideImageClient")) == 0) return new CSlideImageClientUI;
 
 		else return __super::CreateControl(pstrClass);
 	}
@@ -802,6 +873,7 @@ void CMainDlgImpl::OnScroll(TNotifyUI& msg)
 
 void CMainDlgImpl::InitWindow()
 {	
+	GetManager()->GetRoot()->Init();
 	struct{
 		void* ptr;
 		const char*  name;
@@ -911,7 +983,10 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 				}
 			}
 			else if(pControl->GetName()==_T("titlebar")){
-				FindControl(_T("clientarea"))->ToVerticalLayoutUI()->SetBkImage(files[0].c_str());
+				auto pClient = FindControl(_T("clientarea"))->ToVerticalLayoutUI();
+				CDuiString image = pClient->GetBkImage();
+				pClient->SetBkImage(files[0].c_str());
+				SMART_ENSURE(GetManager()->RemoveImage(image),==true)(image).Warning();
 			}
 			else{
 				bHandled = FALSE;

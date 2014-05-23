@@ -18,7 +18,6 @@ std::fstream __debug_file;
 
 int CALLBACK WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nShowCmd)
 {
-
 	g_pApp = new AApp;
 	g_pApp->setInstance(hInstance);
 

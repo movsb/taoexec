@@ -6,7 +6,7 @@
 	<Font name="微软雅黑" size="20" />
 	<Font name="微软雅黑" size="12" />
 	<!-- 背景图片 -->
-	<VerticalLayout name="clientarea" bkimage="5aaa39d7b0075ed10d9e92cebe1b1607.jpeg">
+	<SlideImageClient name="clientarea" imgdir="bkimg/" timeout="60">
 		<HorizontalLayout height="30">
 			<!--Button name="titlebtn" float="true" pos="5,5,30,30" normalimage="head.png" mouse="true"/ -->
 			<HorizontalLayout name="titlebar" inset="5,5,0,0" mousechild="false">
@@ -35,5 +35,5 @@
 				</TabLayout>
 			</HorizontalLayout>
 		</VerticalLayout>
-	</VerticalLayout>
+	</SlideImageClient>
 </Window>

@@ -6,6 +6,7 @@ using namespace std;
 class APathLib
 {
 public:
+	static bool GetDirectoryFiles(const char* dir, vector<string>* files);
 	static bool isFileExists(const char* pszFile,bool bExpandEnvVar=true);
 	static HICON getFileIcon(const char* filespec);
 	static HICON GetIndexedFileIcon(const char* filespec);
