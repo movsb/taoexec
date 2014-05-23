@@ -5,7 +5,6 @@ using namespace DuiLib;
 #include "Utils.h"
 #include "SQLite.h"
 #include "PathLib.h"
-#include "MyUtil.h"
 
 #include "AddDlg.h"
 
@@ -118,7 +117,8 @@ private:
 			}
 			//ATTENTION!!!
 			m_pii = nullptr;
-		}else if(m_type == CAddDlg::TYPE::TYPE_MODIFY){
+		}
+		else if(m_type == CAddDlg::TYPE::TYPE_MODIFY){
 			preIndex	->SetText(m_pii->idxn.c_str());
 			preComment	->SetText(m_pii->comment.c_str());
 			prePath		->SetText(m_pii->path.c_str());
@@ -131,8 +131,11 @@ private:
 					pcboClass->SelectItem(i);
 					break;
 				}
+				++i;
 			}
-		}else if(m_type == CAddDlg::TYPE::TYPE_NEW){
+			SMART_ASSERT(m_tbls[pcboClass->GetCurSel()] == m_pii->category)(m_tbls[pcboClass->GetCurSel()])(m_pii->category);
+		}
+		else if(m_type == CAddDlg::TYPE::TYPE_NEW){
 			preIndex	->SetText("");
 			preComment	->SetText("");
 			prePath		->SetText("");
@@ -232,7 +235,7 @@ void CAddDlgImpl::InitWindow()
 		{0,0}
 	};
 	for(int i=0;li[i].ptr; i++){
-		*(CControlUI**)li[i].ptr = static_cast<CControlUI*>(m_PaintManager.FindControl(li[i].name));
+		SMART_ENSURE(*(CControlUI**)li[i].ptr = FindControl(li[i].name), !=nullptr)(i)(li[i].name);
 	}
 
 	m_db->GetCategories(&m_tbls);

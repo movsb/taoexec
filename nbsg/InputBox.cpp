@@ -48,9 +48,13 @@ public:
 		m_lblPrompt = static_cast<CLabelUI*>(m_PaintManager.FindControl("prompt"));
 		m_lblTitle = static_cast<CLabelUI*>(m_PaintManager.FindControl("title"));
 
+		SMART_ASSERT(m_edtInput && m_lblPrompt && m_lblTitle);
+
 		m_edtInput->SetText(m_i);
 		m_lblTitle->SetText(m_t);
 		m_lblPrompt->SetText(m_p);
+
+		m_edtInput->SetFocus();
 	}
 
 public:
@@ -69,6 +73,7 @@ public:
 			if(!m_ibcb->CheckReturn(m_ibcb->m_str,&msg))
 			{
 				::MessageBox(GetHWND(),msg,"",MB_ICONINFORMATION);
+				m_edtInput->SetFocus();
 				return;
 			}
 			m_ibcb->m_code = CInputBox::kOK;

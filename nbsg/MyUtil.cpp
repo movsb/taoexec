@@ -1,6 +1,10 @@
 #include "StdAfx.h"
 #include "MyUtil.h"
 
+#ifdef __SMART_DEBUG
+#endif // __SMART_DEBUG
+
+
 CDropFiles::CDropFiles(HDROP hDrop,std::vector<std::string>* files)
 {
 	files->empty();

@@ -9,16 +9,15 @@ using namespace DuiLib;
 #include "SQLite.h"
 #include "PathLib.h"
 #include "Except.h"
-#include "MyUtil.h"
 
 #include "AddDlg.h"
 #include "MainDlg.h"
 #include "InputBox.h"
 
-class CListItem : public CVerticalLayoutUI
+class CIndexListItemUI : public CVerticalLayoutUI
 {
 public:
-	CListItem()
+	CIndexListItemUI()
 		: m_dwState(0)
 	{
 
@@ -116,7 +115,8 @@ public:
 	}
 	~CIconButtonUI()
 	{
-		::DestroyIcon(m_hIcon);
+		if(m_hIcon)
+			SMART_ENSURE(::DestroyIcon(m_hIcon),!=FALSE).Ignore();
 	}
 
 	virtual LPCTSTR GetClass() const
@@ -171,7 +171,7 @@ private:
 	virtual CControlUI* CreateControl(LPCTSTR pstrClass)
 	{
 		if(_tcscmp(pstrClass,_T("IconButton"))==0) return new CIconButtonUI;
-		else if(_tcscmp(pstrClass, _T("ListItem")) == 0) return new CListItem;
+		else if(_tcscmp(pstrClass, _T("ListItem")) == 0) return new CIndexListItemUI;
 		return nullptr;
 	}
 
@@ -183,8 +183,8 @@ private:
 			{
 				return !pScroll
 					|| pScroll->IsVisible() == false
-					|| (pScroll->GetScrollPos()==0 && msevt==SB_LINEUP)
-					|| (pScroll->GetScrollPos()==pScroll->GetScrollRange() && msevt==SB_LINEDOWN);
+					|| pScroll->GetScrollPos()==0 && msevt==SB_LINEUP
+					|| pScroll->GetScrollPos()==pScroll->GetScrollRange() && msevt==SB_LINEDOWN;
 			};
 			if(event.Type == UIEVENT_SCROLLWHEEL
 				&& CheckScrollBar(GetVerticalScrollBar(),event.wParam)
@@ -233,7 +233,7 @@ public:
 	{
 		CIconButtonUI* pBtn;
 		CTextUI* pText;
-		auto pContainer = (CListItem*)CreateContainer(&pBtn,&pText);
+		auto pContainer = (CIndexListItemUI*)CreateContainer(&pBtn,&pText);
 		pBtn->SetAttribute("path",pii->path.c_str());
 		pText->SetText(pii->comment.c_str());
 		pContainer->SetTag(pii->idx);
@@ -251,7 +251,7 @@ public:
 				m_db->DeleteItem(pii->idx); //throw
 				m_iiVec.erase(s);
 				delete pii;
-				this->Remove(pContainer);
+				SMART_ENSURE(Remove(pContainer),==true).Fatal();
 				return;
 			}
 		}
@@ -267,9 +267,9 @@ public:
 
 	CIndexItem* FindIndexList(int tag)
 	{
-		for(auto s=m_iiVec.begin(),e=m_iiVec.end(); s!=e; ++s){
-			if((*s)->idx == tag){
-				return *s;
+		for(auto& i : m_iiVec){
+			if(i->idx == tag){
+				return i;
 			}
 		}
 		return nullptr;
@@ -283,8 +283,8 @@ public:
 
 	void RenameIndexItemsCategory(const char* to)
 	{
-		for(auto s=m_iiVec.begin(),e=m_iiVec.end(); s!=e; ++s){
-			(*s)->category = to;
+		for(auto& i : m_iiVec){
+			i->category = to;
 		}
 	}
 
@@ -296,8 +296,9 @@ private:
 class CMainDlgImpl : public WindowImplBase
 {
 public:
-	CMainDlgImpl(CSQLite* db):
-		m_tag(0)
+	CMainDlgImpl(CSQLite* db)
+		: m_tag(0)
+		, m_bSearchBoxExpanded(false)
 	{
 		m_db = db;
 	}
@@ -352,6 +353,7 @@ private:
 private:
 	CSQLite*		m_db;
 	UINT			m_tag;
+	bool			m_bSearchBoxExpanded;
 
 	CMouseWheelHorzUI*		m_pTabList;
 	CTabLayoutUI*			m_pTabPage;
@@ -360,6 +362,7 @@ private:
 	CButtonUI* m_pbtnMin;
 	CButtonUI* m_pbtnRestore;
 	CButtonUI* m_pbtnMax;
+	CButtonUI* m_pbtnSearch;
 
 	class TabManager
 	{
@@ -436,7 +439,7 @@ private:
 CMainDlg::CMainDlg(CSQLite* db)
 {
 	CMainDlgImpl* pFrame = new CMainDlgImpl(db);
-	pFrame->Create(NULL,"Software Manager",UI_WNDSTYLE_FRAME|WS_SIZEBOX,WS_EX_WINDOWEDGE);
+	pFrame->Create(NULL,"<system error!>",UI_WNDSTYLE_FRAME|WS_SIZEBOX,WS_EX_WINDOWEDGE);
 	pFrame->CenterWindow();
 	pFrame->ShowWindow(true);
 }
@@ -464,6 +467,17 @@ void CMainDlgImpl::OnClick(TNotifyUI& msg)
 			//SendMessage(WM_SYSCOMMAND, SC_MINIMIZE);
 			::ShowWindow(*this, SW_MINIMIZE);
 		}
+		return;
+	}
+	if(msg.pSender->GetName() == _T("searchbtn")){
+		auto pSearchBox = FindControl(_T("searchbox"))->ToHorizontalLayoutUI();
+		pSearchBox->SetFixedWidth(m_bSearchBoxExpanded?20:100);
+		m_bSearchBoxExpanded = !m_bSearchBoxExpanded;
+		auto pRichEdit = FindControl(_T("searchtext"))->ToRichEditUI();
+		pRichEdit->SetText(_T("type sth."));
+		pRichEdit->SetSelAll();
+		pRichEdit->SetModify(false);
+		pRichEdit->SetFocus();
 		return;
 	}
 	return __super::OnClick(msg);
@@ -638,6 +652,7 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 	if(_tcscmp(msg.pSender->GetClass(), _T("ListItemUI")) == 0){ 
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto elem = pList->FindIndexList(msg.pSender->GetTag());
+		SMART_ASSERT(pList && elem).Fatal();
 
 		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_MENU_MAIN));
 		yagc gc(hMenu,[](void* ptr){return ::DestroyMenu(HMENU(ptr))!=FALSE;});
@@ -662,8 +677,10 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			{
 				CAddDlg dlg(GetHWND(),CAddDlg::TYPE_MODIFY,elem,m_db);
 				if(dlg.GetDlgCode() == CAddDlg::kOK){
-					if(msg.pSender->GetText() != elem->comment.c_str()){
-						pList->GetTextControlFromButton((CButtonUI*)msg.pSender)->SetText(elem->comment.c_str());
+					auto pEdit = msg.pSender->ToContainerUI()->GetItemAt(1)->ToEditUI();
+					SMART_ASSERT(typeid(*pEdit) == typeid(CTextUI))(typeid(*pEdit).name()).Stop();
+					if(pEdit->GetText() != elem->comment.c_str()){
+						pEdit->SetText(elem->comment.c_str());
 					}
 				}
 				return;
@@ -726,6 +743,7 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 		if(isel == -1) return;
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(isel));
 		auto pOpt = m_tm.FindOption(pList);
+		SMART_ASSERT(pList && pOpt);
 
 		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_INDEXTAB_MENU));
 		yagc gc(hMenu, [](void* ptr){return ::DestroyMenu(HMENU(ptr))!=FALSE;});
@@ -792,14 +810,17 @@ void CMainDlgImpl::InitWindow()
 		{&m_pbtnMax,		"maxbtn"},
 		{&m_pbtnRestore,	"restorebtn"},
 		{&m_pbtnClose,		"closebtn"},
+		{&m_pbtnSearch,		"searchbtn"},
 		{0,0}
 	};
 	for(int i=0;li[i].ptr; i++){
-		*(CControlUI**)li[i].ptr = GetManager()->FindControl(li[i].name);
+		SMART_ENSURE(*(CControlUI**)li[i].ptr = FindControl(li[i].name),!=nullptr)(i)(li[i].name).Stop();
 	}
 
 	m_pTabList = static_cast<CMouseWheelHorzUI*>(FindControl(_T("tabs")));
 	m_pTabPage = FindControl(_T("switch"))->ToTabLayoutUI();
+
+	SMART_ASSERT(m_pTabList && m_pTabPage).Fatal();
 
 	vector<string>	catVec;
 	m_db->GetCategories(&catVec);
@@ -814,6 +835,10 @@ void CMainDlgImpl::InitWindow()
 	}
 
 	::DragAcceptFiles(GetHWND(),TRUE);
+
+	if(auto pTitle = FindControl(_T("title"))){
+		::SetWindowText(*this, pTitle->GetText());
+	}
 }
 
 bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
@@ -854,24 +879,43 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 			POINT pt;
 			::GetCursorPos(&pt);
 			::ScreenToClient(GetHWND(),&pt);
-			auto pTile = static_cast<CIndexListUI*>(GetManager()->FindControl(pt));
-			if(typeid(CIndexListUI) != typeid(*pTile))
-				goto brk;
+
+			auto pControl = FindControl(pt);
+			const char* p = pControl->GetClass();
+
 			vector<string> files;
 			CDropFiles drop(hDrop, &files);
 
-			auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
-			auto pOpt = m_tm.FindOption(pList);
+			if(typeid(*pControl) == typeid(CIndexListUI)){
+				auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
+				auto pOpt = m_tm.FindOption(pList);
 
-			for(string& f : files){
-				CIndexItem ii;
-				ii.category = pOpt->GetText();
-				ii.path = f;
-				CAddDlg dlg(GetHWND(),CAddDlg::TYPE_PATH,&ii,m_db);
-				if(dlg.GetDlgCode() != CInputBox::kOK)
-					continue;
-				CIndexItem* pii = dlg.GetIndexItem();
-				pList->AddItem(pii,true);
+				for(string& f : files){
+					CIndexItem ii;
+					ii.category = pOpt->GetText();
+					ii.path = f;
+					CAddDlg dlg(GetHWND(),CAddDlg::TYPE_PATH,&ii,m_db);
+					if(dlg.GetDlgCode() != CInputBox::kOK)
+						continue;
+					CIndexItem* pii = dlg.GetIndexItem();
+					pList->AddItem(pii,true);
+				}
+			}
+			else if(typeid(*pControl) == typeid(CIndexListItemUI)){
+				int tag = pControl->GetTag();
+				auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
+				auto elem = pList->FindIndexList(tag);
+
+				for(string& f : files){
+					APathLib::shellExec(GetHWND(), elem->path.c_str(),f.c_str(),0);
+				}
+			}
+			else if(pControl->GetName()==_T("titlebar")){
+				FindControl(_T("clientarea"))->ToVerticalLayoutUI()->SetBkImage(files[0].c_str());
+			}
+			else{
+				bHandled = FALSE;
+				return 0;
 			}
 			bHandled = TRUE;
 			return 0;

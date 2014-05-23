@@ -45,9 +45,12 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <map>
 #include <list>
+
+#include "MyUtil.h"
 
 #define lengthof(x) (sizeof(x)/sizeof(*x))
 #define MAX max
