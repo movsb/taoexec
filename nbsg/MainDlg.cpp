@@ -45,11 +45,11 @@ public:
 		CDuiString path = CPaintManagerUI::GetInstancePath()+"skin/";
 		path += m_strDir;
 		SMART_ENSURE(APathLib::GetDirectoryFiles(path,&m_files),==true)(m_strDir).Warning();
-		SMART_ENSURE(m_files.size(),>0);
+		SMART_ENSURE(m_files.size(),>0)(path.GetData()).Warning();
 		if(m_files.size()){
 			setNextSlideImage();
 		}
-		SMART_ENSURE(GetManager()->SetTimer(this, 0, m_iTimeout*1000), == true)(m_iTimeout).Fatal();
+		SMART_ENSURE(GetManager()->SetTimer(this, 0, m_iTimeout*1000), == true)(m_iTimeout).Warning();
 	}
 
 	virtual void DoEvent(TEventUI& event) override
@@ -66,14 +66,30 @@ public:
 private:
 	void setNextSlideImage()
 	{
+		if(!m_files.size()) return;
+
+		auto getNextId = [](int total,int previous)->int
+		{
+			if(total<=0) return 0;
+			if(total==1) return 0;
+			if(previous>total-1 || previous<0)
+				previous = 0;
+			int tmp=0;
+			do{
+				::srand(::GetTickCount());
+				tmp = ::rand()%total;
+			}while(tmp == previous);
+			return tmp;
+		};
+		int iNext = getNextId((int)m_files.size(),m_iCurrent);
+		if(iNext == m_iCurrent) return;	//as if there is only one bkimage presents
 		CDuiString previous = GetBkImage();
-		int iNext = ++m_iCurrent % m_files.size();
 		SetBkImage(m_files[iNext].c_str());
 		if(!_tcslen(GetBkImage())){
 			SetBkImage(previous);
 		}
 		else{
-			GetManager()->RemoveImage(previous);
+			SMART_ENSURE(GetManager()->RemoveImage(previous),==true)(previous).Ignore();
 		}
 	}
 
@@ -758,6 +774,16 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			}
 		case IDM_INDEX_REMOVE_MULTI:
 			{
+				//auto pItem = static_cast<CIndexListItemUI*>(msg.pSender);
+				CDuiString prompt;
+				prompt += _T("确定要删除以下索引?\n");
+				prompt += _T("\n索引: ");
+				prompt += elem->idxn.c_str();
+				prompt += _T("\n说明: ");
+				prompt += elem->comment.c_str();
+				if(::MessageBox(GetHWND(),prompt,_T("提示"),
+						MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2)==IDNO)
+					return;
 				try{
 					pList->RemoveItem(msg.pSender->ToContainerUI(),msg.pSender->GetTag());
 				}
@@ -978,7 +1004,13 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 				auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 				auto elem = pList->FindIndexList(tag);
 
-				for(string& f : files){
+				for(string f : files){
+					if(f.find(' ')!=string::npos){
+						string t("\"");
+						t += f;
+						t += "\"";
+						f = t;
+					}
 					APathLib::shellExec(GetHWND(), elem->path.c_str(),f.c_str(),0);
 				}
 			}
