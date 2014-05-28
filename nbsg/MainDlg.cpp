@@ -280,10 +280,15 @@ private:
 		{
 			auto CheckScrollBar = [](CScrollBarUI* pScroll,WPARAM msevt)->bool
 			{
-				return !pScroll
-					|| pScroll->IsVisible() == false
-					|| pScroll->GetScrollPos()==0 && msevt==SB_LINEUP
-					|| pScroll->GetScrollPos()==pScroll->GetScrollRange() && msevt==SB_LINEDOWN;
+				// 考虑到 1 页能够显示大概 20+ 个图标, 别上常用的在前面, 所以启用鼠标滚轮始终为滚动标签
+				// 的功能, 而如果要滚动页面, 则需要手动拖动滚动条
+				// 或许我应该开始启用配置文件来应用用户配置了
+				return true;
+// 				return !pScroll
+// 					|| pScroll->IsVisible() == false
+// 					|| pScroll->GetScrollPos()==0 && msevt==SB_LINEUP
+// 					|| pScroll->GetScrollPos()==pScroll->GetScrollRange() && msevt==SB_LINEDOWN
+// 					;
 			};
 			if(event.Type == UIEVENT_SCROLLWHEEL
 				&& CheckScrollBar(GetVerticalScrollBar(),event.wParam)
