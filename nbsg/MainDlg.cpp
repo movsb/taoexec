@@ -114,8 +114,14 @@ public:
 	}
 	virtual LPVOID GetInterface(LPCTSTR pstrName) override
 	{
-		if(_tcscmp(pstrName, _T("ListItem")) == 0) return this;
-		return __super::GetInterface(pstrName);
+		if(_tcscmp(pstrName, _T("ListItem")) == 0) 
+			return this;
+		else if(_tcscmp(pstrName, _T("IconButton")) == 0)
+			return GetItemAt(0)->ToHorizontalLayoutUI()->GetItemAt(0);
+		else if(_tcscmp(pstrName, _T("Text"))==0) 
+			return GetItemAt(1);
+		else 
+			return __super::GetInterface(pstrName);
 	}
 
 	virtual void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue) override
@@ -232,7 +238,16 @@ public:
 	}
 	void PaintStatusImage(HDC hDC)
 	{
+		//第1页内容会在timer到达之前绘制
+		if(!m_hIcon) LoadPathIcon();
+		if(m_hIcon==(HICON)INVALID_HANDLE_VALUE) return;
+		::DrawIconEx(hDC,m_rcPaint.left,m_rcPaint.top,m_hIcon,GetFixedWidth(),GetFixedHeight(),0,nullptr,DI_NORMAL);
+		return __super::PaintStatusImage(hDC);
+	}
 
+public:
+	void LoadPathIcon()
+	{
 		if(m_hIcon == NULL){
 			m_hIcon = APathLib::getFileIcon(m_strPath);
 			if(!m_hIcon)
@@ -240,11 +255,6 @@ public:
 			if(!m_hIcon)
 				m_hIcon = (HICON)INVALID_HANDLE_VALUE;
 		}
-		if(m_hIcon == (HICON)INVALID_HANDLE_VALUE)
-			return;
-		::DrawIconEx(hDC,m_rcPaint.left,m_rcPaint.top,m_hIcon,GetFixedWidth(),GetFixedHeight(),0,nullptr,DI_NORMAL);
-		return __super::PaintStatusImage(hDC);
-
 	}
 private:
 	HICON m_hIcon;
@@ -253,6 +263,9 @@ private:
 
 class CIndexListUI : public CTileLayoutUI,public IDialogBuilderCallback
 {
+private:
+	const int kInitIconButtonTimerID;
+	const int kInitIconButtonTimerDelay;
 private:
 	virtual CControlUI* CreateControl(LPCTSTR pstrClass)
 	{
@@ -286,7 +299,35 @@ private:
 				return;	//__super不处理,所以直接返回了
 			}
 		}
+
+		if(event.Type == UIEVENT_TIMER){
+			if(event.wParam == kInitIconButtonTimerID){
+				SMART_ENSURE(GetManager()->KillTimer(this, kInitIconButtonTimerID),==true).Warning();
+
+				//如果在此之间 增加/删除 控件则会造成程序崩溃, 所以必需disable
+				//最后在SetEnable的时候会导致自动重绘, 所以不需要手动刷新
+				bool bEnabled = IsEnabled();
+				SetEnabled(false);
+
+				int cnt = GetCount();
+				for(int i=0; i<cnt; ++i){
+					auto pItem = static_cast<CIndexListItemUI*>(GetItemAt(i));
+					SMART_ASSERT(pItem).Fatal();
+					auto pBtn = static_cast<CIconButtonUI*>(pItem->GetInterface(_T("IconButton")));
+					SMART_ASSERT(pBtn).Fatal();
+					pBtn->LoadPathIcon();
+				}
+
+				SetEnabled(bEnabled);
+				return;
+			}
+		}
 		return __super::DoEvent(event);
+	}
+
+	virtual void DoInit() override
+	{
+		GetManager()->SetTimer(this, kInitIconButtonTimerID, kInitIconButtonTimerDelay);
 	}
 
 private:
@@ -294,8 +335,10 @@ private:
 	CSQLite*		m_db;
 
 public:
-	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI* pm):
-		m_db(db)
+	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI* pm)
+		: m_db(db)
+		, kInitIconButtonTimerID(0)
+		, kInitIconButtonTimerDelay(5000)
 	{
 		SetItemSize(CSize(80,80));
 		SetManager(pm,0,false);
