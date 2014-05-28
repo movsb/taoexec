@@ -451,76 +451,104 @@ private:
 	CButtonUI* m_pbtnMax;
 	CButtonUI* m_pbtnSearch;
 
+	template<class T1,class T2>
 	class TabManager
 	{
 	private:
-		struct IndexListOptionMap
+		struct TabItem
 		{
-			CIndexListUI*	list;
-			COptionUI*		option;
-			IndexListOptionMap(CIndexListUI* li,COptionUI* op)
+		public:
+			T1* pt1;
+			T2* pt2;
+
+			TabItem(T1* _pt1, T2* _pt2)
 			{
-				list = li;
-				option = op;
+				pt1 = _pt1;
+				pt2 = _pt2;
 			}
+// 		private:
+// 			TabItem(const TabItem&);
+// 			TabItem(const TabItem&&);
+// 			TabItem& operator=(const TabItem&);
 		};
+
+		std::list<TabItem> m_Tabs;
 	public:
-		void Add(COptionUI* op, CIndexListUI* li)
+		bool Add(T1* pt1, T2* pt2)
 		{
-			m_Pages.push_back(IndexListOptionMap(li,op));
+			m_Tabs.push_back(TabItem(pt1, pt2));
+			return true;
 		}
-		UINT Size() const 
+
+		int Size()
 		{
-			return m_Pages.size();
+			return m_Tabs.size();
 		}
-		IndexListOptionMap GetAt(UINT index)
+
+		TabItem& GetAt(int index)
 		{
-			UINT i=0;
-			auto s=m_Pages.begin();
-			for(;i!=index;){
+			SMART_ASSERT(index>=0 && index<(int)m_Tabs.size())(index).Fatal();
+			int i=0;
+			auto s=m_Tabs.begin();
+			for(; i!= index;){
 				++s;
 				++i;
 			}
 			return *s;
 		}
-		CIndexListUI* FindList(COptionUI* op)
+
+		TabItem& operator[](int index)
 		{
-			for(auto s=m_Pages.begin(); s!=m_Pages.end(); ++s){
-				if(s->option == op){
-					return s->list;
+			return GetAt(index);
+		}
+
+		T1* Find(T2* pt2)
+		{
+			for(auto& tab : m_Tabs){
+				if(tab.pt2 == pt2){
+					return tab.pt1;
 				}
 			}
 			return nullptr;
 		}
-		COptionUI* FindOption(CIndexListUI* li)
+
+		T2* Find(T1* pt1)
 		{
-			for(auto s=m_Pages.begin(); s!=m_Pages.end(); ++s){
-				if(s->list == li){
-					return s->option;
+			for(auto& tab : m_Tabs){
+				if(tab.pt1 == pt1){
+					return tab.pt2;
 				}
-			}
-			for(auto& i : m_Pages){
-				if(i.list == li)
-					return i.option;
 			}
 			return nullptr;
 		}
-		void Remove(COptionUI* op)
+
+		T1* operator()(T2* pt2)
 		{
-			for(auto s=m_Pages.begin(); s!=m_Pages.end(); ++s){
-				if(s->option == op){
-					m_Pages.erase(s);
+			return Find(pt2);
+		}
+
+		T2* operator()(T1* pt1)
+		{
+			return Find(pt1);
+		}
+
+		void Remove(T1* pt1)
+		{
+			for(auto s=m_Tabs.begin(); s!=m_Tabs.end(); ++s){
+				if(s->pt1 == pt1){
+					m_Tabs.erase(s);
 					break;
 				}
 			}
 		}
-	private:
 
-		list<IndexListOptionMap> m_Pages;
+		void Remove(T2* pt2)
+		{
+			Remove(FindFirst(pt2));
+		}
 	};
 
-	TabManager				m_tm;
-
+	TabManager<COptionUI,CIndexListUI> m_tm;
 };
 
 CMainDlg::CMainDlg(CSQLite* db)
@@ -574,7 +602,7 @@ void CMainDlgImpl::OnSelectChanged(TNotifyUI& msg)
 {
 	if(msg.pSender->GetUserData() == "index_list_option"){
 		auto pOpt = static_cast<COptionUI*>(msg.pSender);
-		m_pTabPage->SelectItem(m_tm.FindList(pOpt));
+		m_pTabPage->SelectItem(m_tm(pOpt));
 	}
 }
 
@@ -667,7 +695,7 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			try{
 				m_db->RenameCategory(origin.GetData(), rcb.GetStr());
 				pOption->SetText(rcb.GetStr());
-				m_tm.FindList(pOption)->RenameIndexItemsCategory(rcb.GetStr());
+				m_tm.Find(pOption)->RenameIndexItemsCategory(rcb.GetStr());
 			}
 			catch(CExcept* e)
 			{
@@ -676,7 +704,7 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			return;
 		}
 		else if(id == MENU_TAB_CLOSETAB){
-			auto pList = m_tm.FindList(pOption);
+			auto pList = m_tm(pOption);
 			m_tm.Remove(pOption);
 			m_pTabList->Remove(pOption);
 			m_pTabPage->Remove(pList);
@@ -839,7 +867,7 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 		auto isel = m_pTabPage->GetCurSel();
 		if(isel == -1) return;
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(isel));
-		auto pOpt = m_tm.FindOption(pList);
+		auto pOpt = m_tm(pList);
 		SMART_ASSERT(pList && pOpt);
 
 		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_INDEXTAB_MENU));
@@ -874,7 +902,7 @@ void CMainDlgImpl::OnScroll(TNotifyUI& msg)
 		int sel = -1;
 		int sz = (int)m_tm.Size();
 		for(int i=0; i<sz; ++i){
-			if(m_tm.GetAt(i).option->IsSelected()){
+			if(m_tm.GetAt(i).pt1->IsSelected()){
 				sel = i;
 				break;
 			}
@@ -892,8 +920,8 @@ void CMainDlgImpl::OnScroll(TNotifyUI& msg)
 				sel = 0;
 		}
 
-		m_tm.GetAt(sel).option->Selected(true);
-		m_pTabPage->SelectItem(m_tm.GetAt(sel).list);
+		m_tm.GetAt(sel).pt1->Selected(true);
+		m_pTabPage->SelectItem(m_tm.GetAt(sel).pt2);
 	}
 }
 
@@ -928,11 +956,12 @@ void CMainDlgImpl::InitWindow()
 	}
 	
 	if(m_tm.Size()){
-		m_pTabPage->SelectItem(m_tm.GetAt(0).list);
-		m_tm.GetAt(0).option->Selected(true);
+		m_pTabPage->SelectItem(m_tm.GetAt(0).pt2);
+		m_tm.GetAt(0).pt1->Selected(true);
 	}
 
 	::DragAcceptFiles(GetHWND(),TRUE);
+	SetIcon(IDI_ICON1);
 
 	if(auto pTitle = FindControl(_T("title"))){
 		::SetWindowText(*this, pTitle->GetText());
@@ -986,7 +1015,7 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 
 			if(typeid(*pControl) == typeid(CIndexListUI)){
 				auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
-				auto pOpt = m_tm.FindOption(pList);
+				auto pOpt = m_tm(pList);
 
 				for(string& f : files){
 					CIndexItem ii;
@@ -1031,7 +1060,7 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 // 		SendMessage(WM_SYSCOMMAND, SC_MINIMIZE);
 // 		goto brk;
 	}
-brk:
+
 	bHandled = FALSE;
 	return 0;
 }
