@@ -12,6 +12,7 @@ using namespace std;
 #pragma comment(lib,"sqlite3/sqlite3")
 
 #include "Except.h"
+#include <tchar.h>
 
 
 class CSQLiteImpl
@@ -360,9 +361,13 @@ bool CSQLiteImpl::DeleteItem(int idx)
 
 bool CSQLiteImpl::UpdateTimes(CIndexItem* pii)
 {
+	char ti[32];
+	int times = _ttoi(pii->times.c_str());
+	++times;
+	sprintf(ti,"%d", times);
 	stringstream ss;
 	ss << "update tbl_index set times="
-		<< pii->times 
+		<< times
 		<< " where idx="<< pii->idx;
 	string str(ss.str());
 
@@ -375,6 +380,7 @@ bool CSQLiteImpl::UpdateTimes(CIndexItem* pii)
 		throw CExcept("更新次数失败!","CSQLiteImpl::UpdateTimes()");
 	}
 	else{
+		pii->times = ti;
 		return true;
 	}
 }

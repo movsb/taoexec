@@ -627,7 +627,7 @@ void CMainDlgImpl::OnClick(TNotifyUI& msg)
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto elem = pList->FindIndexList(tag);
 		if(APathLib::shellExec(GetHWND(),elem->path.c_str(),elem->param.c_str(),0)){
-			//SendMessage(WM_SYSCOMMAND, SC_MINIMIZE);
+			SMART_ENSURE(m_db->UpdateTimes(elem),==true)(elem->idx)(elem->comment).Warning();
 			::ShowWindow(*this, SW_MINIMIZE);
 		}
 		return;
@@ -816,6 +816,8 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto elem = pList->FindIndexList(msg.pSender->GetTag());
 		SMART_ASSERT(pList && elem).Fatal();
+		//
+		
 
 		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_MENU_MAIN));
 		yagc gc(hMenu,[](void* ptr){return ::DestroyMenu(HMENU(ptr))!=FALSE;});
