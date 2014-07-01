@@ -346,19 +346,5 @@ void CAddDlgImpl::OnClick(TNotifyUI& msg)
 
 void CAddDlgImpl::Notify(TNotifyUI& msg)
 {
-	if(msg.sType == DUI_MSGTYPE_SETFOCUS){
-		if(typeid(*msg.pSender) == typeid(CRichEditUI)){
-			auto ctrl = static_cast<CRichEditUI*>(msg.pSender);
-			ctrl->SetBkColor(0xFFFFFFFF);
-			ctrl->SetTextColor(0xFF000000);
-		}
-	}
-	else if(msg.sType == DUI_MSGTYPE_KILLFOCUS){
-		if(typeid(*msg.pSender) == typeid(CRichEditUI)){
-			auto ctrl = static_cast<CRichEditUI*>(msg.pSender);
-			ctrl->SetBkColor(0x00000000);
-			ctrl->SetTextColor(0xFFFFFFFF);
-		}
-	}
 	return __super::Notify(msg);
 }
