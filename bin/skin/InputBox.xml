@@ -1,25 +1,28 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <Window size="300,140" caption="0,0,0,40" roundcorner="4,4,4,4">
-	<Font name="微软雅黑" size="12" />
+	<Font name="微软雅黑" size="12" default="true"/>
 	<Font name="微软雅黑" size="16" />
 	<Default name="Button" value="font=&quot;0&quot; normalimage=&quot;file='btn.png' source='0,0,96,24' corner='5,11,5,11'&quot; pushedimage=&quot;file='btn.png' source='0,48,96,72' corner='5,11,5,11'&quot; disabledimage=&quot;file='btn.png' source='0,72,96,96' corner='5,11,5,11'&quot;" />
 	<!-- 整体 -->
-	<VerticalLayout bkimage="file='tips_bg.png'">
+	<VerticalLayout bkcolor="0xFFFFFFFF">
 		<!-- 标题栏 -->
 		<HorizontalLayout height="40">
 			<VerticalLayout width="120" inset="8,8,0,0">
-				<Label name="title" text="<title>" textcolor="#FFFFFFFF" font="1"/>
+				<Label name="title" text="<title>" font="1"/>
 			</VerticalLayout>
 			<VerticalLayout />
-			<VerticalLayout width="39">
-				<Button name="closebtn" width="39" height="20" tooltip="Close this window" normalimage="file='btn_close_normal.png'" hotimage="btn_close_highlight.png" pushedimage="btn_close_down.png"  />
-			</VerticalLayout>
+			<HorizontalLayout width="39" inset="0,5,5,0">
+				<Control />
+				<Button name="closebtn" text="X" width="25" height="25" tooltip="Close" />
+			</HorizontalLayout>
 		</HorizontalLayout>
 		
 		<!-- 中间部分 -->
-		<VerticalLayout inset="15,5,15,5" bkimage="file='a.png' fade='150'">
-			<Label name="prompt" text="<prompt text>" textpadding="4,4,4,4" height="30" font="1" textcolor="0xFFFFFFFF"/>
-			<Edit name="input" font="0" />
+		<VerticalLayout inset="10,0,10,0">
+			<VerticalLayout inset="5,5,5,5" bordersize="1" bordercolor="0xFF550055">
+				<Label name="prompt" text="<prompt text>" textpadding="4,4,4,4" height="30" font="1"/>
+				<Edit name="input" font="0" />
+			</VerticalLayout>
 		</VerticalLayout>
 		
 		<!-- 下面按钮部分 -->

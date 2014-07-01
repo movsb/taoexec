@@ -42,12 +42,16 @@ protected:
 		__super::OnFinalMessage(hWnd);
 		//delete this;	//因为还要取返回码,所以不在此删除
 	}
-	virtual LRESULT ResponseDefaultKeyEvent(WPARAM wParam)
+
+	virtual LRESULT ResponseDefaultKeyEvent(WPARAM wParam) override
 	{
+		if(wParam == VK_ESCAPE){
+			m_dlgcode = CAddDlg::kCancel;
+			Close();
+			return TRUE;
+		}
 		return FALSE;
 	}
-
-
 
 	DUI_DECLARE_MESSAGE_MAP()
 	virtual void OnClick(TNotifyUI& msg);

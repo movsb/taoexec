@@ -100,7 +100,7 @@ private:
 	int				m_iCurrent;
 };
 
-class CIndexListItemUI : public CVerticalLayoutUI
+class CIndexListItemUI : public CVerticalLayoutUI, public IContainerSelectUI
 {
 public:
 	CIndexListItemUI()
@@ -120,6 +120,8 @@ public:
 			return GetItemAt(0)->ToHorizontalLayoutUI()->GetItemAt(0);
 		else if(_tcscmp(pstrName, _T("Text"))==0) 
 			return GetItemAt(1);
+		else if(_tcscmp(pstrName, "IContainerSelectUI") == 0) 
+			return static_cast<IContainerSelectUI*>(this);
 		else 
 			return __super::GetInterface(pstrName);
 	}
@@ -127,6 +129,7 @@ public:
 	virtual void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue) override
 	{
 		if(_tcscmp(pstrName, _T("hotimage")) == 0) m_hotimage = pstrValue;
+		else if(_tcscmp(pstrName,_T("pushedimage")) == 0) m_pushedimage = pstrValue;
 
 		else return __super::SetAttribute(pstrName, pstrValue);
 	}
@@ -142,7 +145,27 @@ public:
 			Invalidate();
 		}
 		else if(event.Type == UIEVENT_BUTTONDOWN){
-			GetManager()->SendNotify(this, DUI_MSGTYPE_CLICK);
+			SetCapture();
+			m_dwState |= UISTATE_PUSHED;
+			Invalidate();
+		}
+		else if(event.Type == UIEVENT_MOUSEMOVE){
+			if(::PtInRect(&m_rcItem, event.ptMouse)){
+				m_dwState |= UISTATE_HOT;
+				Invalidate();
+			}
+			else{
+				m_dwState &= ~UISTATE_HOT;
+				Invalidate();
+			}
+			return;
+		}
+		else if(event.Type == UIEVENT_BUTTONUP){
+			if(::PtInRect(&m_rcItem, event.ptMouse)){
+				GetManager()->SendNotify(this, DUI_MSGTYPE_CLICK);
+			}
+			m_dwState &= ~UISTATE_PUSHED;
+			Invalidate();
 		}
 		else if(event.Type == UIEVENT_CONTEXTMENU){
 			GetManager()->SendNotify(this, DUI_MSGTYPE_MENU);
@@ -153,6 +176,15 @@ public:
 
 	virtual void PaintStatusImage(HDC hDC)
 	{
+		if(m_uButtonState & UISTATE_SELECTED){
+			//CRenderEngine::DrawColor(hDC, m_rcItem, 0x55F00FFF);
+			if(!m_hotimage.IsEmpty()){
+				if(!DrawImage(hDC, m_hotimage)){
+					m_hotimage.Empty();
+				}
+			}
+		}
+
 		if(m_dwState & UISTATE_HOT){
 			if(!m_hotimage.IsEmpty()){
 				if(!DrawImage(hDC, m_hotimage)){
@@ -160,11 +192,41 @@ public:
 				}
 			}
 		}
+
+		if(m_dwState & UISTATE_PUSHED){
+			if(!m_pushedimage.IsEmpty()){
+				if(!DrawImage(hDC, m_pushedimage)){
+					m_pushedimage.Empty();
+				}
+			}
+		}
+	}
+
+	virtual void SelectionSetSelected(bool bSelecte) override
+	{
+		m_bSelected = bSelecte;
+		if(m_bSelected){
+			m_uButtonState |= UISTATE_SELECTED;
+			Invalidate();
+		}
+		else {
+			m_uButtonState &= ~UISTATE_SELECTED;
+			Invalidate();
+		}
+
+	}
+
+
+	virtual bool SelectionIsSelected() override
+	{
+		return m_bSelected;
 	}
 
 protected:
+	bool m_bSelected;
 	DWORD			m_dwState;
 	CDuiString		m_hotimage;
+	CDuiString		m_pushedimage;
 };
 
 class CMouseWheelHorzUI : public CHorizontalLayoutUI
@@ -303,6 +365,27 @@ private:
 				GetManager()->SendNotify(msg);
 				return;	//__super不处理,所以直接返回了
 			}
+			else if(event.Type == UIEVENT_MOUSEMOVE){
+				if(GetManager()->GetCapturedUI() == this){
+					for(int count=GetCount(); count>=0; count--){
+						auto c = GetItemAt(count);
+						if(c && c!=this){
+							auto i = static_cast<IContainerSelectUI*>(c->GetInterface(_T("IContainerSelectUI")));
+							if(i){
+								CDuiRect ri = c->GetPos();
+								CDuiRect rs = GetSelectionControl()->GetPos();
+								CDuiRect r;
+								i->SelectionSetSelected(!!::IntersectRect(&r, &ri, &rs));
+							}
+						}
+					}
+				}
+				if(event.ptMouse.y > GetPos().bottom){
+					LineDown();
+				}
+
+			}
+			// no return
 		}
 
 		if(event.Type == UIEVENT_TIMER){
@@ -333,6 +416,13 @@ private:
 	virtual void DoInit() override
 	{
 		GetManager()->SetTimer(this, kInitIconButtonTimerID, kInitIconButtonTimerDelay);
+
+		auto pSel = new CButtonUI;
+		pSel->SetBkColor(0x33FF0000);
+		pSel->SetBorderColor(0x88FF0000);
+		pSel->SetBorderSize(1);
+		pSel->SetText("ycfkdj~");
+		SetSelectionControl(pSel);
 	}
 
 private:
@@ -343,7 +433,7 @@ public:
 	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI* pm)
 		: m_db(db)
 		, kInitIconButtonTimerID(0)
-		, kInitIconButtonTimerDelay(5000)
+		, kInitIconButtonTimerDelay(3000)
 	{
 		SetItemSize(CSize(80,80));
 		SetManager(pm,0,false);
@@ -642,6 +732,14 @@ void CMainDlgImpl::OnClick(TNotifyUI& msg)
 		pRichEdit->SetModify(false);
 		pRichEdit->SetFocus();
 		return;
+	}
+
+	auto pName = msg.pSender->GetName();
+	if(pName == _T("minbtn")){
+		return (void)::ShowWindow(*this, SW_MINIMIZE);
+	}
+	else if(pName == _T("maxbtn")){
+		return (void)::ShowWindow(*this, ::IsZoomed(*this)?SW_RESTORE:SW_MAXIMIZE);
 	}
 	return __super::OnClick(msg);
 }
@@ -1011,7 +1109,20 @@ void CMainDlgImpl::InitWindow()
 	}
 
 	::DragAcceptFiles(GetHWND(),TRUE);
-	SetIcon(IDI_ICON1);
+
+	auto laSetIcon = [](HWND hWnd){
+		HANDLE hIconSmall = ::LoadImage(nullptr, "./head.ico", IMAGE_ICON, 48, 48, LR_LOADFROMFILE);
+		HANDLE hIconBig   = ::LoadImage(nullptr, "./head.ico", IMAGE_ICON, 256, 256, LR_LOADFROMFILE);
+
+		if(hIconSmall && hIconBig){
+			::SendMessage(hWnd, WM_SETICON, ICON_SMALL, LPARAM(hIconSmall));
+			::SendMessage(hWnd, WM_SETICON, ICON_BIG, LPARAM(hIconBig));
+			::SendMessage(GetWindow(hWnd, GW_OWNER), WM_SETICON, ICON_SMALL, LPARAM(hIconSmall));
+			::SendMessage(GetWindow(hWnd, GW_OWNER), WM_SETICON, ICON_BIG, LPARAM(hIconBig));
+		}
+	};
+
+	laSetIcon(GetHWND());
 
 	if(auto pTitle = FindControl(_T("title"))){
 		::SetWindowText(*this, pTitle->GetText());
@@ -1047,7 +1158,6 @@ bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
 
 LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
-
 	switch(uMsg)
 	{
 	case WM_DROPFILES:
