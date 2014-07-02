@@ -275,34 +275,16 @@ void CAddDlgImpl::OnClick(TNotifyUI& msg)
 		prePath->SetText(str);
 	}
 	else if(msg.pSender == pbtnSave){
-		CDuiString strIndex = preIndex->GetText();
-
-		if(strIndex.GetLength()<1){
-			if(AUtils::msgbox(GetHWND(),MB_ICONINFORMATION|MB_OKCANCEL,"提示",
-				"你没有输入索引名, 这样你将不能通过输入索引名来快速打开目标, 确实不用输入么\?") == IDCANCEL)
-			{
-				return;
-			}
-		}
-
+		CDuiString strIndex	  = preIndex	->GetText();
 		CDuiString strComment = preComment	->GetText();
 		CDuiString strPath    = prePath		->GetText();
 		CDuiString strParam   = preParam	->GetText();
 		CDuiString strTimes   = preTimes	->GetText();
 
-		if(	strIndex.Find('\'')!=-1
-			|| strIndex.Find('\"')!=-1
-			|| strIndex.Find(' ') !=-1
+		if(strIndex.Find(' ') !=-1
 			|| strIndex.Find('\t')!=-1)
 		{
-			AUtils::msgbox(GetHWND(),MB_ICONEXCLAMATION,NULL,"索引包含非法字符!");
-			return;
-		}
-
-		if( strComment.Find('\"')!=-1
-			|| strComment.Find('\'')!=-1)
-		{
-			AUtils::msgbox(GetHWND(),MB_ICONEXCLAMATION,NULL,"说明包含非法字符!");
+			AUtils::msgbox(GetHWND(),MB_ICONEXCLAMATION,NULL,"索引不能包含空格或tab等字符!");
 			return;
 		}
 
@@ -310,7 +292,7 @@ void CAddDlgImpl::OnClick(TNotifyUI& msg)
 			|| strPath.Find('\"')!=-1
 			|| strPath.Find('\t')!=-1)
 		{
-			AUtils::msgbox(GetHWND(),MB_ICONEXCLAMATION,NULL,"路径包含非法字符!");
+			AUtils::msgbox(GetHWND(),MB_ICONEXCLAMATION,NULL,"路径包含非法字符!\n\n注: 有空格无需加引号~");
 			return;
 		}
 

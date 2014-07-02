@@ -31,6 +31,7 @@ public:
 	bool AddItem(CIndexItem* pii);
 	bool DeleteItem(int idx);
 	bool UpdateTimes(CIndexItem* pii);
+	bool WrapApostrophe(const char* str, std::string* out);
 
 private:
 	bool init();
@@ -44,7 +45,7 @@ private:
 
 	struct CBS_QueryCategory : public SqliteCallbackStruct
 	{
-		const char* cat;
+		std::string cat;
 		vector<CIndexItem*>* V;
 	};
 
@@ -109,7 +110,23 @@ bool CSQLite::UpdateTimes(CIndexItem* pii)
 	return m_sqlite->UpdateTimes(pii);
 }
 
+bool CSQLiteImpl::WrapApostrophe(const char* str, std::string* out)
+{
+	if(strchr(str,'\'')==nullptr)
+		return false;
 
+	std::string& t = *out;
+	while(*str){
+		if(*str != '\''){
+			t += *str;
+		}
+		else{
+			t += "''";
+		}
+		++str;
+	}
+	return true;
+}
 
 bool CSQLiteImpl::Open(const char* fn)
 {
@@ -239,6 +256,10 @@ bool CSQLiteImpl::QueryCategory(const char* cat,vector<CIndexItem*>* V)
 	qcs.V = V;
 	qcs.cat = cat;
 
+	std::string scat;
+	if(WrapApostrophe(cat, &scat))
+		cat = scat.c_str();
+
 	string sql("select * from tbl_index where category==\'");
 	sql += cat;
 	sql += "\' order by times desc;";
@@ -263,6 +284,10 @@ bool CSQLiteImpl::QueryIndices(const char* find,vector<CIndexItem*>* R,bool* fou
 	qi.found = false;
 	qi.indices = R;
 	qi.find = find;
+
+	std::string sfind;
+	if(WrapApostrophe(find, &sfind))
+		find = sfind.c_str();
 
 	string sql("select * from tbl_index where name like \'");
 	sql += find;
@@ -297,17 +322,35 @@ bool CSQLiteImpl::AddItem(CIndexItem* pii)
 	bool bnew = pii->idx == -1;
 	stringstream ss;
 
+	const char* pCategory	= pii->category.c_str();
+	const char* pInxn		= pii->idxn.c_str();
+	const char* pComment	= pii->comment.c_str();
+	const char* pPath		= pii->path.c_str();
+	const char* pParam		= pii->param.c_str();
+
+	std::string scat,sidxn,scmt,spath,sparam;
+	if(WrapApostrophe(pCategory, &scat))
+		pCategory = scat.c_str();
+	if(WrapApostrophe(pInxn, &sidxn))
+		pInxn = sidxn.c_str();
+	if(WrapApostrophe(pComment, &scmt))
+		pComment = scmt.c_str();
+	if(WrapApostrophe(pPath, &spath))
+		pPath = spath.c_str();
+	if(WrapApostrophe(pParam, &sparam))
+		pParam = sparam.c_str();
+
 	int rv;
 	char* err;
 	if(bnew){
 		ss << "insert into tbl_index (category,name,visible,comment,path,param,times) values ("
-			<< "\'" << pii->category	<< "\',"
-			<< "\'" << pii->idxn		<< "\',"
-			<<		pii->visible		<< ","
-			<< "\'" << pii->comment		<< "\',"
-			<< "\'" << pii->path		<< "\',"
-			<< "\'" << pii->param		<< "\',"
-			<< "\'" <<pii->times << "\');";
+			<< "'" <<	pCategory	<< "',"
+			<< "'" <<	pInxn		<< "',"
+			<<			pii->visible<< ","
+			<< "'" <<	pComment	<< "',"
+			<< "'" <<	pPath		<< "',"
+			<< "'" <<	pParam		<< "',"
+			<< "'" <<	pii->times	<< "');";
 		string sql(ss.str());
 		rv = sqlite3_exec(m_db,sql.c_str(),nullptr,nullptr,&err);
 		if( rv != SQLITE_OK){
@@ -319,14 +362,14 @@ bool CSQLiteImpl::AddItem(CIndexItem* pii)
 		return true;
 	}
 	else{
-		ss << "update tbl_index set category=\'" << pii->category << "\',"
-			<< "name=\'"	<< pii->idxn		<< "\',"
-			<< "visible="	<< pii->visible		<< ","
-			<< "comment=\'"	<< pii->comment		<< "\',"
-			<< "path=\'"	<< pii->path		<< "\',"
-			<< "param=\'"	<< pii->param		<< "\',"
-			<< "times="		<< pii->times		<< " "
-			<< "where idx="	<< pii->idx			<< ";";
+		ss << "update tbl_index set category='" << pCategory << "',"
+			<< "name='"	<<		pInxn		<< "',"
+			<< "visible=" <<	pii->visible<< ","
+			<< "comment='" <<	pComment<< "',"
+			<< "path='"	<<		pPath		<< "',"
+			<< "param='" <<		pParam		<< "',"
+			<< "times="		<<	pii->times	<< " "
+			<< "where idx="	<<	pii->idx	<< ";";
 		string sql(ss.str());
 		rv = sqlite3_exec(m_db,sql.c_str(),nullptr,nullptr,&err);
 		if(rv != SQLITE_OK){
@@ -387,16 +430,22 @@ bool CSQLiteImpl::UpdateTimes(CIndexItem* pii)
 
 bool CSQLiteImpl::RenameCategory(const char* from, const char* to)
 {
-	assert(strchr(from,'\'')==0);
-	assert(strchr(to,'\'')==0);
+// 	assert(strchr(from,'\'')==0);
+// 	assert(strchr(to,'\'')==0);
+
+	std::string sfrom,sto;
+	if(WrapApostrophe(from, &sfrom))
+		from = sfrom.c_str();
+	if(WrapApostrophe(to, &sto))
+		to = sto.c_str();
 
 	stringstream ss;
-	ss << "update tbl_index set category=\'"
+	ss << "update tbl_index set category='"
 		<< to
-		<< "\' "
-		<< "where category=\'"
+		<< "' "
+		<< "where category='"
 		<< from
-		<< "\';";
+		<< "';";
 	string str(ss.str());
 	int rv;
 	char* err;

@@ -421,7 +421,7 @@ private:
 		pSel->SetBkColor(0x33FF0000);
 		pSel->SetBorderColor(0x88FF0000);
 		pSel->SetBorderSize(1);
-		pSel->SetText("ycfkdj~");
+		pSel->SetText("~ ^^ ~");
 		SetSelectionControl(pSel);
 	}
 
@@ -788,10 +788,6 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			private:
 				virtual bool CheckReturn(LPCTSTR str,LPCTSTR* msg) override
 				{
-					if(_tcschr(str,_T('\''))){
-						*msg = _T("新名字中不能包含单引号字符!");
-						return false;
-					}
 					for(string& s : *m_V){
 						if(_tcscmp(str,s.c_str()) == 0
 							&& str != m_filter)
@@ -861,10 +857,6 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			private:
 				virtual bool CheckReturn(LPCTSTR str,LPCTSTR* msg) override
 				{
-					if(_tcschr(str,_T('\''))){
-						*msg = _T("标签名中不能包含单引号字符!");
-						return false;
-					}
 					for(string& s : *m_V){
 						if(_tcscmp(str,s.c_str()) == 0){
 							*msg = _T("新名字不能与现有名重复!");
