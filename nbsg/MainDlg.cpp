@@ -328,7 +328,7 @@ class CIndexListUI : public CTileLayoutUI,public IDialogBuilderCallback
 private:
 	const int kInitIconButtonTimerID;
 	const int kInitIconButtonTimerDelay;
-private:
+public:
 	virtual CControlUI* CreateControl(LPCTSTR pstrClass)
 	{
 		if(_tcscmp(pstrClass,_T("IconButton"))==0) return new CIconButtonUI;
@@ -385,6 +385,12 @@ private:
 				}
 
 			}
+			else if(event.Type == UIEVENT_CONTEXTMENU){
+				if(IsContextMenuUsed()){
+					GetManager()->SendNotify(this, DUI_MSGTYPE_MENU);
+					return;
+				}
+			}
 			// no return
 		}
 
@@ -415,6 +421,7 @@ private:
 
 	virtual void DoInit() override
 	{
+		InitItems(m_cat);
 		GetManager()->SetTimer(this, kInitIconButtonTimerID, kInitIconButtonTimerDelay);
 
 		auto pSel = new CButtonUI;
@@ -425,13 +432,25 @@ private:
 		SetSelectionControl(pSel);
 	}
 
-private:
+	virtual LPCTSTR GetClass() const override
+	{
+		return GetClassStatic();
+	}
+
+	static LPCTSTR GetClassStatic()
+	{
+		return _T("IndexListUI");
+	}
+
+protected:
 	CDialogBuilder	m_builder;
 	CSQLite*		m_db;
+	CDuiString		m_cat;
 
 public:
 	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI* pm)
 		: m_db(db)
+		, m_cat(cat)
 		, kInitIconButtonTimerID(0)
 		, kInitIconButtonTimerDelay(3000)
 	{
@@ -439,18 +458,21 @@ public:
 		SetManager(pm,0,false);
 		delete m_builder.Create("ListItem.xml",0,this);
 
-		db->QueryCategory(cat,&m_iiVec);
-
-		for(auto& s : m_iiVec)
-			AddItem(s);
-
 		SetAttribute("vscrollbar","true");
+		SetContextMenuUsed(true);
 	}
 
 	~CIndexListUI()
 	{
 		for(auto p : m_iiVec)
 			delete p;
+	}
+
+	virtual void InitItems(const char* cat)
+	{
+		m_db->QueryCategory(cat,&m_iiVec);
+		for(auto& s : m_iiVec)
+			AddItem(s);
 	}
 
 	void AddItem(const CIndexItem* pii, bool bAddToVector=false)
@@ -517,6 +539,39 @@ public:
 private:
 };
 
+class CIndexListTopIndexUI : public CIndexListUI
+{
+private:
+	const int kTopItems;
+
+public:
+	CIndexListTopIndexUI(CSQLite* db, CPaintManagerUI* pm)
+		: CIndexListUI(db, nullptr, pm)
+		, kTopItems(20)
+	{}
+
+	virtual LPCTSTR GetClass() const override
+	{
+		return GetClassStatic();
+	}
+
+	static LPCTSTR GetClassStatic()
+	{
+		return _T("IndexListTopIndexUI");
+	}
+
+	virtual void InitItems(const char* cat) override // 糟糕的接口
+	{
+		SMART_ASSERT(cat==nullptr || !*cat)(cat).Stop();
+
+		m_db->QueryTopIndices(&m_iiVec, kTopItems);
+
+		for(auto& i : m_iiVec){
+			AddItem(i);
+		}
+	}
+};
+
 class CMainDlgImpl : public WindowImplBase
 {
 public:
@@ -569,7 +624,8 @@ protected:
 	virtual void OnScroll(TNotifyUI& msg);
 
 private:
-	bool addTab(const char* name,int tag,const char* group);
+	bool AddIndexTab(const char* name,int tag,const char* group);
+	bool AddTopIndexTab(const char* name, int tag, const char* group);
 	UINT GetTag()
 	{
 		return m_tag++;
@@ -759,10 +815,6 @@ void CMainDlgImpl::OnTimer(TNotifyUI& msg)
 
 void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 {
-	if(msg.pSender->GetUserData() == _T("index_list_option")){
-		GetManager()->SendNotify(/*msg.pSender*/ m_pTabList, DUI_MSGTYPE_MENU);
-		return;
-	}
 	if(typeid(*msg.pSender) == typeid(CMouseWheelHorzUI)){
 		auto pOption = GetManager()->FindSubControlByPoint(msg.pSender, msg.ptMouse)->ToOptionUI();
 		if(pOption == msg.pSender) pOption = nullptr;
@@ -895,7 +947,7 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			if(cb.GetDlgCode() != CInputBox::kOK)
 				return;
 
-			addTab(cb.GetStr(),GetTag(),"index_list_option");
+			AddIndexTab(cb.GetStr(),GetTag(),"index_list_option");
 			return;
 		}
 
@@ -1003,7 +1055,10 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 		return;
 	}// if btn
 
-	if(msg.pSender->GetName() == "switch"){
+	auto pClass = msg.pSender->GetClass();
+	if(_tcscmp(pClass, CIndexListUI::GetClassStatic())==0
+		|| _tcscmp(pClass, CIndexListTopIndexUI::GetClassStatic())== 0)
+	{
 		auto isel = m_pTabPage->GetCurSel();
 		if(isel == -1) return;
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(isel));
@@ -1013,6 +1068,11 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 		HMENU hMenu = ::LoadMenu(CPaintManagerUI::GetInstance(),MAKEINTRESOURCE(IDM_INDEXTAB_MENU));
 		yagc gc(hMenu, [](void* ptr){return ::DestroyMenu(HMENU(ptr))!=FALSE;});
 		HMENU hSub0 = ::GetSubMenu(hMenu,0);
+
+		if(_tcscmp(pClass, CIndexListTopIndexUI::GetClassStatic())==0){
+			::EnableMenuItem(hSub0, MENU_TABINDEX_NEWINDEX, MF_DISABLED|MF_GRAYED);
+		}
+
 		::ClientToScreen(GetHWND(),&msg.ptMouse);
 		UINT id = (UINT)::TrackPopupMenu(hSub0,TPM_LEFTBUTTON|TPM_NONOTIFY|TPM_RETURNCMD,msg.ptMouse.x+1,msg.ptMouse.y+1,0,GetHWND(),nullptr);
 		if(id==0) return;
@@ -1037,7 +1097,8 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 void CMainDlgImpl::OnScroll(TNotifyUI& msg)
 {
 	if(msg.pSender == m_pTabList
-		|| msg.pSender->GetUserData() == _T("index_list_option"))
+		|| msg.pSender->GetUserData() == _T("index_list_option")
+		|| msg.pSender->GetUserData() == _T("index_option_top"))
 	{
 		int sel = -1;
 		int sz = (int)m_tm.Size();
@@ -1088,11 +1149,14 @@ void CMainDlgImpl::InitWindow()
 
 	SMART_ASSERT(m_pTabList && m_pTabPage).Fatal();
 
+	// 在这里插入常用项
+	AddTopIndexTab(_T("常用"), GetTag(), _T("index_option_top"));
+
 	vector<string>	catVec;
 	m_db->GetCategories(&catVec);
 
 	for(string& s : catVec){
-		addTab(s.c_str(),GetTag(),"index_list_option");
+		AddIndexTab(s.c_str(),GetTag(),"index_list_option");
 	}
 	
 	if(m_tm.Size()){
@@ -1121,7 +1185,7 @@ void CMainDlgImpl::InitWindow()
 	}
 }
 
-bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
+bool CMainDlgImpl::AddIndexTab(const char* name,int tag,const char* group)
 {
 	auto pOption = new COptionUI;
 	pOption->SetAttribute("text",name);
@@ -1139,6 +1203,34 @@ bool CMainDlgImpl::addTab(const char* name,int tag,const char* group)
 	pOption->SetTag(tag);
 
 	auto pList = new CIndexListUI(m_db,name,GetManager());
+	pList->SetTag(tag);
+	pList->SetUserData(group);
+
+	m_pTabList->Add(pOption);
+	m_pTabPage->Add(pList);
+	m_tm.Add(pOption,pList);
+	return true;
+}
+
+
+bool CMainDlgImpl::AddTopIndexTab(const char* name, int tag, const char* group)
+{
+	auto pOption = new COptionUI;
+	pOption->SetAttribute("text",name);
+	pOption->SetAttribute("width","60");
+	pOption->SetAttribute("textcolor","0xFF386382");
+	pOption->SetAttribute("normalimage","file='tabbar_normal.png' fade='50'");
+	pOption->SetAttribute("hotimage","tabbar_hover.png");
+	pOption->SetAttribute("pushedimage","tabbar_pushed.png");
+	pOption->SetAttribute("selectedimage","file='tabbar_pushed.png' fade='150'");
+	pOption->SetAttribute("group","contenttab");
+	pOption->SetAttribute("menu","true");
+	pOption->SetAttribute("font", "1");
+
+	pOption->SetUserData(group);
+	pOption->SetTag(tag);
+
+	auto pList = new CIndexListTopIndexUI(m_db,GetManager());
 	pList->SetTag(tag);
 	pList->SetUserData(group);
 

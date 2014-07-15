@@ -25,6 +25,7 @@ public:
 	bool Close();
 	bool QueryCategory(const char* cat,vector<CIndexItem*>* V);
 	bool QueryIndices(const char* find,vector<CIndexItem*>* R,bool* found);
+	bool QueryTopIndices(std::vector<CIndexItem*>* R, int count);
 	bool GetCategories(vector<string>* cats);
 	bool RenameCategory(const char* from, const char* to);
 	bool FreeVectoredIndexItems(vector<CIndexItem*>* R);
@@ -38,15 +39,25 @@ private:
 
 	struct SqliteCallbackStruct
 	{
-		enum TYPE{kQueryCategory,kQueryIndices};
+		enum TYPE{kQueryCategory,kQueryIndices,kQueryTopIndices};
 		TYPE type;
 		CSQLiteImpl* that;
+
+		SqliteCallbackStruct(TYPE _type)
+		{
+			type = _type;
+		}
 	};
 
 	struct CBS_QueryCategory : public SqliteCallbackStruct
 	{
 		std::string cat;
 		vector<CIndexItem*>* V;
+
+		CBS_QueryCategory()
+			: SqliteCallbackStruct(SqliteCallbackStruct::kQueryCategory)
+			, V(nullptr)
+		{}
 	};
 
 	struct CBS_QueryIndices : public SqliteCallbackStruct
@@ -54,7 +65,26 @@ private:
 		string find;
 		bool found;
 		vector<CIndexItem*>* indices;
+
+		CBS_QueryIndices()
+			: SqliteCallbackStruct(SqliteCallbackStruct::kQueryIndices)
+			, found(false)
+			, indices(nullptr)
+		{}
 	};
+
+	struct CBS_QueryTopIndices : public SqliteCallbackStruct
+	{
+		int count;
+		std::vector<CIndexItem*>* indices;
+
+		CBS_QueryTopIndices()
+			: SqliteCallbackStruct(SqliteCallbackStruct::kQueryTopIndices)
+			, count(0)
+			, indices(NULL)
+		{}
+	};
+
 	static int __cdecl cbQeuryCallback(void* ud,int argc,char** argv,char** col);
 
 private:
@@ -108,6 +138,11 @@ bool CSQLite::DeleteItem(int idx)
 bool CSQLite::UpdateTimes(CIndexItem* pii)
 {
 	return m_sqlite->UpdateTimes(pii);
+}
+
+bool CSQLite::QueryTopIndices( std::vector<CIndexItem*>* R, int count )
+{
+	return m_sqlite->QueryTopIndices(R, count);
 }
 
 bool CSQLiteImpl::WrapApostrophe(const char* str, std::string* out)
@@ -241,6 +276,28 @@ int __cdecl CSQLiteImpl::cbQeuryCallback(void* ud,int argc,char** argv,char** co
 			return kContinue;
 		}
 	}
+	else if(scs->type == SqliteCallbackStruct::kQueryTopIndices){
+		auto pqti = static_cast<CBS_QueryTopIndices*>(scs);
+		auto pii = new CIndexItem;
+
+		pii->idx      = atoi(argv[0]);
+		pii->visible  = atoi(argv[3]);
+		pii->times    = argv[7];
+		pii->idxn     = argv[2];
+		pii->category = argv[1];
+		pii->comment  = argv[4];
+		pii->path     = argv[5];
+		pii->param    = argv[6];
+
+		pqti->indices->push_back(pii);
+
+		if(--pqti->count == 0){
+			return kAbort;
+		}
+		else{
+			return kContinue;
+		}
+	}
 	else{
 		assert(0);
 		return 1;
@@ -251,7 +308,6 @@ bool CSQLiteImpl::QueryCategory(const char* cat,vector<CIndexItem*>* V)
 {
 	char* err;
 	CBS_QueryCategory qcs;
-	qcs.type = SqliteCallbackStruct::kQueryCategory;
 	qcs.that = this;
 	qcs.V = V;
 	qcs.cat = cat;
@@ -279,9 +335,7 @@ bool CSQLiteImpl::QueryIndices(const char* find,vector<CIndexItem*>* R,bool* fou
 {
 	char* err;
 	CBS_QueryIndices qi;
-	qi.type = SqliteCallbackStruct::kQueryIndices;
 	qi.that = this;
-	qi.found = false;
 	qi.indices = R;
 	qi.find = find;
 
@@ -302,6 +356,29 @@ bool CSQLiteImpl::QueryIndices(const char* find,vector<CIndexItem*>* R,bool* fou
 		string e(err);
 		sqlite3_free(err);
 		throw CExcept(e.c_str(),"CSQLiteImpl::QueryIndices()");
+	}
+	return false;
+}
+
+bool CSQLiteImpl::QueryTopIndices(std::vector<CIndexItem*>* R, int count)
+{
+	if(count <= 0) return true;
+
+	char* err;
+	CBS_QueryTopIndices qti;
+	qti.that = this;
+	qti.count = count;
+	qti.indices = R;
+
+	std::string sql("select * from tbl_index order by times desc;");
+	int rv = sqlite3_exec(m_db, sql.c_str(), cbQeuryCallback, &qti, &err);
+	if(rv==SQLITE_OK || rv==SQLITE_ABORT){
+		return true;
+	}
+	else{
+		std::string e(err);
+		sqlite3_free(err);
+		throw CExcept(e.c_str(),"CSQLiteImpl::QueryTopIndices()");
 	}
 	return false;
 }

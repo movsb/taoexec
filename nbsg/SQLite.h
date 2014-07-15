@@ -32,6 +32,7 @@ public:
 	bool GetCategories(vector<string>* cats);
 	bool RenameCategory(const char* from, const char* to);
 	bool QueryIndices(const char* find,vector<CIndexItem*>* R,bool* found);
+	bool QueryTopIndices(std::vector<CIndexItem*>* R, int count);
 	bool FreeVectoredIndexItems(vector<CIndexItem*>* R);
 	bool AddItem(CIndexItem* pii);
 	bool DeleteItem(int idx);
