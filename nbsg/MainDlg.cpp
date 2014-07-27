@@ -14,6 +14,78 @@ using namespace DuiLib;
 #include "MainDlg.h"
 #include "InputBox.h"
 
+class IIndexItemObserver
+{
+public:
+	virtual void Update(const CIndexItem* pItem) = 0;
+	virtual void Delete(const CIndexItem* pItem) = 0;
+	virtual void UpdateTimes(const CIndexItem* pItem) = 0;
+};
+
+class CIndexItemObserver
+{
+public:
+	CIndexItemObserver()
+	{}
+
+	~CIndexItemObserver()
+	{}
+
+
+	bool Update(const CIndexItem* pItem)
+	{
+		for (auto& ob : m_obs){
+			ob->Update(pItem);
+		}
+		return true;
+	}
+
+	bool Delete(const CIndexItem* pItem)
+	{
+		for (auto& ob : m_obs){
+			ob->Delete(pItem);
+		}
+		return true;
+	}
+
+	bool UpdateTimes(const CIndexItem* pItem)
+	{
+		for (auto& ob : m_obs){
+			ob->UpdateTimes(pItem);
+		}
+		return true;
+	}
+
+	bool Add(IIndexItemObserver* pOb)
+	{
+		SMART_ASSERT(Find(pOb) == m_obs.end()).Fatal();
+		m_obs.push_back(pOb);
+		return true;
+	}
+
+	bool Remove(IIndexItemObserver* pOb)
+	{
+		auto it = Find(pOb);
+		SMART_ASSERT(it != m_obs.end()).Fatal();
+		m_obs.erase(it);
+		return true;
+	}
+
+	std::vector<IIndexItemObserver*>::const_iterator
+		Find(const IIndexItemObserver* pOb)
+	{
+		for (auto it = m_obs.begin(); it != m_obs.end(); it++){
+			if (*it == pOb)
+				return it;
+		}
+		return m_obs.end();
+	}
+
+
+protected:
+	std::vector<IIndexItemObserver*> m_obs;
+};
+
 class CSlideImageClientUI : public CVerticalLayoutUI
 {
 public:
@@ -110,7 +182,11 @@ public:
 	}
 	virtual LPCTSTR GetClass() const override
 	{
-		return _T("ListItemUI");
+		return GetClassStatic();
+	}
+	static LPCTSTR GetClassStatic()
+	{
+		return _T("IndexListItemUI");
 	}
 	virtual LPVOID GetInterface(LPCTSTR pstrName) override
 	{
@@ -298,13 +374,16 @@ public:
 	{
 
 	}
-	void PaintStatusImage(HDC hDC)
+	void PaintBkImage(HDC hDC)
 	{
 		//第1页内容会在timer到达之前绘制
 		if(!m_hIcon) LoadPathIcon();
 		if(m_hIcon==(HICON)INVALID_HANDLE_VALUE) return;
-		::DrawIconEx(hDC,m_rcPaint.left,m_rcPaint.top,m_hIcon,GetFixedWidth(),GetFixedHeight(),0,nullptr,DI_NORMAL);
-		return __super::PaintStatusImage(hDC);
+		::DrawIconEx(hDC,
+			m_rcItem.left,m_rcItem.top,
+			m_hIcon,
+			GetFixedWidth(),GetFixedHeight(),
+			0,nullptr,DI_NORMAL);
 	}
 
 public:
@@ -323,8 +402,53 @@ private:
 	CDuiString m_strPath;
 };
 
-class CIndexListUI : public CTileLayoutUI,public IDialogBuilderCallback
+class CIndexListUI : public CTileLayoutUI,public IDialogBuilderCallback, public IIndexItemObserver
 {
+// IIndexItemOberver interface
+public:
+	virtual void Update(const CIndexItem* pItem) override
+	{
+		int i = 0;
+		for (auto& it : m_iiVec){
+			if (pItem->idx == it->idx
+				&& pItem->category == it->category)
+			{
+				*it = *pItem;
+				auto pText = GetItemAt(i)->ToContainerUI()->GetItemAt(1);
+				pText->SetText(it->comment.c_str());
+				break; // only one
+			}
+			i++;
+		}
+	}
+
+	virtual void Delete(const CIndexItem* pItem) override
+	{
+		int i=0;
+		for (auto it = m_iiVec.begin(); it != m_iiVec.end(); it++){
+			auto item = *it;
+			if (item->idx == pItem->idx
+				&& item->category == pItem->category)
+			{
+				m_iiVec.erase(it);
+				SMART_ENSURE(RemoveAt(i),==true).Fatal();
+				break;
+			}
+		}
+	}
+
+	virtual void UpdateTimes(const CIndexItem* pItem) override
+	{
+		for (auto& it : m_iiVec){
+			if (pItem->idx == it->idx
+				&& pItem->category == it->category)
+			{
+				it->times = pItem->times;
+				break; // only one
+			}
+		}
+	}
+
 private:
 	const int kInitIconButtonTimerID;
 	const int kInitIconButtonTimerDelay;
@@ -425,7 +549,7 @@ public:
 		GetManager()->SetTimer(this, kInitIconButtonTimerID, kInitIconButtonTimerDelay);
 
 		auto pSel = new CButtonUI;
-		pSel->SetBkColor(0x33FF0000);
+		pSel->SetBkColor(0x22FF0000);
 		pSel->SetBorderColor(0x88FF0000);
 		pSel->SetBorderSize(1);
 		pSel->SetText("~ ^^ ~");
@@ -448,11 +572,12 @@ protected:
 	CDuiString		m_cat;
 
 public:
-	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI* pm)
+	CIndexListUI(CSQLite* db,const char* cat,CPaintManagerUI* pm, CIndexItemObserver& ob)
 		: m_db(db)
 		, m_cat(cat)
 		, kInitIconButtonTimerID(0)
 		, kInitIconButtonTimerDelay(3000)
+		, m_observer(ob)
 	{
 		SetItemSize(CSize(80,80));
 		SetManager(pm,0,false);
@@ -460,12 +585,15 @@ public:
 
 		SetAttribute("vscrollbar","true");
 		SetContextMenuUsed(true);
+
+		m_observer.Add(this);
 	}
 
-	~CIndexListUI()
+	virtual ~CIndexListUI()
 	{
 		for(auto p : m_iiVec)
 			delete p;
+		m_observer.Remove(this);
 	}
 
 	virtual void InitItems(const char* cat)
@@ -521,12 +649,6 @@ public:
 		return nullptr;
 	}
 
-	CTextUI* GetTextControlFromButton(CButtonUI* pBtn)
-	{
-		auto pVert = static_cast<CVerticalLayoutUI*>(pBtn->GetParent()->GetParent());
-		return static_cast<CTextUI*>(pVert->GetItemAt(1));
-	}
-
 	void RenameIndexItemsCategory(const char* to)
 	{
 		for(auto& i : m_iiVec){
@@ -537,6 +659,7 @@ public:
 	vector<CIndexItem*> m_iiVec;
 
 private:
+	CIndexItemObserver& m_observer;
 };
 
 class CIndexListTopIndexUI : public CIndexListUI
@@ -545,8 +668,8 @@ private:
 	const int kTopItems;
 
 public:
-	CIndexListTopIndexUI(CSQLite* db, CPaintManagerUI* pm)
-		: CIndexListUI(db, nullptr, pm)
+	CIndexListTopIndexUI(CSQLite* db, CPaintManagerUI* pm, CIndexItemObserver& ob)
+		: CIndexListUI(db, nullptr, pm, ob)
 		, kTopItems(20)
 	{}
 
@@ -571,6 +694,8 @@ public:
 		}
 	}
 };
+
+CIndexItemObserver g_IndexItemObserver;
 
 class CMainDlgImpl : public WindowImplBase
 {
@@ -639,11 +764,6 @@ private:
 	CMouseWheelHorzUI*		m_pTabList;
 	CTabLayoutUI*			m_pTabPage;
 
-	CButtonUI* m_pbtnClose;
-	CButtonUI* m_pbtnMin;
-	CButtonUI* m_pbtnRestore;
-	CButtonUI* m_pbtnMax;
-	CButtonUI* m_pbtnSearch;
 
 	template<class T1,class T2>
 	class TabManager
@@ -748,7 +868,7 @@ private:
 CMainDlg::CMainDlg(CSQLite* db)
 {
 	CMainDlgImpl* pFrame = new CMainDlgImpl(db);
-	pFrame->Create(NULL,"<system error!>",UI_WNDSTYLE_FRAME|WS_SIZEBOX,WS_EX_WINDOWEDGE);
+	pFrame->CreateDuiWindow(nullptr, nullptr,UI_WNDSTYLE_FRAME);
 	pFrame->CenterWindow();
 	pFrame->ShowWindow(true);
 }
@@ -768,41 +888,24 @@ DUI_END_MESSAGE_MAP()
 
 void CMainDlgImpl::OnClick(TNotifyUI& msg)
 {
-	if(_tcscmp(msg.pSender->GetClass(), _T("ListItemUI")) == 0){
+	if(_tcscmp(msg.pSender->GetClass(), CIndexListItemUI::GetClassStatic()) == 0){
 		int tag = msg.pSender->GetTag();
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto elem = pList->FindIndexList(tag);
 		if(APathLib::shellExec(GetHWND(),elem->path.c_str(),elem->param.c_str(),0)){
 			SMART_ENSURE(m_db->UpdateTimes(elem),==true)(elem->idx)(elem->comment).Warning();
+			g_IndexItemObserver.UpdateTimes(elem);
 			::ShowWindow(*this, SW_MINIMIZE);
 		}
 		return;
-	}
-	if(msg.pSender->GetName() == _T("searchbtn")){
-		auto pSearchBox = FindControl(_T("searchbox"))->ToHorizontalLayoutUI();
-		pSearchBox->SetFixedWidth(m_bSearchBoxExpanded?20:100);
-		m_bSearchBoxExpanded = !m_bSearchBoxExpanded;
-		auto pRichEdit = FindControl(_T("searchtext"))->ToRichEditUI();
-		pRichEdit->SetText(_T("type sth."));
-		pRichEdit->SetSelAll();
-		pRichEdit->SetModify(false);
-		pRichEdit->SetFocus();
-		return;
-	}
-
-	auto pName = msg.pSender->GetName();
-	if(pName == _T("minbtn")){
-		return (void)::ShowWindow(*this, SW_MINIMIZE);
-	}
-	else if(pName == _T("maxbtn")){
-		return (void)::ShowWindow(*this, ::IsZoomed(*this)?SW_RESTORE:SW_MAXIMIZE);
 	}
 	return __super::OnClick(msg);
 }
 
 void CMainDlgImpl::OnSelectChanged(TNotifyUI& msg)
 {
-	if(msg.pSender->GetUserData() == "index_list_option"){
+	if(msg.pSender->GetUserData() == "index_list_option"
+		|| msg.pSender->GetUserData() == "index_option_top"){
 		auto pOpt = static_cast<COptionUI*>(msg.pSender);
 		m_pTabPage->SelectItem(m_tm(pOpt));
 	}
@@ -815,6 +918,13 @@ void CMainDlgImpl::OnTimer(TNotifyUI& msg)
 
 void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 {
+	if(_tcscmp(msg.pSender->GetClass(), _T("OptionUI"))==0){
+		auto pOption = msg.pSender->ToOptionUI();
+		if(_tcscmp(pOption->GetGroup(),_T("contenttab")) == 0){
+			GetManager()->SendNotify(msg.pSender->GetParent(),DUI_MSGTYPE_MENU);
+			return;
+		}
+	}
 	if(typeid(*msg.pSender) == typeid(CMouseWheelHorzUI)){
 		auto pOption = GetManager()->FindSubControlByPoint(msg.pSender, msg.ptMouse)->ToOptionUI();
 		if(pOption == msg.pSender) pOption = nullptr;
@@ -954,7 +1064,7 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 		else return;
 	}
 
-	if(_tcscmp(msg.pSender->GetClass(), _T("ListItemUI")) == 0){ 
+	if(_tcscmp(msg.pSender->GetClass(), CIndexListItemUI::GetClassStatic()) == 0){ 
 		auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 		auto elem = pList->FindIndexList(msg.pSender->GetTag());
 		SMART_ASSERT(pList && elem).Fatal();
@@ -984,17 +1094,12 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 			{
 				CAddDlg dlg(GetHWND(),CAddDlg::TYPE_MODIFY,elem,m_db);
 				if(dlg.GetDlgCode() == CAddDlg::kOK){
-					auto pEdit = msg.pSender->ToContainerUI()->GetItemAt(1)->ToEditUI();
-					SMART_ASSERT(typeid(*pEdit) == typeid(CTextUI))(typeid(*pEdit).name()).Stop();
-					if(pEdit->GetText() != elem->comment.c_str()){
-						pEdit->SetText(elem->comment.c_str());
-					}
+					g_IndexItemObserver.Update(elem);
 				}
 				return;
 			}
 		case IDM_INDEX_REMOVE_MULTI:
 			{
-				//auto pItem = static_cast<CIndexListItemUI*>(msg.pSender);
 				CDuiString prompt;
 				prompt += _T("确定要删除以下索引?\n");
 				prompt += _T("\n索引: ");
@@ -1005,7 +1110,9 @@ void CMainDlgImpl::OnMenu(TNotifyUI& msg)
 						MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2)==IDNO)
 					return;
 				try{
+					CIndexItem tmpitem = *elem;
 					pList->RemoveItem(msg.pSender->ToContainerUI(),msg.pSender->GetTag());
+					g_IndexItemObserver.Delete(&tmpitem);
 				}
 				catch(CExcept* e)
 				{
@@ -1128,22 +1235,6 @@ void CMainDlgImpl::OnScroll(TNotifyUI& msg)
 
 void CMainDlgImpl::InitWindow()
 {	
-	GetManager()->GetRoot()->Init();
-	struct{
-		void* ptr;
-		const char*  name;
-	} li[] = {
-		{&m_pbtnMin,		"minbtn"},
-		{&m_pbtnMax,		"maxbtn"},
-		{&m_pbtnRestore,	"restorebtn"},
-		{&m_pbtnClose,		"closebtn"},
-		{&m_pbtnSearch,		"searchbtn"},
-		{0,0}
-	};
-	for(int i=0;li[i].ptr; i++){
-		SMART_ENSURE(*(CControlUI**)li[i].ptr = FindControl(li[i].name),!=nullptr)(i)(li[i].name).Stop();
-	}
-
 	m_pTabList = static_cast<CMouseWheelHorzUI*>(FindControl(_T("tabs")));
 	m_pTabPage = FindControl(_T("switch"))->ToTabLayoutUI();
 
@@ -1191,10 +1282,8 @@ bool CMainDlgImpl::AddIndexTab(const char* name,int tag,const char* group)
 	pOption->SetAttribute("text",name);
 	pOption->SetAttribute("width","60");
 	pOption->SetAttribute("textcolor","0xFF386382");
-	pOption->SetAttribute("normalimage","file='tabbar_normal.png' fade='50'");
-	pOption->SetAttribute("hotimage","tabbar_hover.png");
-	pOption->SetAttribute("pushedimage","tabbar_pushed.png");
-	pOption->SetAttribute("selectedimage","file='tabbar_pushed.png' fade='150'");
+	pOption->SetAttribute("hotbkcolor", "0x33FF0000");
+	pOption->SetAttribute("selectedbkcolor", "0x33555555");
 	pOption->SetAttribute("group","contenttab");
 	pOption->SetAttribute("menu","true");
 	pOption->SetAttribute("font", "1");
@@ -1202,7 +1291,7 @@ bool CMainDlgImpl::AddIndexTab(const char* name,int tag,const char* group)
 	pOption->SetUserData(group);
 	pOption->SetTag(tag);
 
-	auto pList = new CIndexListUI(m_db,name,GetManager());
+	auto pList = new CIndexListUI(m_db,name,GetManager(), g_IndexItemObserver);
 	pList->SetTag(tag);
 	pList->SetUserData(group);
 
@@ -1219,18 +1308,16 @@ bool CMainDlgImpl::AddTopIndexTab(const char* name, int tag, const char* group)
 	pOption->SetAttribute("text",name);
 	pOption->SetAttribute("width","60");
 	pOption->SetAttribute("textcolor","0xFF386382");
-	pOption->SetAttribute("normalimage","file='tabbar_normal.png' fade='50'");
-	pOption->SetAttribute("hotimage","tabbar_hover.png");
-	pOption->SetAttribute("pushedimage","tabbar_pushed.png");
-	pOption->SetAttribute("selectedimage","file='tabbar_pushed.png' fade='150'");
-	pOption->SetAttribute("group","contenttab");
+	pOption->SetAttribute("hotbkcolor", "0x33FF0000");
+	pOption->SetAttribute("selectedbkcolor", "0x33555555");
+	pOption->SetAttribute("group", "contenttab");
 	pOption->SetAttribute("menu","true");
 	pOption->SetAttribute("font", "1");
 
 	pOption->SetUserData(group);
 	pOption->SetTag(tag);
 
-	auto pList = new CIndexListTopIndexUI(m_db,GetManager());
+	auto pList = new CIndexListTopIndexUI(m_db,GetManager(), g_IndexItemObserver);
 	pList->SetTag(tag);
 	pList->SetUserData(group);
 
@@ -1252,12 +1339,12 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 			::ScreenToClient(GetHWND(),&pt);
 
 			auto pControl = FindControl(pt);
-			const char* p = pControl->GetClass();
+			auto pClass = pControl->GetClass();
 
 			vector<string> files;
 			CDropFiles drop(hDrop, &files);
 
-			if(typeid(*pControl) == typeid(CIndexListUI)){
+			if (_tcscmp(pControl->GetClass(), CIndexListUI::GetClassStatic()) == 0){
 				auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 				auto pOpt = m_tm(pList);
 
@@ -1272,7 +1359,7 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 					pList->AddItem(pii,true);
 				}
 			}
-			else if(typeid(*pControl) == typeid(CIndexListItemUI)){
+			else if (_tcscmp(pControl->GetClass(), CIndexListItemUI::GetClassStatic()) == 0){
 				int tag = pControl->GetTag();
 				auto pList = static_cast<CIndexListUI*>(m_pTabPage->GetItemAt(m_pTabPage->GetCurSel()));
 				auto elem = pList->FindIndexList(tag);
@@ -1300,9 +1387,6 @@ LRESULT CMainDlgImpl::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPara
 			bHandled = TRUE;
 			return 0;
 		}
-// 	case WM_KILLFOCUS:
-// 		SendMessage(WM_SYSCOMMAND, SC_MINIMIZE);
-// 		goto brk;
 	}
 
 	bHandled = FALSE;
@@ -1313,17 +1397,20 @@ LRESULT CMainDlgImpl::OnSysCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 {
 	BOOL bZoomed = ::IsZoomed(m_hWnd);
 	LRESULT lRes = CWindowWnd::HandleMessage(uMsg, wParam, lParam);
-	if (::IsZoomed(m_hWnd) != bZoomed)
+	if (bZoomed != ::IsZoomed(m_hWnd))
 	{
-		if (!bZoomed)
+		bZoomed = ::IsZoomed(m_hWnd);
+		auto btnmax = FindControl(_T("maxbtn"));
+		auto btnrestore = FindControl(_T("restorebtn"));
+		if (bZoomed)
 		{
-			m_pbtnMax->SetVisible(false);
-			m_pbtnRestore->SetVisible(true);
+			btnmax->SetVisible(false);
+			btnrestore->SetVisible(true);
 		}
 		else 
 		{
-			m_pbtnMax->SetVisible(true);
-			m_pbtnRestore->SetVisible(false);
+			btnmax->SetVisible(true);
+			btnrestore->SetVisible(false);
 		}
 	}
 	return lRes;
