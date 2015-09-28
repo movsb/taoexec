@@ -1,6 +1,3 @@
 /bin/
 /output/
-*.sdf
-*.opensdf
-*.suo
-*.user
+

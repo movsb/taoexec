@@ -13,10 +13,27 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\sqlite3">
+      <UniqueIdentifier>{e64017e6-4a8f-426f-9023-d8b7a459e4f4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\third\sqlite3\sqlite3.c">
+      <Filter>Source Files\sqlite3</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\model.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\third\sqlite3\sqlite3.h">
+      <Filter>Source Files\sqlite3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\model.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
