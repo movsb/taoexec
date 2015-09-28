@@ -9,6 +9,8 @@
 #include <windows.h>
 #include <ShlObj.h>
 
+#include "model.h"
+
 static std::map<std::string, std::string> g_variables;
 typedef std::vector<std::string> func_args;
 static std::map<std::string, std::function<std::string(func_args& args)>> g_functions;
@@ -245,9 +247,26 @@ int main() {
 
     initialize_globals();
 
-    for (auto& path : paths) {
-        std::cout << expand(path) << std::endl;
-    };
+    //for (auto& path : paths) {
+    //    std::cout << expand(path) << std::endl;
+    //};
 
+    nbsg::model::db_t db;
+    db.open(R"(中文.db)");
+
+    std::cout << sizeof(R"(中文.db)") << strlen(R"(中文.db)");
+
+    nbsg::model::item_t item;
+    item.index = "fx";
+    item.comment = "firefox";
+    item.group = "app";
+    item.path = "女孩不哭";
+    item.visibility = 1;
+    db.insert(&item);
+
+    db.close();
+
+    MessageBox(NULL, "中文", NULL, 0);
+    
     return 0;
 }
