@@ -1,7 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Window size="150,24" bktrans="true" alpha="150">
-	<Font name="Consolas" size="16" />
-	<VerticalLayout bkimage="file='btn.png' source='0,0,96,24' corner='5,11,5,11'" inset="3,3,3,3">
-		<RichEdit name="command" textcolor="0xFFFF0000" wanttab="false" wantreturn="false" rich="false" multiline="false" autohscroll="true" menu="true" font="0"/>
-	</VerticalLayout>
-</Window>

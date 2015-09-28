@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
-<Window>
-	<ListItem width="80" height="80" hotimage="file='btn_hot.png' corner='2,2,2,2'" pushedimage="file='btn_down.png' corner='2,2,2,2'" menu="true" inset="4,6,4,6" mousechild="false">
-		<HorizontalLayout height="32" width="72" inset="20,0,20,0">
-			<IconButton width="32" height="32"/>
-		</HorizontalLayout>
-		<Text align="center" width="72" height="36" font="1"/>
-	</ListItem>
-</Window>
