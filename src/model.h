@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #include <sqlite3/sqlite3.h>
 
@@ -37,6 +38,7 @@ namespace nbsg {
             int     insert(const item_t* item);
             int     remove(const std::string& where);
             int     query(const std::string& pattern, std::vector<item_t*>* items);
+            int     query(const std::string& pattern, std::function<bool(item_t& item)> callback);
             int     modify(const item_t* item);
 
         private:

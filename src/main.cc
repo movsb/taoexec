@@ -10,6 +10,8 @@
 #include <ShlObj.h>
 
 #include "model.h"
+#include "charset.h"
+#include "window.h"
 
 static std::map<std::string, std::string> g_variables;
 typedef std::vector<std::string> func_args;
@@ -228,6 +230,8 @@ std::string expand(const std::string& raw) {
     return result;
 }
 
+nbsg::model::db_t* pdb;
+
 int main() {
     const char* paths[] = {
         "${exe_dir}",
@@ -252,7 +256,8 @@ int main() {
     //};
 
     nbsg::model::db_t db;
-    db.open(R"(中文.db)");
+    pdb = &db;
+    db.open(nbsg::charset::a2e(R"(中文.db)"));
 
     std::cout << sizeof(R"(中文.db)") << strlen(R"(中文.db)");
 
@@ -260,13 +265,75 @@ int main() {
     item.index = "fx";
     item.comment = "firefox";
     item.group = "app";
-    item.path = "女孩不哭";
+    item.path = "firefox.exe";
     item.visibility = 1;
     db.insert(&item);
 
+
+    class nbsg_window : public nbsg::window::frame_window_t {
+    public:
+        LRESULT wndproc(UINT msg, WPARAM wp, LPARAM lp) override{
+            if (msg == WM_CREATE) {
+                auto _list = new nbsg::window::listview_child_t;
+                _list->create(_hwnd, 0, "", { 10, 10, 790, 590 });
+
+                LVCOLUMN col;
+                col.mask = LVCF_TEXT | LVCF_WIDTH;
+                col.cx = 100;
+                col.pszText = "id";
+                _list->insert_column(0, &col);
+                col.pszText = "index";
+                _list->insert_column(1, &col);
+                col.pszText = "group";
+                _list->insert_column(2, &col);
+                col.pszText = "comment";
+                _list->insert_column(3, &col);
+                col.pszText = "path";
+                _list->insert_column(4, &col);
+                col.pszText = "params";
+                _list->insert_column(5, &col);
+                col.pszText = "work_dir";
+                _list->insert_column(6, &col);
+                col.pszText = "env";
+                _list->insert_column(7, &col);
+                col.pszText = "visibility";
+                _list->insert_column(8, &col);
+
+                auto int2str = [](int i) {
+                    char buf[20];
+                    sprintf(buf, "%d", i);
+                    return std::string(buf);
+                };
+
+                pdb->query("", [&](nbsg::model::item_t& item)->bool {
+                    return -1 != _list->insert_item(
+                        int2str(item.id),
+                        item.index,
+                        item.group,
+                        item.comment,
+                        item.path,
+                        item.params,
+                        item.work_dir,
+                        item.env,
+                        int2str(item.visibility)
+                        );
+                });
+
+                _children.add(_list);
+            }
+
+            return __super::wndproc(msg, wp, lp);
+        }
+    };
+
+    nbsg_window mainwnd;
+    mainwnd.create("nbsg", { 100, 100, 900, 700 });
+    mainwnd.show();
+
+    nbsg::window::message_loop_t loop;
+    loop.loop();
+
     db.close();
 
-    MessageBox(NULL, "中文", NULL, 0);
-    
     return 0;
 }

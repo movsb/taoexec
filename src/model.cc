@@ -100,6 +100,39 @@ namespace nbsg {
             return -1;
         }
 
+        int db_t::query(const std::string& pattern, std::function<bool(item_t& item)> callback) {
+            const char* sql = "SELECT * FROM items;";
+            sqlite3_stmt* stmt;
+            if (::sqlite3_prepare(_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+                return -1;
+            }
+
+            int sr, n = 0;
+            while ((sr = ::sqlite3_step(stmt)) == SQLITE_ROW) {
+                item_t i;
+                
+                i.id         = ::sqlite3_column_int(stmt, 0);
+                i.index      = (char*)::sqlite3_column_text(stmt, 1);
+                i.group      = (char*)::sqlite3_column_text(stmt, 2);
+                i.comment    = (char*)::sqlite3_column_text(stmt, 3);
+                i.path       = (char*)::sqlite3_column_text(stmt, 4);
+                i.params     = (char*)::sqlite3_column_text(stmt, 5);
+                i.work_dir   = (char*)::sqlite3_column_text(stmt, 6);
+                i.env        = (char*)::sqlite3_column_text(stmt, 7);
+                i.visibility = !!::sqlite3_column_int(stmt, 8);
+
+                callback(i);
+
+                n++;
+            }
+
+            if (sr != SQLITE_DONE) {
+                return -1;
+            }
+
+            return n;
+        }
+
         int db_t::modify(const item_t* item) {
             return -1;
         }
