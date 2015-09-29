@@ -131,6 +131,73 @@ namespace nbsg {
             WNDPROC     _wndproc;
         };
 
+        class layout_object_i {
+        public:
+            virtual void set_pos(const RECT& rect) = 0;
+            virtual SIZE calc_size() = 0;
+        };
+
+        class layout_object_t {
+        public:
+            class attr {
+            public:
+                enum _has_attr {};
+                // for single
+                static const _has_attr left             = (_has_attr)0x00000001;
+                static const _has_attr top              = (_has_attr)0x00000002;
+                static const _has_attr right            = (_has_attr)0x00000004;
+                static const _has_attr bottom           = (_has_attr)0x00000008;
+                static const _has_attr width            = (_has_attr)0x00000010;
+                static const _has_attr height           = (_has_attr)0x00000020;
+                static const _has_attr max_width        = (_has_attr)0x00000040;
+                static const _has_attr max_height       = (_has_attr)0x00000080;
+                static const _has_attr min_width        = (_has_attr)0x00000100;
+                static const _has_attr min_height       = (_has_attr)0x00000200;
+
+                /*
+                static const _has_attr display          = (_has_attr)0x00001000;
+                static const _has_attr visibility       = (_has_attr)0x00002000;
+                static const _has_attr position         = (_has_attr)0x00004000;
+
+                // for position
+                static const _has_attr static_          = (_has_attr)0x80000000;
+                static const _has_attr absolute         = (_has_attr)0x80000001;
+                static const _has_attr fixed            = (_has_attr)0x80000002;
+                static const _has_attr relative         = (_has_attr)0x80000003;
+
+
+                // for display
+                static const _has_attr none             = (_has_attr)0x80000100;
+                static const _has_attr inline_          = (_has_attr)0x80000101;
+                static const _has_attr inline_block     = (_has_attr)-102;
+                static const _has_attr block            = (_has_attr)-103;
+
+                // for visibility, 使用最低位
+                static const _has_attr visibility_mask  = (_has_attr)0x00000001;
+                static const _has_attr visible          = (_has_attr)0x00000000;
+                static const _has_attr hidden           = (_has_attr)0x00000001;
+                */
+            };
+
+            layout_object_t()
+                : flags(0)
+                , position("static")
+                , visibility("visible")
+                , display("inline")
+            {}
+
+        public:
+            unsigned int    flags;
+            int             left, top, right, bottom;
+            int             width, height;
+            int             max_with, max_height, min_width, min_height;
+            //bool            display, visibility;
+            //int             position;
+            std::string     display;
+            std::string     visibility;
+            std::string     position;
+        };
+
         class child_window_t;
 
         class frame_window_t : public window_base_t, message_filter_i {
@@ -140,6 +207,7 @@ namespace nbsg {
             virtual bool create(const std::string& text = std::string(), RECT rect = {100, 100, 300, 300});
 
             bool show(bool show_ = true, bool focus = true);
+            void show_scrollbar(int h, int v);
 
         protected:
             virtual LRESULT wndproc(UINT msg, WPARAM wp, LPARAM lp);
@@ -153,7 +221,10 @@ namespace nbsg {
 
         protected: // for base
             virtual DWORD _get_window_style() {
-                return WS_OVERLAPPEDWINDOW;
+                return WS_OVERLAPPEDWINDOW
+                    | WS_HSCROLL
+                    | WS_VSCROLL
+                    ;
             }
 
             virtual DWORD _get_window_ex_style() {
@@ -164,7 +235,7 @@ namespace nbsg {
             c_ptr_array<child_window_t> _children;
         };
 
-        class child_window_t : public window_base_t {
+        class child_window_t : public window_base_t, public layout_object_i {
         public:
             virtual bool create(
                 HWND parent,
@@ -181,6 +252,37 @@ namespace nbsg {
             virtual DWORD _get_window_ex_style() {
                 return 0;
             }
+
+        public: // layout_object_i interfaces
+            virtual void set_pos(const RECT& rect) override {
+                if(::EqualRect(&_rect, &rect)) return;
+                ::SetWindowPos(_hwnd, 0,
+                    rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+                    SWP_NOZORDER);
+                _rect = rect;
+            }
+
+            virtual SIZE calc_size() override {
+                RECT rc;
+                ::GetWindowRect(_hwnd, &rc);
+                return {rc.right - rc.left, rc.bottom - rc.top};
+            }
+
+        /*protected:*/
+        public:
+            RECT            _rect;
+            layout_object_t _layout;
+        };
+
+        class button_child_t : public child_window_t {
+        public:
+            virtual bool create(
+                HWND parent,
+                UINT id = 0,
+                const std::string& text = std::string(),
+                RECT rect = {10, 10, 210, 60}
+            ) override;
+
         };
 
         class listview_child_t : public child_window_t {

@@ -249,12 +249,13 @@ int main() {
         "$app_path(firefox.exe)",
     };
 
-    initialize_globals();
+    //initialize_globals();
 
     //for (auto& path : paths) {
     //    std::cout << expand(path) << std::endl;
     //};
 
+    /*
     nbsg::model::db_t db;
     pdb = &db;
     db.open(nbsg::charset::a2e(R"(中文.db)"));
@@ -268,12 +269,13 @@ int main() {
     item.path = "firefox.exe";
     item.visibility = 1;
     db.insert(&item);
-
+    */
 
     class nbsg_window : public nbsg::window::frame_window_t {
     public:
         LRESULT wndproc(UINT msg, WPARAM wp, LPARAM lp) override{
-            if (msg == WM_CREATE) {
+            if(msg == WM_CREATE) {
+                /*
                 auto _list = new nbsg::window::listview_child_t;
                 _list->create(_hwnd, 0, "", { 10, 10, 790, 590 });
 
@@ -300,26 +302,343 @@ int main() {
                 _list->insert_column(8, &col);
 
                 auto int2str = [](int i) {
-                    char buf[20];
-                    sprintf(buf, "%d", i);
-                    return std::string(buf);
+                char buf[20];
+                sprintf(buf, "%d", i);
+                return std::string(buf);
                 };
 
                 pdb->query("", [&](nbsg::model::item_t& item)->bool {
-                    return -1 != _list->insert_item(
-                        int2str(item.id),
-                        item.index,
-                        item.group,
-                        item.comment,
-                        item.path,
-                        item.params,
-                        item.work_dir,
-                        item.env,
-                        int2str(item.visibility)
-                        );
+                return -1 != _list->insert_item(
+                int2str(item.id),
+                item.index,
+                item.group,
+                item.comment,
+                item.path,
+                item.params,
+                item.work_dir,
+                item.env,
+                int2str(item.visibility)
+                );
                 });
 
                 _children.add(_list);
+                */
+
+                auto
+
+                    _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮2");
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮3");
+                _btn->_layout.flags |=
+                    nbsg::window::layout_object_t::attr::left
+                    | nbsg::window::layout_object_t::attr::right
+                    | nbsg::window::layout_object_t::attr::top
+                    | nbsg::window::layout_object_t::attr::bottom;
+                _btn->_layout.left = 10;
+                _btn->_layout.right = 10;
+                _btn->_layout.top = 10;
+                _btn->_layout.bottom = 10;
+                _btn->_layout.position = "absolute";
+
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮4");
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮");
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮");
+                _children.add(_btn);
+
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮");
+                _btn->_layout.display = "block";
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮");
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮");
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮");
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮");
+                _btn->_layout.position = "relative";
+                _btn->_layout.flags |= nbsg::window::layout_object_t::attr::top
+                    | nbsg::window::layout_object_t::attr::right;
+                _btn->_layout.top = 10;
+                _btn->_layout.right = 10;
+                _children.add(_btn);
+
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this, 0, "按钮");
+                _children.add(_btn); 
+            }
+            else if(msg == WM_SIZE) {
+                int cw = (int)LOWORD(lp);   // client width
+                int ch = (int)HIWORD(lp);   // client height
+
+                int dw = 0; // desired width
+                int dh = 0; // desired height
+
+                int x = 0;  // position axis x
+                int y = 0;  // position axis y
+
+                int lw = 0; // current line width, max
+                int lh = 0; // current line height, max
+
+                static auto process_scrollbar = [&](int cw, int ch, int dw, int dh){
+                    bool bSetVert = false, bSetHorz = false;
+
+                    if(dh > ch)
+                        bSetVert = true;
+
+                    if(dw > cw)
+                        bSetHorz = true;
+
+                    SCROLLINFO si = {0};
+                    si.cbSize = sizeof(si);
+                    si.fMask = SIF_ALL;
+                    si.nMin = 0;
+                    si.nPos = 0;
+                    si.nPage = 200;
+                    if(bSetVert) {
+                        si.nMax = dh - ch - 1 + si.nPage - 1;
+                        ::SetScrollInfo(_hwnd, SB_VERT, &si, TRUE);
+                        ::ShowScrollBar(_hwnd, SB_VERT, TRUE);
+                    } else {
+                        ::ShowScrollBar(_hwnd, SB_VERT, FALSE);
+                    }
+                    if(bSetHorz) {
+                        si.nMax = dw - cw - 1 + si.nPage - 1;
+                        ::SetScrollInfo(_hwnd, SB_HORZ, &si, TRUE);
+                        ::ShowScrollBar(_hwnd, SB_HORZ, TRUE);
+                    } else {
+                        ::ShowScrollBar(_hwnd, SB_HORZ, FALSE);
+                    }
+                };
+
+                for(int i = 0; i < _children.size(); i++) {
+                    auto obj = _children[i];
+                    auto& layout = obj->_layout;
+                    SIZE sz = obj->calc_size();
+
+                    static auto calc_relative = [](RECT* rc, const nbsg::window::layout_object_t& layout) {
+                        using namespace nbsg::window;
+                        auto& flags = layout.flags;
+                        if(flags & layout_object_t::attr::left) {
+                            rc->left += layout.left;
+                            rc->right += layout.left;
+                        }
+                        else if(flags & layout_object_t::attr::right) {
+                            rc->left -= layout.right;
+                            rc->right -= layout.right;
+                        }
+
+                        if(flags & layout_object_t::attr::top) {
+                            rc->top += layout.top;
+                            rc->bottom += layout.top;
+                        }
+                        else if(flags & layout_object_t::attr::bottom) {
+                            rc->top -= layout.bottom;
+                            rc->bottom -= layout.bottom;
+                        }
+                    };
+
+                    if(layout.display != "none") { // 仅对非隐藏元素布局
+                        if(layout.position == "static" || layout.position == "relative") {
+                            bool is_relative = layout.position == "relative";
+
+                            if(layout.display == "inline") {
+                                // if exceeds cw
+                                bool new_line = false;
+                                if(lw + sz.cx > cw) {
+                                    new_line = true;
+                                    // switch to next line
+                                    x = 0;
+                                    y += lh;
+                                    //dh += lh;
+                                    lh = 0;
+                                    lw = 0;
+                                }
+
+                                RECT rc = {x, y, x + sz.cx, y + sz.cy};
+                                if(is_relative)
+                                    calc_relative(&rc, layout);
+                                obj->set_pos(rc);
+
+                                x += sz.cx;
+
+                                // new desired height max
+                                if(new_line) {
+                                    dh += sz.cy;
+                                    lh = sz.cy;
+                                }
+                                else {
+                                    if(sz.cy > lh) {
+                                        dh += sz.cy - lh;
+                                        lh = sz.cy;
+                                    }
+                                    else {
+                                        lh = sz.cy;
+                                    }
+                                }
+
+                                lw  += sz.cx;
+                                if(lw > dw)
+                                    dw = lw;
+                            }
+                            else if(layout.display == "block") {
+                                x = 0;
+                                y += lh;
+                                lh = 0;
+
+                                RECT rc = {x, y, x + /*sz.cx*/ cw, y + sz.cy};
+                                if(is_relative)
+                                    calc_relative(&rc, layout);
+                                obj->set_pos(rc);
+
+                                x = 0;
+                                y += sz.cy;
+                                lh = 0; // already added to y
+
+                                if(sz.cx > dw) // directly influence the dw, not lw
+                                    dw = sz.cx;
+
+                                lw = 0;
+                                dh += sz.cy;
+                            }
+                        }
+                        else if(layout.position == "absolute") {
+                            using namespace nbsg::window;
+                            RECT rcp = {0, 0, cw, ch};
+                            RECT rc = {0, 0, sz.cx, sz.cy};
+
+                            const int top = layout_object_t::attr::top;
+                            const int left = layout_object_t::attr::left;
+                            const int right = layout_object_t::attr::right;
+                            const int bottom = layout_object_t::attr::bottom;
+
+                            if(layout.flags & top)
+                                rc.top = rcp.top + layout.top;
+                            if(layout.flags & left)
+                                rc.left = rcp.left + layout.left;
+                            if(layout.flags & right)
+                                rc.right = rcp.right - layout.right;
+                            if(layout.flags & bottom)
+                                rc.bottom = rcp.bottom - layout.bottom;
+
+                            obj->set_pos(rc);
+                        }
+                    }
+                } // end for _children
+
+                process_scrollbar(cw,ch, dw, dh);
+                
+                return 0;
+            }
+            /*
+            else if(msg == WM_MOUSEWHEEL) {
+                DWORD keys = GET_KEYSTATE_WPARAM(wp);
+                int delta = GET_WHEEL_DELTA_WPARAM(wp);
+
+                UINT msg = keys & MK_SHIFT ? WM_HSCROLL : WM_VSCROLL;
+                WORD sbm = delta > 0 ? SB_LINEUP : SB_LINEDOWN;
+
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+                send_message(msg, MAKEWPARAM(sbm, 0), 0);
+
+                return 0;
+            }*/
+            else if(msg == WM_VSCROLL || msg == WM_HSCROLL){
+                if(msg == WM_VSCROLL) {
+                    SCROLLINFO si = {0};
+                    int iVertPos = 0;
+                    si.cbSize = sizeof(si);
+                    si.fMask = SIF_ALL;
+                    ::GetScrollInfo(_hwnd, SB_VERT, &si);
+                    iVertPos = si.nPos;
+
+                    switch(LOWORD(wp)) {
+                    case SB_ENDSCROLL:						break;
+                    case SB_TOP:		si.nPos = 0;		break;
+                    case SB_BOTTOM:		si.nPos = si.nMax;	break;
+                    case SB_LINEUP:		si.nPos--;			break;
+                    case SB_LINEDOWN:	si.nPos++;			break;
+                    case SB_PAGEUP:		si.nPos -= si.nPage; break;
+                    case SB_PAGEDOWN:	si.nPos += si.nPage; break;
+                    case SB_THUMBTRACK:
+                    case SB_THUMBPOSITION:
+                        si.nPos = si.nTrackPos; break;
+                    }
+
+                    si.fMask = SIF_POS;
+                    ::SetScrollInfo(_hwnd, SB_VERT, &si, TRUE);
+                    ::GetScrollInfo(_hwnd, SB_VERT, &si);
+
+                    if(si.nPos != iVertPos) {
+                        ::ScrollWindow(_hwnd, 0, (iVertPos - si.nPos), NULL, NULL);
+                        ::UpdateWindow(_hwnd);
+                    }
+                } else if(msg == WM_HSCROLL) {
+                    SCROLLINFO si = {0};
+                    int iHorzPos = 0;
+                    si.cbSize = sizeof(si);
+                    si.fMask = SIF_ALL;
+                    ::GetScrollInfo(_hwnd, SB_HORZ, &si);
+                    iHorzPos = si.nPos;
+
+                    switch(LOWORD(wp)) {
+                    case SB_ENDSCROLL:						break;
+                    case SB_LEFT:		si.nPos = 0;		break;
+                    case SB_RIGHT:		si.nPos = si.nMax;	break;
+                    case SB_LINELEFT:	si.nPos--;			break;
+                    case SB_LINERIGHT:	si.nPos++;			break;
+                    case SB_PAGELEFT:	si.nPos -= si.nPage; break;
+                    case SB_PAGERIGHT:	si.nPos += si.nPage; break;
+                    case SB_THUMBTRACK:
+                    case SB_THUMBPOSITION:
+                        si.nPos = si.nTrackPos; break;
+                    }
+
+                    si.fMask = SIF_POS;
+                    ::SetScrollInfo(_hwnd, SB_HORZ, &si, TRUE);
+                    ::GetScrollInfo(_hwnd, SB_HORZ, &si);
+
+                    if(si.nPos != iHorzPos) {
+                        ::ScrollWindow(_hwnd, (iHorzPos - si.nPos), 0, NULL, NULL);
+                        ::UpdateWindow(_hwnd);
+                    }
+                }
+
+                return 0;
             }
 
             return __super::wndproc(msg, wp, lp);
@@ -333,7 +652,7 @@ int main() {
     nbsg::window::message_loop_t loop;
     loop.loop();
 
-    db.close();
+    //db.close();
 
     return 0;
 }

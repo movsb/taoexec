@@ -1,0 +1,22 @@
+position:
+    static
+    fixed
+    absolute
+    relative
+
+left
+top
+right
+bottom
+
+width
+height
+
+max-width
+max-height
+min-width
+min-height
+
+display
+visibility
+

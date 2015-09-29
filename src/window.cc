@@ -137,6 +137,22 @@ namespace nbsg {
             return _hwnd;
         }
 
+        void frame_window_t::show_scrollbar(int h, int v) {
+            if(h != -1)
+                ::ShowScrollBar(_hwnd, SB_HORZ, h);
+            if(v != -1)
+                ::ShowScrollBar(_hwnd, SB_VERT, v);
+        }
+
+        // button
+        bool button_child_t::create(HWND parent, UINT id, const std::string& text, RECT rect)
+        {
+            _hwnd = ::CreateWindowEx(_get_window_ex_style(), WC_BUTTON, text.c_str(), _get_window_style(),
+                rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+                parent, HMENU(id), nullptr, 0);
+
+            return !!_hwnd;
+        }
 
         // list view
         bool listview_child_t::create(HWND parent, UINT id, const std::string& text, RECT rect)
