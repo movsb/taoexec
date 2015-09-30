@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <functional>
+#include <algorithm>
 
 #include <windows.h>
 #include <ShlObj.h>
@@ -12,6 +13,9 @@
 #include "model.h"
 #include "charset.h"
 #include "window.h"
+
+#undef min
+#undef max
 
 static std::map<std::string, std::string> g_variables;
 typedef std::vector<std::string> func_args;
@@ -324,82 +328,87 @@ int main() {
                 _children.add(_list);
                 */
 
-                auto
+                _root = new nbsg::window::layout_container_t;
 
+                nbsg::window::button_child_t* _btn;
+                /*
+                auto
+                    
                     _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮2");
-                _children.add(_btn);
+                _btn->create(*this);
+                _root->add(_btn);
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮3");
-                _btn->_layout.flags |=
-                    nbsg::window::layout_object_t::attr::left
+                _btn->create(*this);
+                _btn->_layout.flags |= 0
                     | nbsg::window::layout_object_t::attr::right
                     | nbsg::window::layout_object_t::attr::top
-                    | nbsg::window::layout_object_t::attr::bottom;
-                _btn->_layout.left = 10;
-                _btn->_layout.right = 10;
-                _btn->_layout.top = 10;
-                _btn->_layout.bottom = 10;
+                    ;
+                _btn->_layout.right = 0;
+                _btn->_layout.top = 0;
                 _btn->_layout.position = "absolute";
 
-                _children.add(_btn);
+                _root->add(_btn);
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮4");
-                _children.add(_btn);
+                _btn->create(*this);
+                _root->add(_btn);
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮");
-                _children.add(_btn);
+                _btn->create(*this);
+                _root->add(_btn);
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮");
-                _children.add(_btn);
+                _btn->create(*this);
+                _root->add(_btn);
 
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮");
+                _btn->create(*this);
                 _btn->_layout.display = "block";
-                _children.add(_btn);
+                _root->add(_btn);
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮");
-                _children.add(_btn);
+                _btn->create(*this);
+                _root->add(_btn);*/
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮");
-                _children.add(_btn);
+                _btn->create(*this,0,"3");
+                _root->add(_btn);
+
+                auto con = new nbsg::window::layout_container_t;
+                con->create(*this);
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮");
-                _children.add(_btn);
-
+                _btn->create(*this,0,"1");
+                con->add(_btn);/*
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮");
+                _btn->create(*this,0,"2");
+                con->add(_btn);*/
+
+                _root->add(con);
+
+                
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this,0,"4");
+                _root->add(_btn);
+                /*
+                _btn = new nbsg::window::button_child_t;
+                _btn->create(*this);
                 _btn->_layout.position = "relative";
                 _btn->_layout.flags |= nbsg::window::layout_object_t::attr::top
                     | nbsg::window::layout_object_t::attr::right;
-                _btn->_layout.top = 10;
-                _btn->_layout.right = 10;
-                _children.add(_btn);
+                _btn->_layout.top = 0;
+                _btn->_layout.right = 0;
+                _root->add(_btn);
 
                 _btn = new nbsg::window::button_child_t;
-                _btn->create(*this, 0, "按钮");
-                _children.add(_btn); 
+                _btn->create(*this);
+                _root->add(_btn);*/
             }
             else if(msg == WM_SIZE) {
-                int cw = (int)LOWORD(lp);   // client width
-                int ch = (int)HIWORD(lp);   // client height
-
-                int dw = 0; // desired width
-                int dh = 0; // desired height
-
-                int x = 0;  // position axis x
-                int y = 0;  // position axis y
-
-                int lw = 0; // current line width, max
-                int lh = 0; // current line height, max
+                int cw = (int)LOWORD(lp);
+                int ch = (int)HIWORD(lp);
 
                 static auto process_scrollbar = [&](int cw, int ch, int dw, int dh){
                     bool bSetVert = false, bSetHorz = false;
@@ -432,151 +441,12 @@ int main() {
                     }
                 };
 
-                for(int i = 0; i < _children.size(); i++) {
-                    auto obj = _children[i];
-                    auto& layout = obj->_layout;
-                    SIZE sz = obj->calc_size();
+                SIZE sz = _root->set_pos({ 0, 0, cw, ch });
 
-                    static auto calc_relative = [](RECT* rc, const nbsg::window::layout_object_t& layout) {
-                        using namespace nbsg::window;
-                        auto& flags = layout.flags;
-                        if(flags & layout_object_t::attr::left) {
-                            rc->left += layout.left;
-                            rc->right += layout.left;
-                        }
-                        else if(flags & layout_object_t::attr::right) {
-                            rc->left -= layout.right;
-                            rc->right -= layout.right;
-                        }
-
-                        if(flags & layout_object_t::attr::top) {
-                            rc->top += layout.top;
-                            rc->bottom += layout.top;
-                        }
-                        else if(flags & layout_object_t::attr::bottom) {
-                            rc->top -= layout.bottom;
-                            rc->bottom -= layout.bottom;
-                        }
-                    };
-
-                    if(layout.display != "none") { // 仅对非隐藏元素布局
-                        if(layout.position == "static" || layout.position == "relative") {
-                            bool is_relative = layout.position == "relative";
-
-                            if(layout.display == "inline") {
-                                // if exceeds cw
-                                bool new_line = false;
-                                if(lw + sz.cx > cw) {
-                                    new_line = true;
-                                    // switch to next line
-                                    x = 0;
-                                    y += lh;
-                                    //dh += lh;
-                                    lh = 0;
-                                    lw = 0;
-                                }
-
-                                RECT rc = {x, y, x + sz.cx, y + sz.cy};
-                                if(is_relative)
-                                    calc_relative(&rc, layout);
-                                obj->set_pos(rc);
-
-                                x += sz.cx;
-
-                                // new desired height max
-                                if(new_line) {
-                                    dh += sz.cy;
-                                    lh = sz.cy;
-                                }
-                                else {
-                                    if(sz.cy > lh) {
-                                        dh += sz.cy - lh;
-                                        lh = sz.cy;
-                                    }
-                                    else {
-                                        lh = sz.cy;
-                                    }
-                                }
-
-                                lw  += sz.cx;
-                                if(lw > dw)
-                                    dw = lw;
-                            }
-                            else if(layout.display == "block") {
-                                x = 0;
-                                y += lh;
-                                lh = 0;
-
-                                RECT rc = {x, y, x + /*sz.cx*/ cw, y + sz.cy};
-                                if(is_relative)
-                                    calc_relative(&rc, layout);
-                                obj->set_pos(rc);
-
-                                x = 0;
-                                y += sz.cy;
-                                lh = 0; // already added to y
-
-                                if(sz.cx > dw) // directly influence the dw, not lw
-                                    dw = sz.cx;
-
-                                lw = 0;
-                                dh += sz.cy;
-                            }
-                        }
-                        else if(layout.position == "absolute") {
-                            using namespace nbsg::window;
-                            RECT rcp = {0, 0, cw, ch};
-                            RECT rc = {0, 0, sz.cx, sz.cy};
-
-                            const int top = layout_object_t::attr::top;
-                            const int left = layout_object_t::attr::left;
-                            const int right = layout_object_t::attr::right;
-                            const int bottom = layout_object_t::attr::bottom;
-
-                            if(layout.flags & top)
-                                rc.top = rcp.top + layout.top;
-                            if(layout.flags & left)
-                                rc.left = rcp.left + layout.left;
-                            if(layout.flags & right)
-                                rc.right = rcp.right - layout.right;
-                            if(layout.flags & bottom)
-                                rc.bottom = rcp.bottom - layout.bottom;
-
-                            obj->set_pos(rc);
-                        }
-                    }
-                } // end for _children
-
-                process_scrollbar(cw,ch, dw, dh);
+                process_scrollbar(cw,ch, sz.cx, sz.cy);
                 
                 return 0;
             }
-            /*
-            else if(msg == WM_MOUSEWHEEL) {
-                DWORD keys = GET_KEYSTATE_WPARAM(wp);
-                int delta = GET_WHEEL_DELTA_WPARAM(wp);
-
-                UINT msg = keys & MK_SHIFT ? WM_HSCROLL : WM_VSCROLL;
-                WORD sbm = delta > 0 ? SB_LINEUP : SB_LINEDOWN;
-
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-                send_message(msg, MAKEWPARAM(sbm, 0), 0);
-
-                return 0;
-            }*/
             else if(msg == WM_VSCROLL || msg == WM_HSCROLL){
                 if(msg == WM_VSCROLL) {
                     SCROLLINFO si = {0};

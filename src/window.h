@@ -1,9 +1,12 @@
 #pragma once
 
 #include <climits>
-
+#include <algorithm>
 #include <windows.h>
 #include <commctrl.h>
+
+#undef min
+#undef max
 
 namespace nbsg {
     namespace window {
@@ -133,8 +136,7 @@ namespace nbsg {
 
         class layout_object_i {
         public:
-            virtual void set_pos(const RECT& rect) = 0;
-            virtual SIZE calc_size() = 0;
+            virtual SIZE set_pos(const RECT& avail) = 0;
         };
 
         class layout_object_t {
@@ -199,6 +201,7 @@ namespace nbsg {
         };
 
         class child_window_t;
+        class layout_container_t;
 
         class frame_window_t : public window_base_t, message_filter_i {
         public:
@@ -232,7 +235,7 @@ namespace nbsg {
             }
 
         protected:
-            c_ptr_array<child_window_t> _children;
+            layout_container_t* _root;
         };
 
         class child_window_t : public window_base_t, public layout_object_i {
@@ -254,18 +257,11 @@ namespace nbsg {
             }
 
         public: // layout_object_i interfaces
-            virtual void set_pos(const RECT& rect) override {
-                if(::EqualRect(&_rect, &rect)) return;
+            virtual SIZE set_pos(const RECT& rect) override {
                 ::SetWindowPos(_hwnd, 0,
-                    rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+                    rect.left, rect.top, 50, 50,
                     SWP_NOZORDER);
-                _rect = rect;
-            }
-
-            virtual SIZE calc_size() override {
-                RECT rc;
-                ::GetWindowRect(_hwnd, &rc);
-                return {rc.right - rc.left, rc.bottom - rc.top};
+                return{ 50, 50 };
             }
 
         /*protected:*/
@@ -273,6 +269,181 @@ namespace nbsg {
             RECT            _rect;
             layout_object_t _layout;
         };
+
+
+        class layout_container_t : public child_window_t {
+        public:
+            virtual bool create(
+                HWND parent,
+                UINT id = 0,
+                const std::string& text = std::string(),
+                RECT rect = { 10, 10, 60, 60 }
+                ) override {
+                return true;
+            }
+        public: // interfaces
+            virtual SIZE set_pos(const RECT& avail) override {
+                int cw = avail.right - avail.left;   // client width
+                int ch = avail.bottom - avail.top;   // client height
+
+                int dw = 0; // desired width
+                int dh = 0; // desired height
+
+                int x = 0;  // position axis x
+                int y = 0;  // position axis y
+
+                int lw = 0; // current line width, max
+                int lh = 0; // current line height, max
+
+                for (int i = 0; i < _children.size(); i++) {
+                    auto obj = _children[i];
+                    auto& layout = obj->_layout;
+                    SIZE sz = obj->set_pos({ x, y, 9999, 9999 });
+
+                    static auto calc_relative = [](RECT* rc, const nbsg::window::layout_object_t& layout) {
+                        using namespace nbsg::window;
+                        auto& flags = layout.flags;
+                        if (flags & layout_object_t::attr::left) {
+                            rc->left += layout.left;
+                            rc->right += layout.left;
+                        }
+                        else if (flags & layout_object_t::attr::right) {
+                            rc->left -= layout.right;
+                            rc->right -= layout.right;
+                        }
+
+                        if (flags & layout_object_t::attr::top) {
+                            rc->top += layout.top;
+                            rc->bottom += layout.top;
+                        }
+                        else if (flags & layout_object_t::attr::bottom) {
+                            rc->top -= layout.bottom;
+                            rc->bottom -= layout.bottom;
+                        }
+                    };
+
+                    if (layout.display != "none") {
+                        if (layout.position == "static" || layout.position == "relative") {
+                            bool is_relative = layout.position == "relative";
+
+                            if (layout.display == "inline") {
+                                // if exceeds cw
+                                bool new_line = false;
+                                if (lw + sz.cx > cw) {
+                                    new_line = true;
+                                    // switch to next line
+                                    x = 0;
+                                    y += lh;
+                                    //dh += lh;
+                                    lh = 0;
+                                    lw = 0;
+                                }
+
+                                RECT rc = { x, y, x + sz.cx, y + sz.cy };
+                                if (is_relative)
+                                    calc_relative(&rc, layout);
+                                obj->set_pos(rc);
+
+                                x += sz.cx;
+
+                                // new desired height max
+                                if (new_line) {
+                                    dh += sz.cy;
+                                    lh = sz.cy;
+                                }
+                                else {
+                                    if (sz.cy > lh) {
+                                        dh += sz.cy - lh;
+                                        lh = sz.cy;
+                                    }
+                                    else {
+                                        lh = sz.cy;
+                                    }
+                                }
+
+                                lw += sz.cx;
+                                if (lw > dw)
+                                    dw = lw;
+                            }
+                            else if (layout.display == "block") {
+                                x = 0;
+                                y += lh;
+                                lh = 0;
+
+                                RECT rc = { x, y, x + /*sz.cx*/ cw, y + sz.cy };
+                                if (is_relative)
+                                    calc_relative(&rc, layout);
+                                obj->set_pos(rc);
+
+                                x = 0;
+                                y += sz.cy;
+                                lh = 0; // already added to y
+
+                                if (sz.cx > dw) // directly influence the dw, not lw
+                                    dw = sz.cx;
+
+                                lw = 0;
+                                dh += sz.cy;
+                            }
+                        }
+                        else if (layout.position == "absolute") {
+                            using namespace nbsg::window;
+                            RECT rcp = { 0, 0, cw, ch };
+                            RECT rc = { 0, 0, sz.cx, sz.cy };
+
+                            const int top = layout_object_t::attr::top;
+                            const int left = layout_object_t::attr::left;
+                            const int right = layout_object_t::attr::right;
+                            const int bottom = layout_object_t::attr::bottom;
+
+                            if (layout.flags & top)
+                                rc.top = rcp.top + layout.top;
+                            if (layout.flags & left)
+                                rc.left = rcp.left + layout.left;
+                            if (layout.flags & right)
+                                rc.right = rcp.right - layout.right;
+                            if (layout.flags & bottom)
+                                rc.bottom = rcp.bottom - layout.bottom;
+
+                            int width = sz.cx, height = sz.cy;
+                            if (layout.flags & layout_object_t::attr::width)
+                                width = std::max((int)sz.cx, layout.width);
+                            if (layout.flags & layout_object_t::attr::height)
+                                height = std::max((int)sz.cy, layout.height);
+
+                            if (layout.flags & layout_object_t::attr::min_width)
+                                width = std::max(width, layout.min_width);
+                            if (layout.flags & layout_object_t::attr::min_height)
+                                height = std::max(height, layout.min_height);
+                            if (layout.flags & layout_object_t::attr::max_width)
+                                width = std::min(width, layout.max_with);
+                            if (layout.flags & layout_object_t::attr::max_height)
+                                height = std::min(height, layout.max_height);
+
+                            if (layout.flags & left && !(layout.flags & right))
+                                rc.right = rc.left + width;
+                            if (!(layout.flags & left) && layout.flags & right)
+                                rc.left = rc.right - width;
+                            if (layout.flags & top && !(layout.flags & bottom))
+                                rc.bottom = rc.top + height;
+                            if (!(layout.flags & top) && layout.flags & bottom)
+                                rc.top = rc.bottom - height;
+
+                            obj->set_pos(rc);
+                        }
+                    }
+                } // end for _children
+                return{ dw, dh };
+            }
+            
+        public:
+            bool add(child_window_t* c) {
+                return _children.add(c);
+            }
+        protected:
+            c_ptr_array<child_window_t> _children;
+        };
+
 
         class button_child_t : public child_window_t {
         public:
