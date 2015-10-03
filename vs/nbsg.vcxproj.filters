@@ -33,9 +33,6 @@
     <ClCompile Include="..\src\view.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\window.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\third\sqlite3\sqlite3.h">
@@ -48,9 +45,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\view.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\window.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
