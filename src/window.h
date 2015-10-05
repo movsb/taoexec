@@ -134,9 +134,23 @@ namespace nbsg {
             WNDPROC     _wndproc;
         };
 
+        struct layout_struct_t {
+            // 当前可用的最大宽度与高度 
+            int width_avail;
+            int height_avail;
+
+            // 当前的起始坐标
+            int x;
+            int y;
+
+            // 本次布局所占据的宽度与高度
+            int width_used;
+            int height_used;
+        };
+
         class layout_object_i {
         public:
-            virtual SIZE set_pos(const RECT& avail) = 0;
+            virtual void set_pos(layout_struct_t* ls, bool test = false) = 0;
         };
 
         class layout_object_t {
@@ -257,11 +271,13 @@ namespace nbsg {
             }
 
         public: // layout_object_i interfaces
-            virtual SIZE set_pos(const RECT& rect) override {
-                ::SetWindowPos(_hwnd, 0,
-                    rect.left, rect.top, 50, 50,
-                    SWP_NOZORDER);
-                return{ 50, 50 };
+            virtual void set_pos(layout_struct_t* ls, bool test) override {
+                ls->height_used = 50;
+                ls->width_used = 50;
+
+                if(!test) {
+                    ::SetWindowPos(*this, nullptr, ls->x, ls->y, 50, 50, SWP_NOZORDER);
+                }
             }
 
         /*protected:*/
@@ -282,15 +298,15 @@ namespace nbsg {
                 return true;
             }
         public: // interfaces
-            virtual SIZE set_pos(const RECT& avail) override {
-                int cw = avail.right - avail.left;   // client width
-                int ch = avail.bottom - avail.top;   // client height
+            virtual void set_pos(layout_struct_t* ls, bool test) override {
+                int cw = ls->width_avail;   // client width
+                int ch = ls->height_avail;  // client height
 
                 int dw = 0; // desired width
                 int dh = 0; // desired height
 
-                int x = 0;  // position axis x
-                int y = 0;  // position axis y
+                int x = ls->x;  // position axis x
+                int y = ls->y;  // position axis y
 
                 int lw = 0; // current line width, max
                 int lh = 0; // current line height, max
