@@ -1,235 +1,76 @@
 #include <cctype>
 #include <cstring>
+#include <process.h>
+
 #include <iostream>
 #include <string>
 #include <vector>
 #include <map>
 #include <functional>
 
-#include <windows.h>
-#include <ShlObj.h>
-
+#include "core.h"
 #include "model.h"
+#include "view.h"
 #include "charset.h"
 
-static std::map<std::string, std::string> g_variables;
-typedef std::vector<std::string> func_args;
-static std::map<std::string, std::function<std::string(func_args& args)>> g_functions;
 
-bool is_64bit() {
-    BOOL b64;
-    return IsWow64Process(GetCurrentProcess(), &b64)
-        && b64 != FALSE;
-}
+nbsg::model::db_t* g_pdb;
 
-void initialize_globals() {
-    auto initialize_variables = []() {
-        char path[MAX_PATH];
+// taoweb from here
 
-        // the exe directory
-        if (GetModuleFileName(NULL, path, _countof(path)) > 0) {
-            *strrchr(path, '\\') = '\0';
-            g_variables["exe_dir"] = path;
-        }
+taoweb::http::error_page_t error_page;
 
-        // the Windows directory
-        path[GetWindowsDirectory(path, _countof(path))] = '\0';
-        if (path[3] == '\0') path[2] = '\0'; // on root drive, removes backslash
-        g_variables["windows"] = path;
+static int                                  threads_created;
+static taoweb::lock_count                   threads;
+static taoweb::lock_queue<taoweb::client_t> clients;
 
-        // the Current Directory
-        path[GetCurrentDirectory(_countof(path), path)] = '\0';
-        if (path[3] == '\0') path[2] = '\0'; // on root drive, removes backslash
-        g_variables["cd"] = path;
+unsigned int __stdcall handler_thread(void* ud) {
+    taoweb::client_t client;
+    while((true)) {
+        threads.inc();
+        client = clients.pop();
+        threads.dec();
 
-        // the System directory
-        path[GetSystemDirectory(path, _countof(path))] = '\0';
-        if (path[3] == '\0') path[2] = '\0'; // on root drive, removes backslash
-        g_variables["system"] = path;
+        // handler here
+        taoweb::http::http_header_t header;
+        header.read_headers(client.fd);
+        if(!header._header_lines.size())
+            continue;
 
-        // the AppData
-        if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, path)))
-            g_variables["appdata"] = path;
-
-        // the home
-        if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, 0, path)))
-            g_variables["home"] = path;
-
-        // the desktop
-        if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, path)))
-            g_variables["desktop"] = path;
-
-        // the Program Files (x86)
-        if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROGRAM_FILES, NULL, 0, path)))
-            g_variables["program_x86"] = path;
-
-        // the Program Files
-        if (GetEnvironmentVariable("ProgramW6432", path, _countof(path)) > 0)
-            g_variables["program"] = path;
-    };
-
-    auto initialize_functions = []() {
-        g_functions["reg"] = [](func_args& args)->std::string {
-            std::string result;
-            if (args.size() >= 3) {
-                static std::map<std::string, HKEY> _hkeys{
-                    { "HKEY_CLASS_ROOT", HKEY_CLASSES_ROOT },
-                    { "HKCR", HKEY_CLASSES_ROOT },
-                    { "HKEY_CURRENT_USER", HKEY_CURRENT_USER },
-                    { "HKCU", HKEY_CURRENT_USER },
-                    { "HKEY_LOCAL_MACHINE", HKEY_LOCAL_MACHINE },
-                    { "HKLM", HKEY_LOCAL_MACHINE },
-                };
-
-                if (_hkeys.count(args[0])) {
-                    char value[2048];
-                    DWORD cb = sizeof(value);
-
-                    REGSAM sam = KEY_READ;
-                    if (is_64bit()) {
-                        if (args.size() >= 4 && args[3] == "64")
-                            sam |= KEY_WOW64_64KEY;
-                        else
-                            sam |= KEY_WOW64_32KEY;
-                    }
-
-                    HKEY hkey;
-                    if (RegOpenKeyEx(_hkeys[args[0]], NULL, 0, sam, &hkey) == ERROR_SUCCESS) {
-                        if (RegGetValue(hkey, args[1].c_str(), args[2].c_str(),
-                            RRF_RT_REG_SZ, nullptr, (void*)value, &cb) == ERROR_SUCCESS) {
-                            result = value;
-                        }
-                        RegCloseKey(hkey);
-                    }
-                }
-            }
-            return result;
-        };
-
-        g_functions["env"] = [](func_args& args)->std::string {
-            std::string result;
-            if (args.size() >= 1) {
-                char buf[2048];
-                if (GetEnvironmentVariable(args[0].c_str(), buf, _countof(buf)) > 0) {
-                    result = buf;
-                }
-            }
-
-            return result;
-        };
-
-        g_functions["app_path"] = [](func_args& args)->std::string {
-            std::string result;
-            auto reg = g_functions["reg"];
-
-            if (args.size() >= 1) {
-                func_args as{
-                    "HKLM",
-                    "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + args[0],
-                    ""
-                };
-
-                result = reg(as);
-            }
-
-            return result;
-        };
-    };
-
-    initialize_variables();
-    initialize_functions();
-}
-
-std::string expand_variable(const std::string& var) {
-    if (g_variables.count(var) > 0)
-        return g_variables[var];
-
-    return "";
-}
-
-std::string expand_function(const std::string& fn, func_args& args) {
-    if (g_functions.count(fn))
-        return g_functions[fn](args);
-
-    return "";
-}
-
-std::string expand(const std::string& raw) {
-    std::string result;
-    const char* p = raw.c_str();
-
-    auto read_arg = [](const char*& p) {
-        std::string s;
-        while (*p && *p != ',' && *p != ')') {
-            s += *p;
-            p++;
-        }
-
-        return s;
-    };
-
-    auto read_ident = [](const char*& p) {
-        std::string s;
-        while (::isalnum(*p) || strchr("_", *p)) {
-            s += *p;
-            p++;
-        }
-
-        return s;
-    };
-
-    while (*p != '\0') {
-        if (*p == '$') {
-            p++;
-            if (*p == '{') {
-                p++;
-                auto var = read_ident(p);
-                if (*p++ != '}') {
-                    // assert(0);
-                }
-
-                result += expand_variable(var);
-            }
-            else if (::isalpha(*p)) {
-                auto fn = read_ident(p);
-                if (*p++ != '(') {
-                    // assert(0);
-                }
-
-                func_args args;
-                while ((true)) {
-                    std::string arg(read_arg(p));
-                    args.push_back(arg);
-
-                    if (*p == ',') {
-                        p++;
-                        continue;
-                    }
-                    else if (*p == ')') {
-                        break;
-                    }
-                }
-
-                if (*p++ != ')') {
-                    // assert(0);
-                }
-
-                result += expand_function(fn, args);
-            }
-            else {
-                // assert(0);
-                p++;
-            }
-        }
-        else {
-            result += *p;
-            p++;
-        }
+        nbsg::view::handler_t handler(client, header);
+        handler.set_db(g_pdb);
+        handler.handle();
     }
-    return result;
+
+    return 0;
 }
 
-nbsg::model::db_t* pdb;
+void create_worker_thread(taoweb::client_t& client) {
+    clients.push(client);
+    if(threads.size() < 3) {
+        HANDLE thr = (HANDLE)_beginthreadex(NULL, 0, handler_thread, NULL, 0, NULL);
+        CloseHandle(thr);
+        std::cout << "threads created: " << threads_created << ", threads spare: " << threads.size() << std::endl;
+    }
+}
+
+int main2() {
+    using namespace taoweb;
+
+    win_sock _wsa;
+
+    socket_server server("127.0.0.1", 8080, 64);
+
+    server.start();
+
+    client_t client;
+    while(server.accept(&client)) {
+        create_worker_thread(client);
+    }
+
+    return 0;
+}
+
 
 int main() {
     const char* paths[] = {
@@ -248,30 +89,20 @@ int main() {
         "$app_path(firefox.exe)",
     };
 
-    initialize_globals();
+    nbsg::core::initialize_globals();
+
+    nbsg::core::add_user_variable("myprog", R"(F:\Program Files)");
 
     for (auto& path : paths) {
-        std::cout << expand(path) << std::endl;
+        std::cout << nbsg::core::expand(path) << std::endl;
     };
 
-    /*
     nbsg::model::db_t db;
-    pdb = &db;
     db.open(nbsg::charset::a2e(R"(中文.db)"));
 
-    std::cout << sizeof(R"(中文.db)") << strlen(R"(中文.db)");
-
-    nbsg::model::item_t item;
-    item.index = "fx";
-    item.comment = "firefox";
-    item.group = "app";
-    item.path = "firefox.exe";
-    item.visibility = 1;
-    db.insert(&item);
-    */
-
-
-    //db.close();
+    g_pdb = &db;
+    
+    main2();
 
     return 0;
 }

@@ -37,9 +37,11 @@ namespace nbsg {
             bool    has(int i);
             int     insert(const item_t* item);
             int     remove(const std::string& where);
+            bool    remove(int id);
             int     query(const std::string& pattern, std::vector<item_t*>* items);
             int     query(const std::string& pattern, std::function<bool(item_t& item)> callback);
-            int     modify(const item_t* item);
+            item_t* query(int id);
+            bool    modify(const item_t* item);
 
         private:
             int _create_tables();
