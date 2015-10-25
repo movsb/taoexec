@@ -33,7 +33,7 @@
     <ClCompile Include="..\src\view.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\window.cc">
+    <ClCompile Include="..\src\core.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -50,7 +50,7 @@
     <ClInclude Include="..\src\view.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\window.h">
+    <ClInclude Include="..\src\core.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
