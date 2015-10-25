@@ -16,6 +16,9 @@
     <Filter Include="Source Files\sqlite3">
       <UniqueIdentifier>{e64017e6-4a8f-426f-9023-d8b7a459e4f4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\taowin">
+      <UniqueIdentifier>{f5cfa382-1fa0-4a27-8de2-08104e98877a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cc">
@@ -36,6 +39,27 @@
     <ClCompile Include="..\src\core.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_control.cpp">
+      <Filter>Source Files\taowin</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_parser.cpp">
+      <Filter>Source Files\taowin</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_resmgr.cpp">
+      <Filter>Source Files\taowin</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_syscontrols.cpp">
+      <Filter>Source Files\taowin</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_taowin.cpp">
+      <Filter>Source Files\taowin</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_util.cpp">
+      <Filter>Source Files\taowin</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_window.cpp">
+      <Filter>Source Files\taowin</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\third\sqlite3\sqlite3.h">
@@ -52,6 +76,27 @@
     </ClInclude>
     <ClInclude Include="..\src\core.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_control.h">
+      <Filter>Source Files\taowin</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_parser.h">
+      <Filter>Source Files\taowin</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_resmgr.h">
+      <Filter>Source Files\taowin</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_syscontrols.h">
+      <Filter>Source Files\taowin</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_taowin.h">
+      <Filter>Source Files\taowin</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_util.h">
+      <Filter>Source Files\taowin</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_window.h">
+      <Filter>Source Files\taowin</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

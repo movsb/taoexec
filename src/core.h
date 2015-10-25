@@ -129,11 +129,10 @@ namespace nbsg {
 
                     if(args.size() >= 1) {
                         func_args as {
-                        "HKLM",
-                        "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + args[0],
-                        ""
-                    };
-
+                            "HKLM",
+                            "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + args[0],
+                            ""
+                        };
                         result = reg(as);
                     }
 

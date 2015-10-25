@@ -36,7 +36,7 @@ namespace nbsg {
                 "params TEXT,"
                 "work_dir TEXT,"
                 "env TEXT,"
-                "visibility INTEGER DEFAULT 1"
+                "show INTEGER DEFAULT 1"
                 ")";
 
             if(::sqlite3_exec(_db, sql, nullptr, nullptr, &err) == SQLITE_OK) {
@@ -55,7 +55,7 @@ namespace nbsg {
                 return -1;
             }
 
-            const char* sql = "INSERT INTO items (index_,group_,comment,path,params,work_dir,env,visibility)"
+            const char* sql = "INSERT INTO items (index_,group_,comment,path,params,work_dir,env,show)"
                 " VALUES (?,?,?,?,?,?,?,?);";
 
             sqlite3_stmt* stmt;
@@ -71,7 +71,7 @@ namespace nbsg {
             next = next && ::sqlite3_bind_text(stmt, 5, item->params.c_str(), item->params.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 6, item->work_dir.c_str(), item->work_dir.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 7, item->env.c_str(), item->env.size(), nullptr) == SQLITE_OK;
-            next = next && ::sqlite3_bind_int (stmt, 8, item->visibility ? 1 : 0) == SQLITE_OK;
+            next = next && ::sqlite3_bind_int (stmt, 8, item->show ? 1 : 0) == SQLITE_OK;
 
             if(next == false) {
                 ::sqlite3_finalize(stmt);
@@ -139,7 +139,7 @@ namespace nbsg {
                 i.params     = (char*)::sqlite3_column_text(stmt, 5);
                 i.work_dir   = (char*)::sqlite3_column_text(stmt, 6);
                 i.env        = (char*)::sqlite3_column_text(stmt, 7);
-                i.visibility = !!::sqlite3_column_int(stmt, 8);
+                i.show = !!::sqlite3_column_int(stmt, 8);
 
                 callback(i);
 
@@ -175,13 +175,13 @@ namespace nbsg {
             i.params = (char*)::sqlite3_column_text(stmt, 5);
             i.work_dir = (char*)::sqlite3_column_text(stmt, 6);
             i.env = (char*)::sqlite3_column_text(stmt, 7);
-            i.visibility = !!::sqlite3_column_int(stmt, 8);
+            i.show = !!::sqlite3_column_int(stmt, 8);
 
             return pi;
         }
 
         bool db_t::modify(const item_t* item) {
-            const char* sql = "UPDATE items SET index_=?,group_=?,comment=?,path=?,params=?,work_dir=?,env=?,visibility=? WHERE id=?;";
+            const char* sql = "UPDATE items SET index_=?,group_=?,comment=?,path=?,params=?,work_dir=?,env=?,show=? WHERE id=?;";
 
             sqlite3_stmt* stmt;
             if(::sqlite3_prepare(_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -196,7 +196,7 @@ namespace nbsg {
             next = next && ::sqlite3_bind_text(stmt, 5, item->params.c_str(), item->params.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 6, item->work_dir.c_str(), item->work_dir.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 7, item->env.c_str(), item->env.size(), nullptr) == SQLITE_OK;
-            next = next && ::sqlite3_bind_int(stmt, 8, item->visibility ? 1 : 0) == SQLITE_OK;
+            next = next && ::sqlite3_bind_int(stmt, 8, item->show ? 1 : 0) == SQLITE_OK;
             next = next && ::sqlite3_bind_int(stmt, 9, item->id) == SQLITE_OK;
 
             if(next == false) {

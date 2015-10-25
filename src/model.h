@@ -17,7 +17,7 @@ namespace nbsg {
             std::string     params;
             std::string     work_dir;
             std::string     env;
-            bool            visibility;
+            bool            show;
 
             item_t() {
                 id = -1;
