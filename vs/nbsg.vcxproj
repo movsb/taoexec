@@ -86,6 +86,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\taowin\src\tw_control.cpp" />
+    <ClCompile Include="..\..\taowin\src\tw_parser.cpp" />
+    <ClCompile Include="..\..\taowin\src\tw_resmgr.cpp" />
+    <ClCompile Include="..\..\taowin\src\tw_syscontrols.cpp" />
+    <ClCompile Include="..\..\taowin\src\tw_taowin.cpp" />
+    <ClCompile Include="..\..\taowin\src\tw_util.cpp" />
+    <ClCompile Include="..\..\taowin\src\tw_window.cpp" />
     <ClCompile Include="..\src\charset.cc" />
     <ClCompile Include="..\src\core.cc" />
     <ClCompile Include="..\src\main.cc" />
@@ -94,27 +101,20 @@
     <ClCompile Include="..\third\sqlite3\sqlite3.c">
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4703;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
-    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_control.cpp" />
-    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_parser.cpp" />
-    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_resmgr.cpp" />
-    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_syscontrols.cpp" />
-    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_taowin.cpp" />
-    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_util.cpp" />
-    <ClCompile Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\taowin\src\tw_control.h" />
+    <ClInclude Include="..\..\taowin\src\tw_parser.h" />
+    <ClInclude Include="..\..\taowin\src\tw_resmgr.h" />
+    <ClInclude Include="..\..\taowin\src\tw_syscontrols.h" />
+    <ClInclude Include="..\..\taowin\src\tw_taowin.h" />
+    <ClInclude Include="..\..\taowin\src\tw_util.h" />
+    <ClInclude Include="..\..\taowin\src\tw_window.h" />
     <ClInclude Include="..\src\charset.h" />
     <ClInclude Include="..\src\core.h" />
     <ClInclude Include="..\src\model.h" />
     <ClInclude Include="..\src\view.h" />
     <ClInclude Include="..\third\sqlite3\sqlite3.h" />
-    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_control.h" />
-    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_parser.h" />
-    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_resmgr.h" />
-    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_syscontrols.h" />
-    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_taowin.h" />
-    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_util.h" />
-    <ClInclude Include="C:\Users\Tao\Desktop\misc\taowin\src\tw_window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
