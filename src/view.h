@@ -12,8 +12,7 @@ class ITEM : public taowin::window_creator {
 private:
     nbsg::model::db_t&      _db;
     nbsg::model::item_t*    _item;
-    bool                    _new;
-    std::function<void()>   _on_modified;
+    std::function<void(nbsg::model::item_t* p)>   _on_succ;
 
 private:
     taowin::edit*   _id;
@@ -27,11 +26,10 @@ private:
     taowin::edit*   _show;
 
 public:
-    ITEM(nbsg::model::db_t& db, nbsg::model::item_t* item, std::function<void()> on_modified = nullptr)
+    ITEM(nbsg::model::db_t& db, nbsg::model::item_t* item, std::function<void(nbsg::model::item_t*)> on_succ = nullptr)
         : _db(db)
         , _item(item)
-        , _new(false)
-        , _on_modified(on_modified)
+        , _on_succ(on_succ)
     {
     }
 
@@ -94,7 +92,7 @@ protected:
             _show       = _root->find<taowin::edit>("show");
 
             if(_item) {
-                _id->set_text(std::to_string(_item->id).c_str());
+                _id->set_text(_item->id.c_str());
                 _index->set_text(_item->index.c_str());
                 _group->set_text(_item->group.c_str());
                 _comment->set_text(_item->comment.c_str());
@@ -105,9 +103,8 @@ protected:
                 _show->set_text(std::to_string(_item->show).c_str());
             } else {
                 _id->set_text("-1");
+                _show->set_text("1");
             }
-
-            _new = _item == nullptr;
 
             return 0;
         }
@@ -119,9 +116,8 @@ protected:
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
         if(pc->name() == "ok") {
             if(code == BN_CLICKED) {
-                nbsg::model::item_t* p = _item;
-                if(_new) p = new nbsg::model::item_t;
-                p->id = std::atoi(_id->get_text().c_str());
+                auto p = new nbsg::model::item_t;
+                p->id = _id->get_text();
                 p->index = _index->get_text();
                 p->group = _group->get_text();
                 p->comment = _comment->get_text();
@@ -131,29 +127,41 @@ protected:
                 p->env = _env->get_text();
                 p->show = !!std::atoi(_show->get_text().c_str()); // std::stoi will throw
 
-                if(_new) {    // create
-                    if((p->id = _db.insert(p)) <= 0) {    // failed
+                if(_item == nullptr) {    // create
+                    int id;
+                    if((id = _db.insert(p)) <= 0) {    // failed
                         msgbox("失败");
                         delete p;
                         return 0;
                     }
                     else {  // succeeded
-                        _id->set_text(std::to_string(p->id).c_str());
+                        p->id = std::to_string(id);
+                        _id->set_text(p->id.c_str());
+                        _item = p;
+                        _on_succ(p);
                         msgbox("添加成功");
-                        _new = false;
-                        _item = p;  // TODO delete p
                         return 0;
                     }
                 }
                 else {      // modify
                     if(_db.modify(p)) {
-                        if(_on_modified)
-                            _on_modified();
+                        _item->index    = std::move(p->index);
+                        _item->group    = std::move(p->group);
+                        _item->comment  = std::move(p->comment);
+                        _item->path     = std::move(p->path);
+                        _item->params   = std::move(p->params);
+                        _item->work_dir = std::move(p->work_dir);
+                        _item->env      = std::move(p->env);
+                        _item->show     = p->show;
+
+                        _on_succ(_item);
                         msgbox("修改成功");
+                        delete p;
                         return 0;
                     }
                     else {
                         msgbox("失败");
+                        delete p;
                         return 0;
                     }
                 }
@@ -174,6 +182,7 @@ protected:
 class TW : public taowin::window_creator {
 private:
     nbsg::model::db_t& _db;
+    std::vector<nbsg::model::item_t*> _items;
 
 public:
     TW(nbsg::model::db_t& db) 
@@ -190,7 +199,7 @@ protected:
     </res>
     <root>
         <horizontal padding="5,5,5,5">
-            <listview name="list" style="showselalways" exstyle="clientedge" minwidth="300"/>
+            <listview name="list" style="showselalways,ownerdata" exstyle="clientedge" minwidth="300"/>
             <vertical padding="5,0,0,0" width="80" height="100">
                 <button name="refresh" text="刷新"/>
                 <button name="add" text="添加"/>
@@ -251,7 +260,25 @@ protected:
         if(pc->name() == "list") {
             if(!hdr) return 0;
             taowin::listview* list = static_cast<taowin::listview*>(pc);
-            if(code == LVN_ITEMCHANGED
+            if(code == LVN_GETDISPINFO) {
+                NMLVDISPINFO* pdi = reinterpret_cast<NMLVDISPINFO*>(hdr);
+                auto rit = _items[pdi->item.iItem]; // right-hand item
+                auto lit = &pdi->item;              // left-hand item
+                switch(lit->iSubItem) 
+                {
+                case 0: lit->pszText = (LPSTR)rit->id.c_str(); break;
+                case 1: lit->pszText = (LPSTR)rit->index.c_str(); break;
+                case 2: lit->pszText = (LPSTR)rit->group.c_str(); break;
+                case 3: lit->pszText = (LPSTR)rit->comment.c_str(); break;
+                case 4: lit->pszText = (LPSTR)rit->path.c_str(); break;
+                case 5: lit->pszText = (LPSTR)rit->path_expanded.c_str(); break;
+                case 6: lit->pszText = (LPSTR)rit->params.c_str(); break;
+                case 7: lit->pszText = (LPSTR)rit->work_dir.c_str(); break;
+                case 8: lit->pszText = (LPSTR)rit->env.c_str(); break;
+                case 9: lit->pszText = (LPSTR)(rit->show ? "1" : "0"); break;
+                }
+            }
+            else if(code == LVN_ITEMCHANGED
                 || code == LVN_DELETEITEM
                 || code == LVN_DELETEALLITEMS
                 )
@@ -260,6 +287,15 @@ protected:
                 auto btn_delete = _root->find<taowin::button>("delete");
                 btn_modify->set_enabled(list->get_selected_count() == 1);
                 btn_delete->set_enabled(list->get_selected_count() > 0);
+
+                if(code == LVN_DELETEITEM) {
+                    auto lv = reinterpret_cast<NMLISTVIEW*>(hdr);
+                    auto it = _items.begin() + lv->iItem;   // TODO make post
+                    _items.erase(it);
+                } else if(code == LVN_DELETEALLITEMS) {
+                    // never happens.
+                }
+
                 return 0;
             }
             else if(code == NM_DBLCLK) {
@@ -272,8 +308,18 @@ protected:
             if(code != BN_CLICKED) 
                 return 0;
             if(pc->name() == "add") {
-                ITEM item(_db, nullptr);
-                item.domodal(*this);
+                taowin::listview* lv = _root->find<taowin::listview>("list");
+                // callback
+                auto on_added = [&](nbsg::model::item_t* p) {
+                    if(_items.size() && _items.back() != p)
+                        _items.push_back(p);
+                    int count = _items.size();
+                    lv->set_item_count(count, LVSICF_NOINVALIDATEALL);
+                    lv->redraw_items(count - 1, count - 1);
+                };
+
+                ITEM item(_db, nullptr, on_added);
+                item.domodal(this);
                 return 0;
             }
             else if(pc->name() == "modify") {
@@ -281,33 +327,16 @@ protected:
                 int lvid = lv->get_next_item(-1, LVNI_SELECTED);
                 if(lvid == -1) return 0;
 
-                nbsg::model::item_t it;
-                // get
-                it.id = std::atoi(lv->get_item_text(lvid, 0).c_str());
-                it.index = lv->get_item_text(lvid, 1);
-                it.group = lv->get_item_text(lvid, 2);
-                it.comment = lv->get_item_text(lvid, 3);
-                it.path = lv->get_item_text(lvid, 4);
-                it.params = lv->get_item_text(lvid, 6);    // 5 is expanded path.
-                it.work_dir = lv->get_item_text(lvid, 7);
-                it.env = lv->get_item_text(lvid, 8);
-                it.show = !!std::atoi(lv->get_item_text(lvid, 9).c_str());
+                nbsg::model::item_t& it = *_items[lvid];
 
                 // callback
-                auto on_modified = [&]() {
-                    lv->set_item_text(lvid, 1, it.index.c_str());
-                    lv->set_item_text(lvid, 2, it.group.c_str());
-                    lv->set_item_text(lvid, 3, it.comment.c_str());
-                    lv->set_item_text(lvid, 4, it.path.c_str());
-                    lv->set_item_text(lvid, 5, nbsg::core::expand(it.path.c_str()).c_str());
-                    lv->set_item_text(lvid, 6, it.params.c_str());
-                    lv->set_item_text(lvid, 7, it.work_dir.c_str());
-                    lv->set_item_text(lvid, 8, it.env.c_str());
-                    lv->set_item_text(lvid, 9, it.show ? "1" : "0");
+                auto on_modified = [&](nbsg::model::item_t* p) {
+                    it.path_expanded = nbsg::core::expand(it.path.c_str());
+                    lv->redraw_items(lvid, lvid);
                 };
 
                 ITEM item(_db, &it, on_modified);
-                item.domodal(*this);
+                item.domodal(this);
 
                 return 0;
             }
@@ -326,7 +355,7 @@ protected:
                 }
 
                 for(auto it = selected.crbegin(); it != selected.crend(); it++) {
-                    int id = list->get_item_data(*it, 0);
+                    int id = std::atoi(_items[*it]->id.c_str());
                     if(_db.remove(id)) {
                         if(list->delete_item(*it)) {
                             continue;
@@ -347,39 +376,30 @@ protected:
 
 private:
     void _refresh() {
-        taowin::listview* lv = _root->find<taowin::listview>("list");
-        lv->delete_all_items();
+        _db.query("", &_items);
 
-        _db.query("", [&](nbsg::model::item_t& item) {
-            int i = lv->insert_item(std::to_string(item.id), item.id);
-            int si = 1;
-            lv->set_item(i, si++, item.index);
-            lv->set_item(i, si++, item.group);
-            lv->set_item(i, si++, item.comment);
-            lv->set_item(i, si++, item.path);
-            lv->set_item(i, si++, nbsg::core::expand(item.path));
-            lv->set_item(i, si++, item.params);
-            lv->set_item(i, si++, item.work_dir);
-            lv->set_item(i, si++, item.env);
-            lv->set_item(i, si++, std::to_string(item.show));
-            return true;
-        });
+        for(auto pi : _items) {
+            pi->path_expanded = nbsg::core::expand(pi->path); // std::move used :-)
+        }
+
+        taowin::listview* lv = _root->find<taowin::listview>("list");
+        lv->set_item_count(_items.size(), 0);   // cause invalidate all.
     }
 
     void _execute(int i) {
-        nbsg::model::item_t it;
-        taowin::listview* lv = _root->find<taowin::listview>("list");
-        int lvid = i;
-        it.path = lv->get_item_text(lvid, 4);
-        it.params = lv->get_item_text(lvid, 6);    // 5 is expanded path.
-        it.work_dir = lv->get_item_text(lvid, 7);
-        it.env = lv->get_item_text(lvid, 8);
+        if(i<0 || i>(int)_items.size() - 1)
+            return;
+
+        auto& path      = _items[i]->path;
+        auto& params    = _items[i]->params;
+        auto& wd        = _items[i]->work_dir;
+        auto& env       = _items[i]->env;
 
         ::STARTUPINFO si = {sizeof(si)};
         ::PROCESS_INFORMATION pi;
 
-        std::string cmdline = '"' + it.path + "\" " + it.params;
-        const char* cd = it.work_dir.size() ? it.work_dir.c_str() : nullptr;
+        std::string cmdline = '"' + path + "\" " + params;
+        const char* cd = wd.size() ? wd.c_str() : nullptr;
         if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
             nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, cd,
             &si, &pi))
