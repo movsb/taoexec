@@ -51,7 +51,7 @@ namespace nbsg {
 
         // fails on return value <= 0
         int db_t::insert(const item_t* item) {
-            if(!item || item->id != -1) {
+            if(!item || std::atoi(item->id.c_str()) != -1) {
                 return -1;
             }
 
@@ -116,11 +116,46 @@ namespace nbsg {
             return has_;
         }
 
+        // TODO ºÏ²¢
         int db_t::query(const std::string& pattern, std::vector<item_t*>* items) {
-            return -1;
+            const char* sql = "SELECT * FROM items;";
+            sqlite3_stmt* stmt;
+            if(::sqlite3_prepare(_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+                return -1;
+            }
+
+            items->clear();
+
+            int sr, n = 0;
+            while((sr = ::sqlite3_step(stmt)) == SQLITE_ROW) {
+                item_t* pi = new item_t;
+                item_t& i = *pi;
+
+                i.id = std::to_string(::sqlite3_column_int(stmt, 0));
+                i.index = (char*)::sqlite3_column_text(stmt, 1);
+                i.group = (char*)::sqlite3_column_text(stmt, 2);
+                i.comment = (char*)::sqlite3_column_text(stmt, 3);
+                i.path = (char*)::sqlite3_column_text(stmt, 4);
+                i.params = (char*)::sqlite3_column_text(stmt, 5);
+                i.work_dir = (char*)::sqlite3_column_text(stmt, 6);
+                i.env = (char*)::sqlite3_column_text(stmt, 7);
+                i.show = !!::sqlite3_column_int(stmt, 8);
+
+                items->push_back(pi);
+
+                n++;
+            }
+
+            if (sr != SQLITE_DONE) {    // TODO remove all
+                return -1;
+            }
+
+            return n;
         }
 
         int db_t::query(const std::string& pattern, std::function<bool(item_t& item)> callback) {
+            return -1;
+            /*
             const char* sql = "SELECT * FROM items;";
             sqlite3_stmt* stmt;
             if (::sqlite3_prepare(_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -146,11 +181,12 @@ namespace nbsg {
                 n++;
             }
 
-            if (sr != SQLITE_DONE) {
+            if (sr != SQLITE_DONE) {    // TODO remove all
                 return -1;
             }
 
             return n;
+            */
         }
 
         item_t* db_t::query(int id) {
@@ -197,7 +233,7 @@ namespace nbsg {
             next = next && ::sqlite3_bind_text(stmt, 6, item->work_dir.c_str(), item->work_dir.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 7, item->env.c_str(), item->env.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_int(stmt, 8, item->show ? 1 : 0) == SQLITE_OK;
-            next = next && ::sqlite3_bind_int(stmt, 9, item->id) == SQLITE_OK;
+            next = next && ::sqlite3_bind_int(stmt, 9, std::atoi(item->id.c_str())) == SQLITE_OK;
 
             if(next == false) {
                 ::sqlite3_finalize(stmt);
