@@ -412,3 +412,36 @@ private:
         }
     }
 };
+
+class MINI : public taowin::window_creator {
+protected:
+    virtual void get_metas(taowin::window::window_meta_t* metas) override {
+        __super::get_metas(metas);
+        metas->style = WS_POPUP;
+        metas->exstyle = WS_EX_TOPMOST|WS_EX_WINDOWEDGE;
+    }
+
+    virtual LPCTSTR get_skin_xml() const override {
+        return R"tw(
+<window title="mini" size="80,18">
+    <res>
+        <font name="default" face="Î¢ÈíÑÅºÚ" size="12" />
+        <font name="consolas" face="Consolas" size="12" />
+    </res>
+    <root>
+        <vertical padding="">
+            <edit font="consolas" style="border"/>
+        </vertical>
+    </root>
+</window>
+)tw";
+
+    }
+    virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
+        return __super::handle_message(umsg, wparam, lparam);
+    }
+
+    virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
+        return 0;
+    }
+};

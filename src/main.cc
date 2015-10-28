@@ -19,9 +19,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd
     nbsg::model::db_t db;
     db.open(nbsg::charset::a2e(R"(ÖÐÎÄ.db)"));
 
-    TW tw(db);
-    tw.create();
-    tw.show();
+    //TW tw(db);
+    //tw.create();
+    //tw.show();
+
+    MINI mini;
+    mini.create();
+    mini.show();
 
     taowin::loop_message();
 
