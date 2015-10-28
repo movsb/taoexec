@@ -6,8 +6,11 @@
 #include "view.h"
 #include "charset.h"
 
-
+#ifdef _DEBUG
 int main() {
+#else
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd) {
+#endif
     taowin::init();
     nbsg::core::initialize_globals();
 

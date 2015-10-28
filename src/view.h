@@ -36,13 +36,13 @@ public:
 protected:
     virtual LPCTSTR get_skin_xml() const override {
         return R"tw(
-<window title="item" size="400,300">
+<window title="item" size="410,240">
     <res>
         <font name="default" face="Î¢ÈíÑÅºÚ" size="12" />
     </res>
     <root>
         <vertical padding="5,5,5,5">
-            <horizontal width="300" height="230">
+            <horizontal width="400" height="230">
                 <vertical width="70">
                     <label style="centerimage" text="ID"/>
                     <label style="centerimage" text="index"/>
