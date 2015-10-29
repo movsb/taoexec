@@ -8,6 +8,160 @@
 #include <sstream>
 #include <functional>
 
+class MINI : public taowin::window_creator {
+protected:
+    virtual void get_metas(taowin::window::window_meta_t* metas) override {
+        __super::get_metas(metas);
+        metas->style = WS_POPUP;
+        metas->exstyle = WS_EX_TOPMOST | WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW;
+    }
+
+    virtual LPCTSTR get_skin_xml() const override {
+        return R"tw(
+<window title="mini" size="80,18">
+    <res>
+        <font name="default" face="Î¢ÈíÑÅºÚ" size="12" />
+        <font name="consolas" face="Consolas" size="12" />
+    </res>
+    <root>
+        <vertical padding="">
+            <edit name="args" font="consolas" style="border"/>
+        </vertical>
+    </root>
+</window>
+)tw";
+    }
+
+    virtual bool filter_message(MSG* msg) override {
+        if(msg->message == WM_KEYDOWN) {
+            switch(msg->wParam) {
+            case VK_ESCAPE:
+                close();
+                return true;
+            case VK_RETURN:
+            {
+                auto edit = _root->find<taowin::edit>("args");
+                execute(edit->get_text());
+                return true;
+            }
+            default:
+                // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
+                // menu message with id == 2. It is undocumented.
+                // and, this function call doesn't care the variable _is_dialog.
+                if(::IsDialogMessage(_hwnd, msg))
+                    return true;
+                break;
+            }
+        }
+        return false;
+    }
+
+    virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
+        switch(umsg) {
+        case WM_CREATE:
+            ::RegisterHotKey(_hwnd, 0, MOD_CONTROL | MOD_SHIFT, 0x5A /* z */);
+            _root->find("args")->focus();
+            return 0;
+        case WM_HOTKEY:
+        {
+            if(wparam == 0) {
+                if(!::IsWindowVisible(_hwnd))
+                    ::ShowWindow(_hwnd, SW_SHOW);
+                ::SetForegroundWindow(_hwnd);
+                ::SetActiveWindow(_hwnd);
+                _root->find("args")->focus();
+            }
+            return 0;
+        }
+        case WM_SETFOCUS:
+            if(auto edit = _root->find("args"))
+                edit->focus();
+            break;
+        }
+        return __super::handle_message(umsg, wparam, lparam);
+    }
+
+    virtual void on_final_message() override {
+        delete this;
+    }
+
+public:
+    MINI(nbsg::model::db_t& db)
+        : _db(db)
+        , _focus(nullptr) {}
+
+private:
+    HWND _focus;
+    nbsg::model::db_t& _db;
+
+protected:
+
+    virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
+        return 0;
+    }
+
+    void execute(std::string& args) {
+        std::string cmd, arg;
+        nbsg::core::parse_args(args, &cmd, &arg);
+        if(cmd.size() == 0)
+            return;
+
+        nbsg::model::item_t* found = nullptr;
+        std::vector<nbsg::model::item_t*> items;
+        int rc = _db.query(cmd, &items);
+        if(rc == -1) {
+            msgbox("sqlite3 error.");
+            return;
+        } else if(rc == 0) {
+            msgbox("your search does not match anything.");
+            return;
+        } else if(rc == 1) {
+            found = items[0];
+        } else {
+            decltype(items.cbegin()) it;
+            for(it = items.cbegin(); it != items.cend(); it++) {
+                if((*it)->index == cmd) {
+                    found = *it;
+                    break;
+                }
+            }
+
+            for(auto pi : items) {
+                if(pi != found)
+                    delete pi;
+            }
+
+            if(found == nullptr) {
+                msgbox("there are many rows match your given prefix.");
+                return;
+            }
+
+            // found
+        }
+
+        // found
+        ::STARTUPINFO si = {sizeof(si)};
+        ::PROCESS_INFORMATION pi;
+
+        std::string pna = nbsg::core::expand_args(found->params, arg);
+        std::string cmdline = '"' + nbsg::core::expand(found->path) + "\" " + pna;
+        const char* cd = found->work_dir.size() ? found->work_dir.c_str() : nullptr;
+
+        if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
+            nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, cd,
+            &si, &pi)) {
+            ::CloseHandle(pi.hThread);
+            ::CloseHandle(pi.hProcess);
+            _root->find<taowin::edit>("args")->set_text("");
+            ::ShowWindow(_hwnd, SW_HIDE);
+        } else {
+            msgbox("Ê§°Ü");
+        }
+
+        delete found;
+    }
+};
+
 class ITEM : public taowin::window_creator {
 private:
     nbsg::model::db_t&      _db;
@@ -198,13 +352,17 @@ protected:
         <font name="default" face="Î¢ÈíÑÅºÚ" size="12"/>
     </res>
     <root>
-        <horizontal padding="5,5,5,5">
+        <horizontal padding="5,5,5,5" minheight="150">
             <listview name="list" style="showselalways,ownerdata" exstyle="clientedge" minwidth="300"/>
-            <vertical padding="5,0,0,0" width="80" height="100">
-                <button name="refresh" text="Ë¢ÐÂ"/>
-                <button name="add" text="Ìí¼Ó"/>
-                <button name="modify" text="ÐÞ¸Ä" style="disabled"/>
-                <button name="delete" text="É¾³ý" style="disabled"/>
+            <vertical width="80" padding="5,0,0,0">
+                <vertical height="100">
+                    <button name="refresh" text="Ë¢ÐÂ"/>
+                    <button name="add" text="Ìí¼Ó"/>
+                    <button name="modify" text="ÐÞ¸Ä" style="disabled"/>
+                    <button name="delete" text="É¾³ý" style="disabled"/>
+                </vertical>
+                <control/>
+                <button name="mini" text="Ð¡´°" height="25"/>
             </vertical>
         </horizontal>
     </root>
@@ -371,6 +529,12 @@ protected:
             _refresh();
             return 0;
         }
+        else if(pc->name() == "mini") {
+            MINI* mini = new MINI(_db);
+            mini->create();
+            mini->show();
+            return 0;
+        }
         return 0;
     }
 
@@ -410,105 +574,5 @@ private:
         else {
             msgbox("Ê§°Ü");
         }
-    }
-};
-
-class MINI : public taowin::window_creator {
-protected:
-    virtual void get_metas(taowin::window::window_meta_t* metas) override {
-        __super::get_metas(metas);
-        metas->style = WS_POPUP;
-        metas->exstyle = WS_EX_TOPMOST|WS_EX_WINDOWEDGE;
-    }
-
-    virtual LPCTSTR get_skin_xml() const override {
-        return R"tw(
-<window title="mini" size="80,18">
-    <res>
-        <font name="default" face="Î¢ÈíÑÅºÚ" size="12" />
-        <font name="consolas" face="Consolas" size="12" />
-    </res>
-    <root>
-        <vertical padding="">
-            <edit name="args" font="consolas" style="border"/>
-        </vertical>
-    </root>
-</window>
-)tw";
-    }
-
-    virtual bool filter_message(MSG* msg) override {
-        if (msg->message == WM_KEYDOWN) {
-            switch (msg->wParam) {
-            case VK_ESCAPE:
-                close();
-                return true;
-            case VK_RETURN:
-            {
-                auto edit = _root->find<taowin::edit>("args");
-                execute(edit->get_text());
-                return true;
-            }
-            default:
-                // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
-                // menu message with id == 2. It is undocumented.
-                // and, this function call doesn't care the variable _is_dialog.
-                if (::IsDialogMessage(_hwnd, msg))
-                    return true;
-                break;
-            }
-        }
-        return false;
-    }
-
-    virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
-        switch (umsg)
-        {
-        case WM_CREATE:
-            ::RegisterHotKey(_hwnd, 0, MOD_CONTROL | MOD_SHIFT, 0x5A /* z */);
-            _root->find("args")->focus();
-            return 0;
-        case WM_HOTKEY:
-        {
-            if (wparam == 0) {
-                //msgbox("hotkey");
-                printf("bringing\n");
-                ::SetForegroundWindow(_hwnd);
-                ::SetActiveWindow(_hwnd);
-                ::SetFocus(_focus);
-            }
-            return 0;
-        }
-        case WM_ACTIVATEAPP:
-        {
-            printf("act\n");
-            if (LOWORD(wparam) == TRUE) {
-                //::SetFocus(_focus);
-            }
-            else {
-                _focus = ::GetFocus();
-            }
-            break;
-        }
-        }
-        return __super::handle_message(umsg, wparam, lparam);
-    }
-
-public:
-    MINI()
-        : _focus(nullptr)
-    { }
-
-private:
-    HWND _focus;
-
-protected:
-
-    virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
-        return 0;
-    }
-
-    void execute(std::string& args) {
-
     }
 };

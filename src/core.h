@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cctype>
 #include <map>
 #include <vector>
 #include <functional>
+#include <string>
 
 #include "charset.h"
 
@@ -226,6 +228,109 @@ namespace nbsg {
                     p++;
                 }
             }
+            return result;
+        }
+
+        static bool parse_args(const std::string& argstr, std::string* const cmd, std::string* const arg) {
+            auto p = argstr.c_str();
+            char c;
+            for(;;) {
+                c = *p;
+                if(c == ' ' || c == '\t') {
+                    p++;
+                    continue;
+                }
+                else if(::isalnum(c)) {
+                    auto& refcmd = *cmd;
+                    refcmd += c;
+                    p++;
+                    while(::isalnum(*p)) {
+                        refcmd += *p;
+                        p++;
+                    }
+
+                    for(;;) {
+                        c = *p;
+                        if(c == ' ' || c == '\t') {
+                            p++;
+                            continue;
+                        }
+                        else if(c == '\0') {
+                            break;
+                        }
+                        else {
+                            auto begin = p;
+                            while(*p)
+                                p++;
+                            --p;
+                            while(*p == ' ' || *p == '\t')
+                                --p;
+                            arg->assign(begin, ++p);
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            return true;
+        }
+
+        static std::string expand_args(const std::string& params, const std::string& args) {
+            std::string result;
+            result.reserve(params.size() + args.size() + 1);
+
+            bool arg0_used = false;
+            auto p = params.c_str();
+            while(*p) {
+                if(*p == '$') {
+                    p++;
+                    if(*p == '{') {
+                        auto begin = p++;
+                        int argn = 0;
+                        while(::isdigit(*p)) {
+                            argn *= 10;
+                            argn += *p - '0';
+                            p++;
+                        }
+
+                        if(begin == p) { // not like ${0}, ${123}
+
+                        }
+
+                        if(argn == 0) {
+                            result += args;
+                            arg0_used = true;
+                        }
+                        else {  // currently, error
+
+                        }
+
+                        if(*p != '}') { // not enclosed
+
+                        }
+
+                        p++;    // skip `}`
+                    }
+                    else if(*p == '$') {
+                        result += '$';
+                        p++;
+                    }
+                    else { // unexpected
+
+                    }
+                }
+                else if(*p) {
+                    result += *p;
+                    p++;
+                }
+                else {
+                    break;
+                }
+            }
+
+            if(!arg0_used)
+                result += ' ' + args;
+
             return result;
         }
     }

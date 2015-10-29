@@ -118,9 +118,16 @@ namespace nbsg {
 
         // TODO ºÏ²¢
         int db_t::query(const std::string& pattern, std::vector<item_t*>* items) {
-            const char* sql = "SELECT * FROM items;";
+            const char* sql = "SELECT * FROM items WHERE index_ like ?;";
             sqlite3_stmt* stmt;
-            if(::sqlite3_prepare(_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+            const char* err = nullptr;
+            if(::sqlite3_prepare(_db, sql, -1, &stmt, &err) != SQLITE_OK) {
+                return -1;
+            }
+
+            std::string likestr = pattern + "%%";
+            if(::sqlite3_bind_text(stmt, 1, likestr.c_str(), likestr.size(), nullptr) != SQLITE_OK) {
+                ::sqlite3_finalize(stmt);
                 return -1;
             }
 

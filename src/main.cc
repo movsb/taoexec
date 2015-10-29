@@ -17,15 +17,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd
     nbsg::core::add_user_variable("myprog", R"(F:\Program Files)");
 
     nbsg::model::db_t db;
-    db.open(nbsg::charset::a2e(R"(ÖÐÎÄ.db)"));
+    db.open(nbsg::charset::a2e(R"(nbsg.db)"));
 
-    //TW tw(db);
-    //tw.create();
-    //tw.show();
-
-    MINI mini;
-    mini.create();
-    mini.show();
+    TW tw(db);
+    tw.create();
+    tw.show();
 
     taowin::loop_message();
 
