@@ -430,18 +430,85 @@ protected:
     </res>
     <root>
         <vertical padding="">
-            <edit font="consolas" style="border"/>
+            <edit name="args" font="consolas" style="border"/>
         </vertical>
     </root>
 </window>
 )tw";
-
     }
+
+    virtual bool filter_message(MSG* msg) override {
+        if (msg->message == WM_KEYDOWN) {
+            switch (msg->wParam) {
+            case VK_ESCAPE:
+                close();
+                return true;
+            case VK_RETURN:
+            {
+                auto edit = _root->find<taowin::edit>("args");
+                execute(edit->get_text());
+                return true;
+            }
+            default:
+                // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
+                // menu message with id == 2. It is undocumented.
+                // and, this function call doesn't care the variable _is_dialog.
+                if (::IsDialogMessage(_hwnd, msg))
+                    return true;
+                break;
+            }
+        }
+        return false;
+    }
+
     virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
+        switch (umsg)
+        {
+        case WM_CREATE:
+            ::RegisterHotKey(_hwnd, 0, MOD_CONTROL | MOD_SHIFT, 0x5A /* z */);
+            _root->find("args")->focus();
+            return 0;
+        case WM_HOTKEY:
+        {
+            if (wparam == 0) {
+                //msgbox("hotkey");
+                printf("bringing\n");
+                ::SetForegroundWindow(_hwnd);
+                ::SetActiveWindow(_hwnd);
+                ::SetFocus(_focus);
+            }
+            return 0;
+        }
+        case WM_ACTIVATEAPP:
+        {
+            printf("act\n");
+            if (LOWORD(wparam) == TRUE) {
+                //::SetFocus(_focus);
+            }
+            else {
+                _focus = ::GetFocus();
+            }
+            break;
+        }
+        }
         return __super::handle_message(umsg, wparam, lparam);
     }
 
+public:
+    MINI()
+        : _focus(nullptr)
+    { }
+
+private:
+    HWND _focus;
+
+protected:
+
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
         return 0;
+    }
+
+    void execute(std::string& args) {
+
     }
 };
