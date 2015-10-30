@@ -7,6 +7,9 @@
 
 #include <sstream>
 #include <functional>
+#include <regex>
+
+#include <shellapi.h>
 
 class MINI : public taowin::window_creator {
 protected:
@@ -137,6 +140,13 @@ protected:
             }
 
             // found
+        }
+
+        // process shell namespaces
+        std::regex re(R"re(^\{[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\}$)re");
+        if (std::regex_match(found->path, re)) {
+            ::ShellExecute(_hwnd, "open", ("shell:::" + found->path).c_str(), nullptr, nullptr, SW_SHOW);
+            return;
         }
 
         // found
@@ -554,10 +564,17 @@ private:
         if(i<0 || i>(int)_items.size() - 1)
             return;
 
-        auto& path      = _items[i]->path;
+        auto& path      = _items[i]->path_expanded;
         auto& params    = _items[i]->params;
         auto& wd        = _items[i]->work_dir;
         auto& env       = _items[i]->env;
+
+        // process shell namespaces
+        std::regex re(R"re(^\{[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\}$)re");
+        if (std::regex_match(path, re)) {
+            ::ShellExecute(_hwnd, "open", ("shell:::" + path).c_str(), nullptr, nullptr, SW_SHOW);
+            return;
+        }
 
         ::STARTUPINFO si = {sizeof(si)};
         ::PROCESS_INFORMATION pi;
