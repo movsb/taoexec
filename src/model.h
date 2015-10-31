@@ -14,7 +14,6 @@ namespace nbsg {
             std::string     group;
             std::string     comment;
             std::string     path;
-            std::string     path_expanded; // only for UI use, not for database.
             std::string     params;
             std::string     work_dir;
             std::string     env;

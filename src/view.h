@@ -9,8 +9,6 @@
 #include <functional>
 #include <regex>
 
-#include <shellapi.h>
-
 class MINI : public taowin::window_creator {
 protected:
     virtual void get_metas(taowin::window::window_meta_t* metas) override {
@@ -145,28 +143,13 @@ protected:
         // process shell namespaces
         std::regex re(R"re(^\{[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\}$)re");
         if (std::regex_match(found->path, re)) {
-            ::ShellExecute(_hwnd, "open", ("shell:::" + found->path).c_str(), nullptr, nullptr, SW_SHOW);
             return;
         }
 
-        // found
-        ::STARTUPINFO si = {sizeof(si)};
-        ::PROCESS_INFORMATION pi;
-
-        std::string pna = nbsg::core::expand_args(found->params, arg);
-        std::string cmdline = '"' + nbsg::core::expand(found->path) + "\" " + pna;
-        const char* cd = found->work_dir.size() ? found->work_dir.c_str() : nullptr;
-
-        if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
-            nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, cd,
-            &si, &pi)) {
-            ::CloseHandle(pi.hThread);
-            ::CloseHandle(pi.hProcess);
+        nbsg::core::execute(_hwnd, found->path, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
             _root->find<taowin::edit>("args")->set_text("");
             ::ShowWindow(_hwnd, SW_HIDE);
-        } else {
-            msgbox("Ê§°Ü");
-        }
+        });
 
         delete found;
     }
@@ -357,7 +340,7 @@ public:
 protected:
     virtual LPCTSTR get_skin_xml() const override {
         return R"tw(
-<window title="nbsg" size="700,500">
+<window title="nbsg" size="850,600">
     <res>
         <font name="default" face="Î¢ÈíÑÅºÚ" size="12"/>
     </res>
@@ -397,7 +380,6 @@ protected:
                 {"group", 80},
                 {"comment", 100},
                 {"path", 100},
-                {"path_expanded", 100},
                 {"params", 100},
                 {"work_dir", 100},
                 {"env", 100},
@@ -439,11 +421,10 @@ protected:
                 case 2: lit->pszText = (LPSTR)rit->group.c_str(); break;
                 case 3: lit->pszText = (LPSTR)rit->comment.c_str(); break;
                 case 4: lit->pszText = (LPSTR)rit->path.c_str(); break;
-                case 5: lit->pszText = (LPSTR)rit->path_expanded.c_str(); break;
-                case 6: lit->pszText = (LPSTR)rit->params.c_str(); break;
-                case 7: lit->pszText = (LPSTR)rit->work_dir.c_str(); break;
-                case 8: lit->pszText = (LPSTR)rit->env.c_str(); break;
-                case 9: lit->pszText = (LPSTR)(rit->show ? "1" : "0"); break;
+                case 5: lit->pszText = (LPSTR)rit->params.c_str(); break;
+                case 6: lit->pszText = (LPSTR)rit->work_dir.c_str(); break;
+                case 7: lit->pszText = (LPSTR)rit->env.c_str(); break;
+                case 8: lit->pszText = (LPSTR)(rit->show ? "1" : "0"); break;
                 }
             }
             else if(code == LVN_ITEMCHANGED
@@ -499,7 +480,6 @@ protected:
 
                 // callback
                 auto on_modified = [&](nbsg::model::item_t* p) {
-                    it.path_expanded = nbsg::core::expand(it.path.c_str());
                     lv->redraw_items(lvid, lvid);
                 };
 
@@ -552,10 +532,6 @@ private:
     void _refresh() {
         _db.query("", &_items);
 
-        for(auto pi : _items) {
-            pi->path_expanded = nbsg::core::expand(pi->path); // std::move used :-)
-        }
-
         taowin::listview* lv = _root->find<taowin::listview>("list");
         lv->set_item_count(_items.size(), 0);   // cause invalidate all.
     }
@@ -564,32 +540,16 @@ private:
         if(i<0 || i>(int)_items.size() - 1)
             return;
 
-        auto& path      = _items[i]->path_expanded;
+        auto& path      = _items[i]->path;
         auto& params    = _items[i]->params;
         auto& wd        = _items[i]->work_dir;
         auto& env       = _items[i]->env;
 
-        // process shell namespaces
-        std::regex re(R"re(^\{[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\}$)re");
-        if (std::regex_match(path, re)) {
-            ::ShellExecute(_hwnd, "open", ("shell:::" + path).c_str(), nullptr, nullptr, SW_SHOW);
-            return;
-        }
+        nbsg::core::execute(_hwnd, path, params, "", wd, env, [&](const std::string& err) {
+            if(err != "ok") {
+                msgbox("Ê§°Ü¡£", MB_ICONEXCLAMATION);
+            }
+        });
 
-        ::STARTUPINFO si = {sizeof(si)};
-        ::PROCESS_INFORMATION pi;
-
-        std::string cmdline = '"' + path + "\" " + params;
-        const char* cd = wd.size() ? wd.c_str() : nullptr;
-        if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
-            nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, cd,
-            &si, &pi))
-        {
-            ::CloseHandle(pi.hThread);
-            ::CloseHandle(pi.hProcess);
-        }
-        else {
-            msgbox("Ê§°Ü");
-        }
     }
 };

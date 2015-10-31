@@ -1,5 +1,6 @@
 #pragma once
 
+#include <regex>
 #include <cctype>
 #include <map>
 #include <vector>
@@ -9,8 +10,8 @@
 #include "charset.h"
 
 #include <windows.h>
+#include <shellapi.h>
 #include <ShlObj.h>
-
 
 namespace nbsg {
     namespace core {
@@ -332,6 +333,46 @@ namespace nbsg {
                 result += ' ' + args;
 
             return result;
+        }
+
+        static void execute(HWND hwnd, const std::string& path,
+            const std::string& params, const std::string& args,
+            const std::string& wd, const std::string& env,
+            std::function<void(const std::string& err)> cb)
+        {
+            if(std::regex_match(path, std::regex(R"(shell:::\{.{36}\})"))              // shell clsid
+                || std::regex_match(path, std::regex(R"(shell:[^:/]+)"))                   // shell command
+                || std::regex_match(path, std::regex(R"(https?://.*)"))   // http protocol
+                ) {
+                ::ShellExecute(hwnd, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
+                if(cb) cb("ok");
+                return;
+            }
+
+            ::STARTUPINFO si = {sizeof(si)};
+            ::PROCESS_INFORMATION pi;
+
+            std::string cmdline = '"' + path + "\" " + params;
+            const char* wd_ = wd.size() ? wd.c_str() : nullptr;
+            const char* env_ = env.size() ? env.c_str() : nullptr;
+            if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
+                nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE,
+                (void*)env_, wd_,
+                &si, &pi)) {
+                ::CloseHandle(pi.hThread);
+                ::CloseHandle(pi.hProcess);
+                if(cb) cb("ok");
+            } else {
+                if(cb) cb("fail");
+            }
+        }
+
+        static void init() {
+            initialize_globals();
+        }
+
+        static void uninit() {
+
         }
     }
 }

@@ -12,7 +12,7 @@ int main() {
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd) {
 #endif
     taowin::init();
-    nbsg::core::initialize_globals();
+    nbsg::core::init();
 
     nbsg::core::add_user_variable("myprog", R"(F:\Program Files)");
 
