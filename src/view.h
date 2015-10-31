@@ -213,15 +213,15 @@ protected:
                     <label style="centerimage" text="show"/>
                 </vertical>
                 <vertical >
-                    <edit name="id" exstyle="clientedge" style="disabled"/>
-                    <edit name="index" exstyle="clientedge" />
-                    <edit name="group" exstyle="clientedge" />
-                    <edit name="comment" exstyle="clientedge" />
-                    <edit name="path" exstyle="clientedge" />
-                    <edit name="params" exstyle="clientedge" />
-                    <edit name="work_dir" exstyle="clientedge" />
-                    <edit name="env" exstyle="clientedge" />
-                    <edit name="show" exstyle="clientedge" />
+                    <edit name="id" style="tabstop" exstyle="clientedge" style="disabled"/>
+                    <edit name="index" style="tabstop" exstyle="clientedge" />
+                    <edit name="group" style="tabstop" exstyle="clientedge" />
+                    <edit name="comment" style="tabstop" exstyle="clientedge" />
+                    <edit name="path" style="tabstop" exstyle="clientedge" />
+                    <edit name="params" style="tabstop" exstyle="clientedge" />
+                    <edit name="work_dir" style="tabstop" exstyle="clientedge" />
+                    <edit name="env" style="tabstop" exstyle="clientedge" />
+                    <edit name="show" style="tabstop" exstyle="clientedge" />
                 </vertical>
                 <vertical padding="10,0,0,10" width="80" height="60">
                     <button name="ok" text="±£´æ"/>
@@ -269,6 +269,29 @@ protected:
         }
 
         return __super::handle_message(umsg, wparam, lparam);
+    }
+
+    virtual bool filter_message(MSG* msg) override {
+        if(msg->message == WM_KEYDOWN) {
+            switch(msg->wParam) {
+            case VK_ESCAPE:
+                close();
+                return true;
+            case VK_RETURN:
+            {
+                send_message(WM_COMMAND, MAKEWPARAM(BN_CLICKED, 0), LPARAM(_root->find("ok")->hwnd()));
+                return true;
+            }
+            default:
+                // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
+                // menu message with id == 2. It is undocumented.
+                // and, this function call doesn't care the variable _is_dialog.
+                if(::IsDialogMessage(_hwnd, msg))
+                    return true;
+                break;
+            }
+        }
+        return false;
     }
 
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
