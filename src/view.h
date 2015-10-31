@@ -66,11 +66,7 @@ protected:
         case WM_HOTKEY:
         {
             if(wparam == 0) {
-                if(!::IsWindowVisible(_hwnd))
-                    ::ShowWindow(_hwnd, SW_SHOW);
-                ::SetForegroundWindow(_hwnd);
-                ::SetActiveWindow(_hwnd);
-                _root->find("args")->focus();
+                set_display(2);
             }
             return 0;
         }
@@ -80,6 +76,23 @@ protected:
             break;
         }
         return __super::handle_message(umsg, wparam, lparam);
+    }
+
+    void set_display(int cmd) {
+        if(cmd == 2)
+            cmd = ::IsWindowVisible(_hwnd) ? 0 : 1;
+
+        if(cmd == 1) {
+            if(!::IsWindowVisible(_hwnd))
+                ::ShowWindow(_hwnd, SW_SHOW);
+            ::SetForegroundWindow(_hwnd);
+            ::SetActiveWindow(_hwnd);
+            _root->find("args")->focus();
+        }
+        else {
+            ::ShowWindow(_hwnd, SW_HIDE);
+            _root->find<taowin::edit>("args")->set_text("");
+        }
     }
 
     virtual void on_final_message() override {
@@ -104,8 +117,10 @@ protected:
     void execute(std::string& args) {
         std::string cmd, arg;
         nbsg::core::parse_args(args, &cmd, &arg);
-        if(cmd.size() == 0)
+        if(cmd.size() == 0) {
+            set_display(0);
             return;
+        }
 
         nbsg::model::item_t* found = nullptr;
         std::vector<nbsg::model::item_t*> items;
@@ -114,7 +129,7 @@ protected:
             msgbox("sqlite3 error.");
             return;
         } else if(rc == 0) {
-            msgbox("your search does not match anything.");
+            msgbox("your search `" + cmd + "`does not match anything.");
             return;
         } else if(rc == 1) {
             found = items[0];
@@ -140,15 +155,11 @@ protected:
             // found
         }
 
-        // process shell namespaces
-        std::regex re(R"re(^\{[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\}$)re");
-        if (std::regex_match(found->path, re)) {
-            return;
-        }
-
         nbsg::core::execute(_hwnd, found->path, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
-            _root->find<taowin::edit>("args")->set_text("");
-            ::ShowWindow(_hwnd, SW_HIDE);
+            if(err == "ok")
+                set_display(0);
+            else
+                msgbox("Ê§°Ü¡£");
         });
 
         delete found;
@@ -460,7 +471,7 @@ protected:
                 taowin::listview* lv = _root->find<taowin::listview>("list");
                 // callback
                 auto on_added = [&](nbsg::model::item_t* p) {
-                    if(_items.size() && _items.back() != p)
+                    if(_items.size()==0 || _items.back() != p)
                         _items.push_back(p);
                     int count = _items.size();
                     lv->set_item_count(count, LVSICF_NOINVALIDATEALL);
