@@ -14,7 +14,7 @@ protected:
     virtual void get_metas(taowin::window::window_meta_t* metas) override {
         __super::get_metas(metas);
         metas->style = WS_POPUP;
-        metas->exstyle = WS_EX_TOPMOST | WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW;
+        metas->exstyle = WS_EX_TOPMOST | WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW | WS_EX_LAYERED;
     }
 
     virtual LPCTSTR get_skin_xml() const override {
@@ -60,6 +60,17 @@ protected:
     virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
         switch(umsg) {
         case WM_CREATE:
+            // move to top of screen, and set attributes
+            ([&]() {
+                taowin::rect window_rect = get_window_rect();
+                int cx_screen = ::GetSystemMetrics(SM_CXSCREEN);
+                ::SetWindowPos(_hwnd, nullptr,
+                    (cx_screen - window_rect.width()) / 2, 0, 0, 0,
+                    SWP_NOSIZE | SWP_NOZORDER);
+
+                ::SetLayeredWindowAttributes(_hwnd, 0, 50, LWA_ALPHA);
+            })();
+
             ::RegisterHotKey(_hwnd, 0, MOD_CONTROL | MOD_SHIFT, 0x5A /* z */);
             _root->find("args")->focus();
             return 0;
@@ -118,8 +129,14 @@ protected:
         std::string cmd, arg;
         nbsg::core::parse_args(args, &cmd, &arg);
         if(cmd.size() == 0) {
-            set_display(0);
-            return;
+            if(args.size()) {
+                msgbox("Nothing to do without a cmd specified, correctly specify it.");
+                return;
+            }
+            else {
+                set_display(0);
+                return;
+            }
         }
 
         nbsg::model::item_t* found = nullptr;
@@ -129,7 +146,7 @@ protected:
             msgbox("sqlite3 error.");
             return;
         } else if(rc == 0) {
-            msgbox("your search `" + cmd + "`does not match anything.");
+            msgbox("Your search `" + cmd + "` does not match anything.");
             return;
         } else if(rc == 1) {
             found = items[0];
@@ -148,7 +165,7 @@ protected:
             }
 
             if(found == nullptr) {
-                msgbox("there are many rows match your given prefix.");
+                msgbox("There are many rows match your given prefix.");
                 return;
             }
 
@@ -425,6 +442,14 @@ protected:
                 auto col = &cols[i];
                 lv->insert_column(col->name, col->width, i);
             }
+
+            // 设置管理员标题
+            ([](HWND hwnd) {
+                char tt[1024];
+                tt[::GetWindowText(hwnd, tt, _countof(tt)-128/* enough */)] = '\0';
+                ::strcat(tt, ::IsUserAnAdmin() ? " (Admin)" : " (non-Admin)");
+                ::SetWindowText(hwnd, tt);
+            })(_hwnd);
 
             _refresh();
 
