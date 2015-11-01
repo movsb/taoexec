@@ -12,6 +12,7 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <ShlObj.h>
+#include <assert.h>
 
 namespace nbsg {
     namespace core {
@@ -337,27 +338,74 @@ namespace nbsg {
 
         static void execute(HWND hwnd, const std::string& path,
             const std::string& params, const std::string& args,
-            const std::string& wd, const std::string& env,
+            const std::string& wd_, const std::string& env,
             std::function<void(const std::string& err)> cb)
         {
-            if(std::regex_match(path, std::regex(R"(shell:::\{.{36}\})"))              // shell clsid
-                || std::regex_match(path, std::regex(R"(shell:[^:/]+)"))                   // shell command
-                || std::regex_match(path, std::regex(R"(https?://.*)"))   // http protocol
+            // not specified as absolute path or as relative path to a file.
+            if(std::regex_match(path, std::regex(R"(shell:::\{.{36}\})"))   // shell clsid
+                || std::regex_match(path, std::regex(R"(shell:[^:/]+)"))    // shell command
+                || std::regex_match(path, std::regex(R"(https?://.*)"))     // http(s) protocol
                 ) {
                 ::ShellExecute(hwnd, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
                 if(cb) cb("ok");
                 return;
             }
 
+            std::string path_expanded = expand(path);
+
+            // cmdline
+            std::string cmdline([&]() {
+                std::string s = '"' + path_expanded + '"';
+                std::string param_args = expand_args(params, args);
+                if(param_args.size())
+                    s += " " + param_args;
+                return std::move(s);
+            }());
+
+            // working directory
+            // absolute:    c:\windows\notepad.exe  -> c:\windows
+            // relative:    ./notepad.exe           -> current directory + ./
+            // unspecified: notepad                 -> ${desktop}
+            std::string wd([&]() {
+                std::string wd2 = std::move(wd_);
+                if(wd2.size() && wd2.back() != '\\' &&  wd2.back() != '/')
+                    wd2 += '\\';
+                std::string ts = wd2.size() ? wd2 : path_expanded;
+                bool is_abs = ts.size() > 3 /* C:\ */
+                    && ts[1] == ':'
+                    && (ts[2] == '/' || ts[2] == '\\');
+                bool is_rel = !is_abs
+                    && ts.size() > 0
+                    && ts[0] == '.'; // filenames which start with a period is not processed.
+
+                std::string result;
+                if(is_abs)
+                    result = ts;
+                else if(is_rel)
+                    result = ts;
+                else
+                    result = expand("${desktop}\\");
+
+                auto begin = result.c_str();
+                auto p = begin + (int)result.size() - 1;
+                if(p < begin) p = begin; // size() maybe 0
+                while(p > begin && *p != '/' && *p != '\\')
+                    --p;
+                if(p > begin && (*p == '/' || *p == '\\'))
+                    return std::string(result.c_str(), p - begin);
+                else
+                    return std::move(ts);
+            }());
+
+            // environment variables
+            const char* env_ = env.size() ? env.c_str() : nullptr;
+
             ::STARTUPINFO si = {sizeof(si)};
             ::PROCESS_INFORMATION pi;
 
-            std::string cmdline = '"' + path + "\" " + params;
-            const char* wd_ = wd.size() ? wd.c_str() : nullptr;
-            const char* env_ = env.size() ? env.c_str() : nullptr;
             if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
                 nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE,
-                (void*)env_, wd_,
+                (void*)env_, wd.c_str(),
                 &si, &pi)) {
                 ::CloseHandle(pi.hThread);
                 ::CloseHandle(pi.hProcess);
