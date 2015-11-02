@@ -6,6 +6,7 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <sstream>
 
 #include "charset.h"
 
@@ -16,6 +17,70 @@
 
 namespace nbsg {
     namespace core {
+
+        class env_var_t {
+        public:
+
+            env_var_t() {
+
+            }
+
+            void set(const std::string& envstr) {
+                _vars.clear();
+                patch(envstr);
+            }
+
+            void patch(const std::string& envstr) {
+                const char* p = envstr.c_str();
+                for(; *p;) {
+                    auto key_begin = p;
+                    while(*p != '=') p++;
+                    auto key_end = p++;
+                    std::string key(key_begin, key_end);
+
+                    std::string val;
+                    while(*p && *p !='\r' && *p != '\n') {
+                        if(*p == '%') {
+                            auto var_start = ++p;
+                            while(*p != '%') p++; // buggy
+                            auto var_end = p++;
+                            std::string var(var_start, var_end);
+                            if(_vars.count(var))
+                                val += _vars[var];
+                        } else {
+                            val += *p++;
+                        }
+                    }
+
+                    if(key.size() == 0)
+                        _nameless.push_back(std::move(val));
+                    else
+                        _vars[std::move(key)] = std::move(val);
+
+                    while(*p == '\r' || *p == '\n') 
+                        p++;
+                    if(!*p) p++;
+                }
+            }
+
+            std::string serialize() const {
+                std::ostringstream oss;
+                for(auto& v : _nameless) {
+                    oss << '=' << v;
+                    oss.write("", 1);
+                }
+                for(auto it = _vars.cbegin(), end = _vars.cend(); it != end; it++) {
+                    oss << it->first << '=' << it->second;
+                    oss.write("", 1);
+                }
+                oss.write("", 1);
+                return std::move(oss.str());
+            }
+
+        protected:
+            std::vector<std::string>            _nameless;
+            std::map<std::string, std::string>  _vars;
+        };
 
         static std::map<std::string, std::string> g_variables;
         typedef std::vector<std::string> func_args;
@@ -338,7 +403,7 @@ namespace nbsg {
 
         static void execute(HWND hwnd, const std::string& path,
             const std::string& params, const std::string& args,
-            const std::string& wd_, const std::string& env,
+            const std::string& wd_, const std::string& env_,
             std::function<void(const std::string& err)> cb)
         {
             // not specified as absolute path or as relative path to a file.
@@ -398,14 +463,33 @@ namespace nbsg {
             }());
 
             // environment variables
-            const char* env_ = env.size() ? env.c_str() : nullptr;
+            std::string env([&]() {
+                std::string env2 = std::move(env_);
+                if(env2.size() == 0)
+                    return std::string();
+
+                std::string def_env([]() {
+                    auto def_env = ::GetEnvironmentStrings();
+                    auto p = def_env;
+                    while(*p) while(*p++);
+                    std::string def_env_str(def_env, p + 1);
+                    ::FreeEnvironmentStrings(def_env);
+                    return std::move(def_env_str);
+                }());
+
+                env_var_t env_var;
+                env_var.set(def_env);
+                env_var.patch(env2.append(2, '\0'));
+
+                return std::move(env_var.serialize());
+            }());
 
             ::STARTUPINFO si = {sizeof(si)};
             ::PROCESS_INFORMATION pi;
 
             if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
                 nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE,
-                (void*)env_, wd.c_str(),
+                (void*)(env.size() ? env.c_str() : nullptr), wd.c_str(),
                 &si, &pi)) {
                 ::CloseHandle(pi.hThread);
                 ::CloseHandle(pi.hProcess);

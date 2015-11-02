@@ -9,6 +9,60 @@
 #include <functional>
 #include <regex>
 
+class INPUTBOX : public taowin::window_creator {
+public:
+    typedef std::function<bool(INPUTBOX* that, taowin::control* ctl, const std::string& text)> callback_t;
+    INPUTBOX(const std::string& text, callback_t cb) 
+        : _cb(cb)
+        , _text(std::move(text))
+    {}
+
+private:
+     callback_t _cb;
+     const std::string _text;
+
+protected:
+    virtual LPCTSTR get_skin_xml() const override {
+        return R"tw(
+<window title="input" size="500,400">
+    <res>
+        <font name="default" face="微软雅黑" size="12"/>
+        <font name="consolas" face="Consolas" size="12"/>
+    </res>
+    <root>
+        <vertical>
+            <edit name="content" font="consolas" style="multiline,wantreturn,vscroll,hscroll" exstyle="clientedge"/>
+            <horizontal height="40" padding="5,5,5,5">
+                <control/>
+                <button name="ok" text="确定" width="40"/>
+                <button name="cancel" text="取消" width="40"/>
+        </vertical>
+    </root>
+</window>
+)tw";
+    }
+
+    virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) override {
+        if(umsg == WM_CREATE) {
+            _root->find<taowin::edit>("content")->set_text(_text.c_str());
+            return 0;
+        }
+        return __super::handle_message(umsg, wparam, lparam);
+    }
+
+    virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) override {
+        if(pc->name() == "ok" || pc->name() == "cancel") {
+            if(code == BN_CLICKED) {
+                if(_cb(this, pc, _root->find<taowin::edit>("content")->get_text())) {
+                    close();
+                    return 0;
+                }
+            }
+        }
+        return 0;
+    }
+};
+
 class MINI : public taowin::window_creator {
 protected:
     virtual void get_metas(taowin::window::window_meta_t* metas) override {
@@ -211,43 +265,63 @@ public:
 protected:
     virtual LPCTSTR get_skin_xml() const override {
         return R"tw(
-<window title="item" size="410,240">
+<window title="item" size="410,280">
     <res>
         <font name="default" face="微软雅黑" size="12" />
     </res>
     <root>
         <vertical padding="5,5,5,5">
-            <horizontal width="400" height="230">
-                <vertical width="70">
-                    <label style="centerimage" text="ID"/>
-                    <label style="centerimage" text="index"/>
-                    <label style="centerimage" text="group"/>
-                    <label style="centerimage" text="comment"/>
-                    <label style="centerimage" text="path"/>
-                    <label style="centerimage" text="params"/>
-                    <label style="centerimage" text="work_dir"/>
-                    <label style="centerimage" text="env"/>
-                    <label style="centerimage" text="show"/>
-                </vertical>
-                <vertical >
+            <vertical height="220">
+                <horizontal>
+                    <label style="centerimage" text="id" width="70"/>
                     <edit name="id" style="tabstop" exstyle="clientedge" style="disabled"/>
+                </horizontal>
+                <horizontal>
+                    <label style="centerimage" text="index" width="70"/>
                     <edit name="index" style="tabstop" exstyle="clientedge" />
+                </horizontal>
+                <horizontal>
+                    <label style="centerimage" text="group" width="70"/>
                     <edit name="group" style="tabstop" exstyle="clientedge" />
+                </horizontal>
+                <horizontal>
+                    <label style="centerimage" text="comment" width="70"/>
                     <edit name="comment" style="tabstop" exstyle="clientedge" />
+                </horizontal>
+                <horizontal>
+                    <label style="centerimage" text="path" width="70"/>
                     <edit name="path" style="tabstop" exstyle="clientedge" />
+                </horizontal>
+                <horizontal>
+                    <label style="centerimage" text="params" width="70"/>
                     <edit name="params" style="tabstop" exstyle="clientedge" />
+                </horizontal>
+                <horizontal>
+                    <label style="centerimage" text="work_dir" width="70"/>
                     <edit name="work_dir" style="tabstop" exstyle="clientedge" />
-                    <edit name="env" style="tabstop" exstyle="clientedge" />
+                </horizontal>
+                <horizontal>
+                    <label style="centerimage" text="env" width="70"/>
+                    <edit name="env" style="tabstop,disabled" exstyle="clientedge" />
+                    <button name="show-env" text="..." width="30"/>
+                </horizontal>
+                <horizontal>
+                    <label style="centerimage" text="show" width="70"/>
                     <edit name="show" style="tabstop" exstyle="clientedge" />
-                </vertical>
-                <vertical padding="10,0,0,10" width="80" height="60">
+                </horizontal>
+            </vertical>
+            <control minheight="5"/>
+            <horizontal height="40">
+                <control/>
+                <horizontal width="80">
                     <button name="ok" text="保存"/>
                     <button name="cancel" text="取消"/>
-                </vertical> 
+                </horizontal> 
             </horizontal>
         </vertical>
     </root>
 </window>
+
 )tw";
 
     }
@@ -370,6 +444,16 @@ protected:
         else if(pc->name() == "cancel") {
             if(code == BN_CLICKED) {
                 close();
+                return 0;
+            }
+        }
+        else if(pc->name() == "show-env") {
+            if(code == BN_CLICKED) {
+                INPUTBOX input(_env->get_text(), [&](INPUTBOX* that, taowin::control* ctl, const std::string& text) {
+                    _root->find<taowin::edit>("env")->set_text(text.c_str());
+                    return true;
+                });
+                input.domodal(this);
                 return 0;
             }
         }
