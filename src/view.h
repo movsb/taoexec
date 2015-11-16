@@ -180,9 +180,10 @@ protected:
     }
 
     void execute(std::string& args) {
-        std::string cmd, arg;
-        nbsg::core::parse_args(args, &cmd, &arg);
-        if(cmd.size() == 0) {
+        std::string cmd, env, arg;
+        bool is_dir, is_env;
+        bool parsed = nbsg::core::parse_args(args, &cmd, &is_env, &env, &is_dir, &arg);
+        if(!parsed || cmd.size() == 0) {
             if(args.size()) {
                 msgbox("Nothing to do without a cmd specified, correctly specify it.");
                 return;
@@ -193,47 +194,94 @@ protected:
             }
         }
 
-        nbsg::model::item_t* found = nullptr;
-        std::vector<nbsg::model::item_t*> items;
-        int rc = _db.query(cmd, &items);
-        if(rc == -1) {
-            msgbox("sqlite3 error.");
-            return;
-        } else if(rc == 0) {
-            msgbox("Your search `" + cmd + "` does not match anything.");
-            return;
-        } else if(rc == 1) {
-            found = items[0];
-        } else {
-            decltype(items.cbegin()) it;
-            for(it = items.cbegin(); it != items.cend(); it++) {
-                if((*it)->index == cmd) {
-                    found = *it;
-                    break;
+        auto from_db = [&]()->nbsg::model::item_t* {
+            nbsg::model::item_t* found = nullptr;
+            std::vector<nbsg::model::item_t*> items;
+            int rc = _db.query(cmd, &items);
+            if(rc == -1) {
+                msgbox("sqlite3 error.");
+            } else if(rc == 0) {
+                msgbox("Your search `" + cmd + "` does not match anything.");
+            } else if(rc == 1) {
+                found = items[0];
+            } else {
+                decltype(items.cbegin()) it;
+                for(it = items.cbegin(); it != items.cend(); it++) {
+                    if((*it)->index == cmd) {
+                        found = *it;
+                        break;
+                    }
                 }
+
+                for(auto pi : items) {
+                    if(pi != found)
+                        delete pi;
+                }
+
+                if(found == nullptr) {
+                    msgbox("There are many rows match your given prefix.");
+                }
+                // found
             }
 
-            for(auto pi : items) {
-                if(pi != found)
-                    delete pi;
-            }
+            return found;
+        };
 
-            if(found == nullptr) {
-                msgbox("There are many rows match your given prefix.");
+        auto from_env = [&]()->std::string {
+            return nbsg::core::which(cmd, env);
+        };
+
+        std::string errstr;
+
+        if(is_env) {
+            std::string path(is_dir
+                ? nbsg::core::which(cmd, env)
+                : cmd);
+
+            if(is_dir) {
+                if(!path.size()) {
+                    msgbox("Î´ÕÒµ½¡£");
+                    return;
+                }
+
+                nbsg::core::explorer(_hwnd, path, [&errstr](const std::string& err) {
+                    errstr = err;
+                });
+            }
+            else {
+                nbsg::core::execute(_hwnd, path, "", "", "", "", [&errstr](const std::string& err) {
+                    errstr = err;
+                });
+            }
+        }
+        else {
+            auto found = from_db();
+            if(!found) {
+                msgbox("Î´ÕÒµ½¡£");
                 return;
             }
 
-            // found
+            if(is_dir) {
+                nbsg::core::explorer(_hwnd, found->path, [&](const std::string& err) {
+                    errstr = err;
+                });
+            }
+            else {
+                std::string path = nbsg::core::expand(found->path);
+                nbsg::core::execute(_hwnd, path, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
+                    errstr = err;
+                });
+            }
+
+            delete found;
         }
 
-        nbsg::core::execute(_hwnd, found->path, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
-            if(err == "ok")
-                set_display(0);
-            else
-                msgbox("Ê§°Ü¡£");
-        });
+        if(errstr == "ok")
+            set_display(0);
+        else
+            msgbox("Ê§°Ü¡£");
 
-        delete found;
+        return;
     }
 };
 

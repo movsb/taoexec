@@ -7,6 +7,7 @@
 #include <functional>
 #include <string>
 #include <sstream>
+#include <memory>
 
 #include "charset.h"
 
@@ -61,6 +62,19 @@ namespace nbsg {
                         p++;
                     if(!*p) p++;
                 }
+            }
+
+            void patch_current() {
+                std::string def_env([]() {
+                    auto def_env = ::GetEnvironmentStrings();
+                    auto p = def_env;
+                    while(*p) while(*p++);
+                    std::string def_env_str(def_env, p + 1);
+                    ::FreeEnvironmentStrings(def_env);
+                    return std::move(def_env_str);
+                }());
+
+                patch(def_env);
             }
 
             std::string serialize() const {
@@ -298,7 +312,10 @@ namespace nbsg {
             return result;
         }
 
-        static bool parse_args(const std::string& argstr, std::string* const cmd, std::string* const arg) {
+        static bool parse_args(const std::string& argstr, std::string* const cmd,
+            bool* is_env, std::string* env, 
+            bool* is_dir, std::string* const arg)
+        {
             auto p = argstr.c_str();
             char c;
             for(;;) {
@@ -315,6 +332,31 @@ namespace nbsg {
                         refcmd += *p;
                         p++;
                     }
+
+                    if(*p == '@') { // specifying env.
+                        *is_env = true;
+                        auto& refenv = *env;
+                        p++;
+                        while(::isalnum(*p)) {
+                            refenv += *p;
+                            p++;
+                        }
+                    }
+                    else {
+                        *is_env = false;
+                    }
+
+                    if(*p == '\\') {    // specifying explorer view.
+                        *is_dir = true;
+                        p++;
+                    }
+                    else {
+                        *is_dir = false;
+                    }
+
+                    // at least have one ws.
+                    if(*p && *p != ' ' && *p != '\t')
+                        return false;
 
                     for(;;) {
                         c = *p;
@@ -401,6 +443,94 @@ namespace nbsg {
             return result;
         }
 
+        static std::string which(const std::string& cmd, const std::string& env/*not used*/) {
+            std::string result;
+
+            // collect all search directories that match CreateProcess' behavior
+            std::vector<std::string> search_dirs;
+            // 1. the directory from which the application loaded
+            search_dirs.push_back(expand_variable("exe_dir"));
+            // 2. the current directory for the parent process
+            search_dirs.push_back(expand_variable("cd"));
+            // 3. The 32-bit Windows system directory
+            search_dirs.push_back(expand_variable("system"));
+            // 4. The 16-bit Windows system directory (not implemented)
+            // 5. The Windows directory
+            search_dirs.push_back(expand_variable("windows"));
+            // 6. The directories that are listed in the PATH environment variable
+            const int var_size = 32 * 1024;
+            std::unique_ptr<char> path(new char[var_size]);
+            if(::GetEnvironmentVariable("PATH", path.get(), var_size)) {
+                auto spath = path.get();
+                auto end = spath;
+                while(*end) {
+                    auto begin = end;
+                    while(*end && *end != ';')
+                        end++;
+                    if(end > begin)
+                        search_dirs.push_back(std::string(begin, end));
+                    if(*end == ';')
+                        end++;
+                }
+            }
+
+            // now search the specified cmd as ``which`` always does
+            std::vector<std::string> matches;
+            bool has_match = false;
+            for(auto& dir : search_dirs) {
+                if(!dir.size())
+                    continue;
+
+                std::string folder = dir;
+                if(folder.back() != '/' && folder.back() != '\\')
+                    folder.append(1, '\\');
+
+                WIN32_FIND_DATA wfd;
+                std::string pattern = folder + cmd + '*';
+                HANDLE hfind = ::FindFirstFile(pattern.c_str(), &wfd);
+                if(hfind != INVALID_HANDLE_VALUE) {
+                    do {
+                        std::string file = folder + wfd.cFileName;
+                        matches.push_back(std::move(file));
+                        // check exactly match
+                        if(_stricmp(cmd.c_str(), wfd.cFileName) == 0) {
+                            has_match = true;
+                            goto _exit_for;
+                        }
+                        // check if executable
+                        auto offset_match = wfd.cFileName + cmd.size();
+                        if(_stricmp(offset_match, ".exe") == 0
+                            || _stricmp(offset_match, ".bat") == 0
+                            || _stricmp(offset_match, ".cmd") == 0
+                            ) 
+                        {
+                            has_match = true;
+                            goto _exit_for;
+                        }
+                    } while(::FindNextFile(hfind, &wfd));
+                    ::FindClose(hfind);
+                }
+            }
+
+        _exit_for:
+            if(has_match) {
+                return matches.back();
+            }
+
+            return "";
+        }
+
+        static void explorer(HWND hwnd, const std::string& path,
+            std::function<void(const std::string& err)> cb
+            ) 
+        {
+            std::string escpath(path);
+            if(escpath.find(' ') != std::string::npos)
+                escpath = '"' + escpath + '"';
+            ::ShellExecute(hwnd, "open", "explorer", ("/select," + escpath).c_str(),nullptr, SW_SHOW);
+            if(cb) cb("ok");
+        }
+
         static void execute(HWND hwnd, const std::string& path,
             const std::string& params, const std::string& args,
             const std::string& wd_, const std::string& env_,
@@ -468,17 +598,8 @@ namespace nbsg {
                 if(env2.size() == 0)
                     return std::string();
 
-                std::string def_env([]() {
-                    auto def_env = ::GetEnvironmentStrings();
-                    auto p = def_env;
-                    while(*p) while(*p++);
-                    std::string def_env_str(def_env, p + 1);
-                    ::FreeEnvironmentStrings(def_env);
-                    return std::move(def_env_str);
-                }());
-
                 env_var_t env_var;
-                env_var.set(def_env);
+                env_var.patch_current();
                 env_var.patch(env2.append(2, '\0'));
 
                 return std::move(env_var.serialize());

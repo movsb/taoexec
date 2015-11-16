@@ -25,5 +25,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd
 
     taowin::loop_message();
 
+    db.close();
+
     return 0;
 }
