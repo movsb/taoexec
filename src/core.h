@@ -487,6 +487,7 @@ namespace nbsg {
 
                 WIN32_FIND_DATA wfd;
                 std::string pattern = folder + cmd + '*';
+                if(is_64bit()) ::Wow64DisableWow64FsRedirection(nullptr);
                 HANDLE hfind = ::FindFirstFile(pattern.c_str(), &wfd);
                 if(hfind != INVALID_HANDLE_VALUE) {
                     do {
@@ -510,6 +511,7 @@ namespace nbsg {
                     } while(::FindNextFile(hfind, &wfd));
                     ::FindClose(hfind);
                 }
+                if(is_64bit()) ::Wow64EnableWow64FsRedirection(TRUE);
             }
 
         _exit_for:
