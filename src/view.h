@@ -249,7 +249,7 @@ protected:
                 });
             }
             else {
-                nbsg::core::execute(_hwnd, path, "", "", "", "", [&errstr](const std::string& err) {
+                nbsg::core::execute(_hwnd, path, "", arg, "", "", [&errstr](const std::string& err) {
                     errstr = err;
                 });
             }
