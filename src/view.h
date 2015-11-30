@@ -262,7 +262,8 @@ protected:
             }
 
             if(is_dir) {
-                nbsg::core::explorer(_hwnd, found->path, [&](const std::string& err) {
+                std::string path = nbsg::core::which(nbsg::core::expand(found->path), "");
+                nbsg::core::explorer(_hwnd, path, [&](const std::string& err) {
                     errstr = err;
                 });
             }
