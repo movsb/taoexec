@@ -542,7 +542,8 @@ namespace taoexec {
             if(std::regex_match(path, std::regex(R"(shell:::\{.{36}\})"))   // shell clsid
                 || std::regex_match(path, std::regex(R"(shell:[^:/]+)"))    // shell command
                 || std::regex_match(path, std::regex(R"(https?://.*)"))     // http(s) protocol
-                ) {
+                || std::regex_match(path, std::regex(R"(\\.*\.*)"))         // Windows Sharing
+            ){
                 ::ShellExecute(hwnd, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
                 if(cb) cb("ok");
                 return;

@@ -559,12 +559,12 @@ protected:
                 int         width;
             } cols[] = {
                 {"id",50},
-                {"index", 50},
+                {"index", 80},
                 {"group", 80},
                 {"comment", 100},
                 {"path", 100},
                 {"params", 100},
-                {"work_dir", 100},
+                {"work_dir", 80},
                 {"env", 100},
                 {"show", 50},
                 {nullptr, 0}
