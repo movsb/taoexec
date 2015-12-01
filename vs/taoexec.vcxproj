@@ -13,7 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>nbsg</RootNamespace>
+    <RootNamespace>taoexec</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

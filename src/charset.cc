@@ -38,7 +38,7 @@ static std::string __u2ae(UINT cp, const std::wstring& src) {
     return std::string();
 }
 
-namespace nbsg {
+namespace taoexec {
     namespace charset {
         std::wstring a2u(const std::string& src) {
             return __ae2u(CP_ACP, src);

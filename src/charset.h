@@ -9,7 +9,7 @@
     T - typedef-ed
 */
 
-namespace nbsg {
+namespace taoexec {
     namespace charset {
         // from ANSI(extended) to UNICODE
         std::wstring a2u(const std::string& src);

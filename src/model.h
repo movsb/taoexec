@@ -6,7 +6,7 @@
 
 #include <sqlite3/sqlite3.h>
 
-namespace nbsg {
+namespace taoexec {
     namespace model {
         struct item_t {
             std::string     id;

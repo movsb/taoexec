@@ -7,7 +7,7 @@
 #include "charset.h"
 
 static void prompt_elevation() {
-    if(nbsg::core::is_64bit() && !::IsUserAnAdmin()) {
+    if(taoexec::core::is_64bit() && !::IsUserAnAdmin()) {
         auto s = R"(You are running a 64-bit Windows version, but you are NOT running this application)"
             R"( as Administrator. So, actions that need elevation will NOT work.)" "\n"
             R"(If you are experiencing problems, try re-running this application as Administrator, instead.)";
@@ -21,12 +21,12 @@ int main() {
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd) {
 #endif
     taowin::init();
-    nbsg::core::init();
+    taoexec::core::init();
 
-    nbsg::core::add_user_variable("myprog", R"(F:\Program Files)");
+    taoexec::core::add_user_variable("myprog", R"(F:\Program Files)");
 
-    nbsg::model::db_t db;
-    db.open(nbsg::charset::a2e(R"(nbsg.db)"));
+    taoexec::model::db_t db;
+    db.open(taoexec::charset::a2e(R"(taoexec.db)"));
 
     TW tw(db);
     tw.create();

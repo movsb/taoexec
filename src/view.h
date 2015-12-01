@@ -165,13 +165,13 @@ protected:
     }
 
 public:
-    MINI(nbsg::model::db_t& db)
+    MINI(taoexec::model::db_t& db)
         : _db(db)
         , _focus(nullptr) {}
 
 private:
     HWND _focus;
-    nbsg::model::db_t& _db;
+    taoexec::model::db_t& _db;
 
 protected:
 
@@ -182,7 +182,7 @@ protected:
     void execute(std::string& args) {
         std::string cmd, env, arg;
         bool is_dir, is_env;
-        bool parsed = nbsg::core::parse_args(args, &cmd, &is_env, &env, &is_dir, &arg);
+        bool parsed = taoexec::core::parse_args(args, &cmd, &is_env, &env, &is_dir, &arg);
         if(!parsed || cmd.size() == 0) {
             if(args.size()) {
                 msgbox("Nothing to do without a cmd specified, correctly specify it.");
@@ -194,9 +194,9 @@ protected:
             }
         }
 
-        auto from_db = [&]()->nbsg::model::item_t* {
-            nbsg::model::item_t* found = nullptr;
-            std::vector<nbsg::model::item_t*> items;
+        auto from_db = [&]()->taoexec::model::item_t* {
+            taoexec::model::item_t* found = nullptr;
+            std::vector<taoexec::model::item_t*> items;
             int rc = _db.query(cmd, &items);
             if(rc == -1) {
                 msgbox("sqlite3 error.");
@@ -228,14 +228,14 @@ protected:
         };
 
         auto from_env = [&]()->std::string {
-            return nbsg::core::which(cmd, env);
+            return taoexec::core::which(cmd, env);
         };
 
         std::string errstr;
 
         if(is_env) {
             std::string path(is_dir
-                ? nbsg::core::which(cmd, env)
+                ? taoexec::core::which(cmd, env)
                 : cmd);
 
             if(is_dir) {
@@ -244,12 +244,12 @@ protected:
                     return;
                 }
 
-                nbsg::core::explorer(_hwnd, path, [&errstr](const std::string& err) {
+                taoexec::core::explorer(_hwnd, path, [&errstr](const std::string& err) {
                     errstr = err;
                 });
             }
             else {
-                nbsg::core::execute(_hwnd, path, "", "", "", "", [&errstr](const std::string& err) {
+                taoexec::core::execute(_hwnd, path, "", "", "", "", [&errstr](const std::string& err) {
                     errstr = err;
                 });
             }
@@ -262,13 +262,13 @@ protected:
             }
 
             if(is_dir) {
-                nbsg::core::explorer(_hwnd, found->path, [&](const std::string& err) {
+                taoexec::core::explorer(_hwnd, found->path, [&](const std::string& err) {
                     errstr = err;
                 });
             }
             else {
-                std::string path = nbsg::core::expand(found->path);
-                nbsg::core::execute(_hwnd, path, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
+                std::string path = taoexec::core::expand(found->path);
+                taoexec::core::execute(_hwnd, path, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
                     errstr = err;
                 });
             }
@@ -287,9 +287,9 @@ protected:
 
 class ITEM : public taowin::window_creator {
 private:
-    nbsg::model::db_t&      _db;
-    nbsg::model::item_t*    _item;
-    std::function<void(nbsg::model::item_t* p)>   _on_succ;
+    taoexec::model::db_t&      _db;
+    taoexec::model::item_t*    _item;
+    std::function<void(taoexec::model::item_t* p)>   _on_succ;
 
 private:
     taowin::edit*   _id;
@@ -303,7 +303,7 @@ private:
     taowin::edit*   _show;
 
 public:
-    ITEM(nbsg::model::db_t& db, nbsg::model::item_t* item, std::function<void(nbsg::model::item_t*)> on_succ = nullptr)
+    ITEM(taoexec::model::db_t& db, taoexec::model::item_t* item, std::function<void(taoexec::model::item_t*)> on_succ = nullptr)
         : _db(db)
         , _item(item)
         , _on_succ(on_succ)
@@ -436,7 +436,7 @@ protected:
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
         if(pc->name() == "ok") {
             if(code == BN_CLICKED) {
-                auto p = new nbsg::model::item_t;
+                auto p = new taoexec::model::item_t;
                 p->id = _id->get_text();
                 p->index = _index->get_text();
                 p->group = _group->get_text();
@@ -511,11 +511,11 @@ protected:
 
 class TW : public taowin::window_creator {
 private:
-    nbsg::model::db_t& _db;
-    std::vector<nbsg::model::item_t*> _items;
+    taoexec::model::db_t& _db;
+    std::vector<taoexec::model::item_t*> _items;
 
 public:
-    TW(nbsg::model::db_t& db) 
+    TW(taoexec::model::db_t& db) 
         : _db(db)
     {
     }
@@ -523,7 +523,7 @@ public:
 protected:
     virtual LPCTSTR get_skin_xml() const override {
         return R"tw(
-<window title="nbsg" size="850,600">
+<window title="taoexec" size="850,600">
     <res>
         <font name="default" face="Î¢ÈíÑÅºÚ" size="12"/>
     </res>
@@ -650,7 +650,7 @@ protected:
             if(pc->name() == "add") {
                 taowin::listview* lv = _root->find<taowin::listview>("list");
                 // callback
-                auto on_added = [&](nbsg::model::item_t* p) {
+                auto on_added = [&](taoexec::model::item_t* p) {
                     if(_items.size()==0 || _items.back() != p)
                         _items.push_back(p);
                     int count = _items.size();
@@ -667,10 +667,10 @@ protected:
                 int lvid = lv->get_next_item(-1, LVNI_SELECTED);
                 if(lvid == -1) return 0;
 
-                nbsg::model::item_t& it = *_items[lvid];
+                taoexec::model::item_t& it = *_items[lvid];
 
                 // callback
-                auto on_modified = [&](nbsg::model::item_t* p) {
+                auto on_modified = [&](taoexec::model::item_t* p) {
                     lv->redraw_items(lvid, lvid);
                 };
 
@@ -736,7 +736,7 @@ private:
         auto& wd        = _items[i]->work_dir;
         auto& env       = _items[i]->env;
 
-        nbsg::core::execute(_hwnd, path, params, "", wd, env, [&](const std::string& err) {
+        taoexec::core::execute(_hwnd, path, params, "", wd, env, [&](const std::string& err) {
             if(err != "ok") {
                 msgbox("Ê§°Ü¡£", MB_ICONEXCLAMATION);
             }

@@ -16,7 +16,7 @@
 #include <ShlObj.h>
 #include <assert.h>
 
-namespace nbsg {
+namespace taoexec {
     namespace core {
 
         class env_var_t {

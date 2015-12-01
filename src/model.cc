@@ -1,6 +1,6 @@
 #include "model.h"
 
-namespace nbsg {
+namespace taoexec {
     namespace model {
 
         int db_t::open(const std::string& file) {
