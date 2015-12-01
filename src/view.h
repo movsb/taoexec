@@ -249,7 +249,7 @@ protected:
                 });
             }
             else {
-                taoexec::core::execute(_hwnd, path, "", "", "", "", [&errstr](const std::string& err) {
+                taoexec::core::execute(_hwnd, path, "", arg, "", "", [&errstr](const std::string& err) {
                     errstr = err;
                 });
             }
@@ -262,7 +262,8 @@ protected:
             }
 
             if(is_dir) {
-                taoexec::core::explorer(_hwnd, found->path, [&](const std::string& err) {
+                std::string path = taoexec::core::which(taoexec::core::expand(found->path), "");
+                taoexec::core::explorer(_hwnd, path, [&](const std::string& err) {
                     errstr = err;
                 });
             }
