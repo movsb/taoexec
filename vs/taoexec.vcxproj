@@ -115,6 +115,13 @@
     <ClInclude Include="..\src\model.h" />
     <ClInclude Include="..\src\view.h" />
     <ClInclude Include="..\third\sqlite3\sqlite3.h" />
+    <ClInclude Include="..\res\resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\res\taoexec.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\res\100.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
