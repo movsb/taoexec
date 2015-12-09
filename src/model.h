@@ -26,13 +26,25 @@ namespace taoexec {
 
         class db_t {
         public:
-            db_t ()
+            db_t()
+                : _db(nullptr) 
+            {}
+            int open(const std::string& file);
+            int close();
+            sqlite3* operator *() {
+                return _db;
+            }
+        protected:
+            sqlite3*    _db;
+        };
+
+        class item_db_t {
+        public:
+            item_db_t ()
                 : _db(nullptr)
             {}
 
-            int open(const std::string& file);
-            int close();
-
+            void    set_db(sqlite3* db);
         public:
             bool    has(int i);
             int     insert(const item_t* item);
@@ -47,7 +59,26 @@ namespace taoexec {
             int _create_tables();
 
         private:
-            sqlite3*        _db;
+            sqlite3*    _db;
+        };
+
+        class config_db_t {
+        public:
+            config_db_t()
+                : _db(nullptr) 
+            {}
+
+            void    set_db(sqlite3* db);
+        public:
+            bool        has(const std::string& key);
+            std::string get(const std::string& key);
+            void        set(const std::string& key, const std::string& val);
+
+        private:
+            int _create_tables();
+
+        private:
+            sqlite3*    _db;
         };
     }
 }

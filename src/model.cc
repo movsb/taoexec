@@ -11,8 +11,6 @@ namespace taoexec {
                 return -1;
             }
 
-            _create_tables();
-
             return 0;
         }
 
@@ -25,7 +23,13 @@ namespace taoexec {
             return -1;
         }
 
-        int db_t::_create_tables() {
+        //---------------------------------------------------------------------
+        void item_db_t::set_db(sqlite3* db) {
+            _db = db;
+            _create_tables();
+        }
+
+        int item_db_t::_create_tables() {
             char* err;
             const char* sql = "CREATE TABLE IF NOT EXISTS items ("
                 "id INTEGER PRIMARY KEY,"
@@ -50,7 +54,7 @@ namespace taoexec {
         }
 
         // fails on return value <= 0
-        int db_t::insert(const item_t* item) {
+        int item_db_t::insert(const item_t* item) {
             if(!item || std::atoi(item->id.c_str()) != -1) {
                 return -1;
             }
@@ -71,7 +75,7 @@ namespace taoexec {
             next = next && ::sqlite3_bind_text(stmt, 5, item->params.c_str(), item->params.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 6, item->work_dir.c_str(), item->work_dir.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 7, item->env.c_str(), item->env.size(), nullptr) == SQLITE_OK;
-            next = next && ::sqlite3_bind_int (stmt, 8, item->show ? 1 : 0) == SQLITE_OK;
+            next = next && ::sqlite3_bind_int(stmt, 8, item->show ? 1 : 0) == SQLITE_OK;
 
             if(next == false) {
                 ::sqlite3_finalize(stmt);
@@ -88,11 +92,11 @@ namespace taoexec {
             return (int)::sqlite3_last_insert_rowid(_db);
         }
 
-        int db_t::remove(const std::string& where) {
+        int item_db_t::remove(const std::string& where) {
             return -1;
         }
 
-        bool db_t::remove(int id) {
+        bool item_db_t::remove(int id) {
             std::string sql("DELETE FROM items WHERE id=");
             sql += std::to_string(id) + ";"; // + " LIMIT 1; "; sqlite3 does not support limit 1
 
@@ -102,7 +106,7 @@ namespace taoexec {
             return ok;
         }
 
-        bool db_t::has(int i) {
+        bool item_db_t::has(int i) {
             std::string sql("SELECT id FROM items WHERE id=");
             sql += std::to_string(i) + " LIMIT 1;";
             sqlite3_stmt* stmt;
@@ -117,7 +121,7 @@ namespace taoexec {
         }
 
         // TODO ºÏ²¢
-        int db_t::query(const std::string& pattern, std::vector<item_t*>* items) {
+        int item_db_t::query(const std::string& pattern, std::vector<item_t*>* items) {
             const char* sql = "SELECT * FROM items WHERE index_ like ?;";
             sqlite3_stmt* stmt;
             const char* err = nullptr;
@@ -153,50 +157,52 @@ namespace taoexec {
                 n++;
             }
 
-            if (sr != SQLITE_DONE) {    // TODO remove all
+            ::sqlite3_finalize(stmt);
+
+            if(sr != SQLITE_DONE) {    // TODO remove all
                 return -1;
             }
 
             return n;
         }
 
-        int db_t::query(const std::string& pattern, std::function<bool(item_t& item)> callback) {
+        int item_db_t::query(const std::string& pattern, std::function<bool(item_t& item)> callback) {
             return -1;
             /*
             const char* sql = "SELECT * FROM items;";
             sqlite3_stmt* stmt;
             if (::sqlite3_prepare(_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-                return -1;
+            return -1;
             }
 
             int sr, n = 0;
             while ((sr = ::sqlite3_step(stmt)) == SQLITE_ROW) {
-                item_t i;
-                
-                i.id         = ::sqlite3_column_int(stmt, 0);
-                i.index      = (char*)::sqlite3_column_text(stmt, 1);
-                i.group      = (char*)::sqlite3_column_text(stmt, 2);
-                i.comment    = (char*)::sqlite3_column_text(stmt, 3);
-                i.path       = (char*)::sqlite3_column_text(stmt, 4);
-                i.params     = (char*)::sqlite3_column_text(stmt, 5);
-                i.work_dir   = (char*)::sqlite3_column_text(stmt, 6);
-                i.env        = (char*)::sqlite3_column_text(stmt, 7);
-                i.show = !!::sqlite3_column_int(stmt, 8);
+            item_t i;
 
-                callback(i);
+            i.id         = ::sqlite3_column_int(stmt, 0);
+            i.index      = (char*)::sqlite3_column_text(stmt, 1);
+            i.group      = (char*)::sqlite3_column_text(stmt, 2);
+            i.comment    = (char*)::sqlite3_column_text(stmt, 3);
+            i.path       = (char*)::sqlite3_column_text(stmt, 4);
+            i.params     = (char*)::sqlite3_column_text(stmt, 5);
+            i.work_dir   = (char*)::sqlite3_column_text(stmt, 6);
+            i.env        = (char*)::sqlite3_column_text(stmt, 7);
+            i.show = !!::sqlite3_column_int(stmt, 8);
 
-                n++;
+            callback(i);
+
+            n++;
             }
 
             if (sr != SQLITE_DONE) {    // TODO remove all
-                return -1;
+            return -1;
             }
 
             return n;
             */
         }
 
-        item_t* db_t::query(int id) {
+        item_t* item_db_t::query(int id) {
             auto sql = "SELECT * FROM items WHERE id=" + std::to_string(id) + " LIMIT 1;";
             sqlite3_stmt* stmt;
             if(::sqlite3_prepare(_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
@@ -223,7 +229,7 @@ namespace taoexec {
             return pi;
         }
 
-        bool db_t::modify(const item_t* item) {
+        bool item_db_t::modify(const item_t* item) {
             const char* sql = "UPDATE items SET index_=?,group_=?,comment=?,path=?,params=?,work_dir=?,env=?,show=? WHERE id=?;";
 
             sqlite3_stmt* stmt;
@@ -257,5 +263,103 @@ namespace taoexec {
             return true;
         }
 
+        //------------------------------------------------------------------------------------------
+        void config_db_t::set_db(sqlite3* db) {
+            _db = db;
+            _create_tables();
+        }
+
+        int config_db_t::_create_tables() {
+            char* err;
+            const char* sql = "CREATE TABLE IF NOT EXISTS config ("
+                "id INTEGER PRIMARY KEY,"
+                "key TEXT,"
+                "val BLOB"
+                ")";
+
+            if(::sqlite3_exec(_db, sql, nullptr, nullptr, &err) == SQLITE_OK) {
+                return 0;
+            }
+
+            std::string strerr(err);
+            ::sqlite3_free(err);
+
+            return -1;
+        }
+
+        bool config_db_t::has(const std::string& key) {
+            auto sql = "SELECT id FROM config WHERE key=?";
+            sqlite3_stmt* stmt;
+            if(::sqlite3_prepare(_db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+                return false;
+            if(::sqlite3_bind_text(stmt, 1, key.c_str(), -1, nullptr) != SQLITE_OK)
+                return false;
+
+            int sr = ::sqlite3_step(stmt);
+            ::sqlite3_finalize(stmt);
+
+            return sr == SQLITE_ROW;
+        }
+
+        std::string config_db_t::get(const std::string& key) {
+            std::string val;
+            auto sql = "SELECT val FROM config WHERE key=? LIMIT 1;";
+            sqlite3_stmt* stmt;
+            if(::sqlite3_prepare(_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+                return "";
+            }
+
+            if(::sqlite3_bind_text(stmt, 1, key.c_str(), -1, nullptr) != SQLITE_OK) {
+                return "";
+            }
+
+            int sr;
+            if((sr = ::sqlite3_step(stmt)) == SQLITE_ROW) {
+                int len = (int)::sqlite3_column_bytes(stmt, 0);
+                const void* blob = ::sqlite3_column_blob(stmt, 0);
+                val.assign((const char*)blob, len);
+            }
+
+            ::sqlite3_finalize(stmt);
+
+            if(sr == SQLITE_ROW) {
+                return val;
+            } else {
+                return "";
+            }
+        }
+
+        void config_db_t::set(const std::string& key, const std::string& val) {
+            std::string sql;
+            sqlite3_stmt* stmt;
+            if(has(key)) {
+                sql = "UPDATE config SET val=? WHERE key=?;";
+                if(::sqlite3_prepare(_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+                    return;
+                if(::sqlite3_bind_blob(stmt, 1, val.c_str(), val.size(), nullptr) != SQLITE_OK)
+                    return;
+                if(::sqlite3_bind_text(stmt, 2, key.c_str(), -1, nullptr) != SQLITE_OK)
+                    return;
+
+                int sr = ::sqlite3_step(stmt);
+                ::sqlite3_finalize(stmt);
+
+                return;
+            }
+            else {
+                sql = "INSERT INTO config (key,val) values (?,?);";
+                if(::sqlite3_prepare(_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+                    return;
+                if(::sqlite3_bind_text(stmt, 1, key.c_str(), -1, nullptr) != SQLITE_OK)
+                    return;
+                if(::sqlite3_bind_blob(stmt, 2, val.c_str(), val.size(), nullptr) != SQLITE_OK)
+                    return;
+
+                int sr = ::sqlite3_step(stmt);
+                ::sqlite3_finalize(stmt);
+
+                return;;
+            }
+        }
     }
 }

@@ -35,7 +35,7 @@ namespace taoexec {
                 const char* p = envstr.c_str();
                 for(; *p;) {
                     auto key_begin = p;
-                    while(*p != '=') p++;
+                    while(*p != '=') p++; // buggy
                     auto key_end = p++;
                     std::string key(key_begin, key_end);
 
@@ -91,6 +91,10 @@ namespace taoexec {
                 return std::move(oss.str());
             }
 
+            const std::map<std::string, std::string>& get_vars() const {
+                return _vars;
+            }
+
         protected:
             std::vector<std::string>            _nameless;
             std::map<std::string, std::string>  _vars;
@@ -106,8 +110,9 @@ namespace taoexec {
                 && b64 != FALSE;
         }
 
-        static void add_user_variable(const std::string& var, const std::string& val) {
-            g_variables[var] = val;
+        static void add_user_variables(const env_var_t& env_var) {
+            for(auto& kv : env_var.get_vars())
+                g_variables[kv.first] = kv.second;
         }
 
         static void initialize_globals() {

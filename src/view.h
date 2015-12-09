@@ -44,7 +44,9 @@ protected:
 
     virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) override {
         if(umsg == WM_CREATE) {
-            _root->find<taowin::edit>("content")->set_text(_text.c_str());
+            auto content = _root->find<taowin::edit>("content");
+            content->set_text(_text.c_str());
+            content->focus();
             return 0;
         }
         return __super::handle_message(umsg, wparam, lparam);
@@ -165,13 +167,13 @@ protected:
     }
 
 public:
-    MINI(taoexec::model::db_t& db)
+    MINI(taoexec::model::item_db_t& db)
         : _db(db)
         , _focus(nullptr) {}
 
 private:
     HWND _focus;
-    taoexec::model::db_t& _db;
+    taoexec::model::item_db_t& _db;
 
 protected:
 
@@ -288,7 +290,7 @@ protected:
 
 class ITEM : public taowin::window_creator {
 private:
-    taoexec::model::db_t&      _db;
+    taoexec::model::item_db_t& _db;
     taoexec::model::item_t*    _item;
     std::function<void(taoexec::model::item_t* p)>   _on_succ;
 
@@ -304,7 +306,7 @@ private:
     taowin::edit*   _show;
 
 public:
-    ITEM(taoexec::model::db_t& db, taoexec::model::item_t* item, std::function<void(taoexec::model::item_t*)> on_succ = nullptr)
+    ITEM(taoexec::model::item_db_t& db, taoexec::model::item_t* item, std::function<void(taoexec::model::item_t*)> on_succ = nullptr)
         : _db(db)
         , _item(item)
         , _on_succ(on_succ)
@@ -513,12 +515,14 @@ protected:
 
 class TW : public taowin::window_creator {
 private:
-    taoexec::model::db_t& _db;
+    taoexec::model::item_db_t& _db;
+    taoexec::model::config_db_t& _cfg;
     std::vector<taoexec::model::item_t*> _items;
 
 public:
-    TW(taoexec::model::db_t& db) 
+    TW(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg) 
         : _db(db)
+        , _cfg(cfg)
     {
     }
 
@@ -540,6 +544,7 @@ protected:
                     <button name="delete" text="删除" style="disabled"/>
                 </vertical>
                 <control/>
+                <button name="user_vars" text="用户变量" height="25"/>
                 <button name="mini" text="小窗" height="25"/>
             </vertical>
         </horizontal>
@@ -717,6 +722,14 @@ protected:
             mini->create();
             mini->show();
             return 0;
+        }
+        else if(pc->name() == "user_vars") {
+            INPUTBOX input(_cfg.get("user_vars"), [&](INPUTBOX* that, taowin::control* ctl, const std::string& text) {
+                if(ctl->name() == "ok")
+                    _cfg.set("user_vars", text);
+                return true;
+            });
+            input.domodal(this);
         }
         return 0;
     }

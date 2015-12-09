@@ -23,12 +23,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd
     taowin::init();
     taoexec::core::init();
 
-    taoexec::core::add_user_variable("myprog", R"(F:\Program Files)");
-
     taoexec::model::db_t db;
     db.open(taoexec::charset::a2e(R"(taoexec.db)"));
 
-    TW tw(db);
+    taoexec::model::item_db_t itemdb;
+    itemdb.set_db(*db);
+
+    taoexec::model::config_db_t configdb;
+    configdb.set_db(*db);
+
+    taoexec::core::env_var_t env_var;
+    env_var.patch(configdb.get("user_vars").append(1, '\0'));
+    taoexec::core::add_user_variables(env_var);
+
+    TW tw(itemdb, configdb);
     tw.create();
     tw.show();
 
