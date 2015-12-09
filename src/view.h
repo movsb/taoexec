@@ -499,7 +499,8 @@ protected:
         else if(pc->name() == "show-env") {
             if(code == BN_CLICKED) {
                 INPUTBOX input(_env->get_text(), [&](INPUTBOX* that, taowin::control* ctl, const std::string& text) {
-                    _root->find<taowin::edit>("env")->set_text(text.c_str());
+                    if(ctl->name() == "ok")
+                        _root->find<taowin::edit>("env")->set_text(text.c_str());
                     return true;
                 });
                 input.domodal(this);
