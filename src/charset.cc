@@ -4,10 +4,10 @@
 
 static std::wstring __ae2u(UINT cp, const std::string& src) {
     if (src.size() > 0) {
-        int cch = ::MultiByteToWideChar(cp, MB_PRECOMPOSED, src.c_str(), -1, nullptr, 0);
+        int cch = ::MultiByteToWideChar(cp, 0, src.c_str(), -1, nullptr, 0);
         if (cch > 0) {
             wchar_t* ws = new wchar_t[cch];
-            if (::MultiByteToWideChar(cp, MB_PRECOMPOSED, src.c_str(), -1, ws, cch) > 0) {
+            if (::MultiByteToWideChar(cp, 0, src.c_str(), -1, ws, cch) > 0) {
                 std::wstring r(ws);
                 delete[] ws;
                 return r;
