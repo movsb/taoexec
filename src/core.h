@@ -318,6 +318,7 @@ namespace taoexec {
         }
 
         static bool parse_args(const std::string& argstr, std::string* const cmd,
+            bool* is_envvar,
             bool* is_env, std::string* env, 
             bool* is_dir, std::string* const arg)
         {
@@ -328,6 +329,22 @@ namespace taoexec {
                 if(c == ' ' || c == '\t') {
                     p++;
                     continue;
+                }
+                else if (c == '%') {
+                    p++;
+                    auto& refcmd = *cmd;
+                    while (*p && *p != '%') {
+                        refcmd += *p;
+                        p++;
+                    }
+
+                    if (*p == '%') {
+                        *is_envvar = true;
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
                 }
                 else if(::isalnum(c)) {
                     auto& refcmd = *cmd;
@@ -544,10 +561,11 @@ namespace taoexec {
             std::function<void(const std::string& err)> cb)
         {
             // not specified as absolute path or as relative path to a file.
-            if(std::regex_match(path, std::regex(R"(shell:::\{.{36}\})"))   // shell clsid
-                || std::regex_match(path, std::regex(R"(shell:[^:/]+)"))    // shell command
-                || std::regex_match(path, std::regex(R"(https?://.*)"))     // http(s) protocol
-                || std::regex_match(path, std::regex(R"(\\.*\.*)"))         // Windows Sharing
+            if(std::regex_match(path, std::regex(R"(shell:::\{.{36}\})", std::regex_constants::icase))                      // shell clsid
+                || std::regex_match(path, std::regex(R"(shell:[^:/]+)", std::regex_constants::icase))                       // shell command
+                || std::regex_match(path, std::regex(R"(https?://.*)", std::regex_constants::icase))                        // http(s) protocol
+                || std::regex_match(path, std::regex(R"(\\.*\.*)", std::regex_constants::icase))                            // Windows Sharing
+                || !std::regex_match(path, std::regex(R"(.*(\.exe|\.bat|\.cmd|\.com))", std::regex_constants::icase))       // non-executable   
             ){
                 ::ShellExecute(hwnd, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
                 if(cb) cb("ok");
