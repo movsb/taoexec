@@ -183,8 +183,8 @@ protected:
 
     void execute(std::string& args) {
         std::string cmd, env, arg;
-        bool is_dir, is_env;
-        bool parsed = taoexec::core::parse_args(args, &cmd, &is_env, &env, &is_dir, &arg);
+        bool is_dir = false, is_env = false, is_envvar = false;
+        bool parsed = taoexec::core::parse_args(args, &cmd, &is_envvar, &is_env, &env, &is_dir, &arg);
         if(!parsed || cmd.size() == 0) {
             if(args.size()) {
                 msgbox("Nothing to do without a cmd specified, correctly specify it.");
@@ -233,7 +233,26 @@ protected:
             return taoexec::core::which(cmd, env);
         };
 
+        auto from_envvar = [&]()->std::string {
+            std::string str;
+            std::unique_ptr<char> path(new char[32 * 1024]);
+            if (::GetEnvironmentVariable(cmd.c_str(), path.get(), 32 * 1024)) {
+                return path.get();
+            }
+            return "";
+        };
+
         std::string errstr;
+
+        if (is_envvar) {
+            auto path = from_envvar();
+            if (path.size()) {
+                taoexec::core::execute(_hwnd, path, "", "", "", "", [&errstr](const std::string& err) {
+                    errstr = err;
+                });
+            }
+            goto _exit;
+        }
 
         if(is_env) {
             std::string path(is_dir
@@ -279,6 +298,7 @@ protected:
             delete found;
         }
 
+        _exit:
         if(errstr == "ok")
             set_display(0);
         else
