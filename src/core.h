@@ -565,7 +565,8 @@ namespace taoexec {
                 || std::regex_match(path, std::regex(R"(shell:[^:/]+)", std::regex_constants::icase))                       // shell command
                 || std::regex_match(path, std::regex(R"(https?://.*)", std::regex_constants::icase))                        // http(s) protocol
                 || std::regex_match(path, std::regex(R"(\\.*\.*)", std::regex_constants::icase))                            // Windows Sharing
-                || !std::regex_match(path, std::regex(R"(.*(\.exe|\.bat|\.cmd|\.com))", std::regex_constants::icase))       // non-executable   
+                || path.size()>2 && (path[1]==':' || path.find('/') != path.npos || path.find('\\') != path.npos)
+                    && !std::regex_match(path, std::regex(R"(.*(\.exe|\.bat|\.cmd|\.com))", std::regex_constants::icase))   // non-executable
             ){
                 ::ShellExecute(hwnd, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
                 if(cb) cb("ok");
