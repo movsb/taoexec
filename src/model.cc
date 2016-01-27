@@ -274,7 +274,8 @@ namespace taoexec {
             const char* sql = "CREATE TABLE IF NOT EXISTS config ("
                 "id INTEGER PRIMARY KEY,"
                 "key TEXT,"
-                "val BLOB"
+                "val BLOB,"
+                "cmt TEXT"
                 ")";
 
             if(::sqlite3_exec(_db, sql, nullptr, nullptr, &err) == SQLITE_OK) {
@@ -329,30 +330,46 @@ namespace taoexec {
             }
         }
 
-        void config_db_t::set(const std::string& key, const std::string& val) {
+        void config_db_t::set(const std::string& key, const std::string& val, const std::string& cmt) {
             std::string sql;
             sqlite3_stmt* stmt;
             if(has(key)) {
-                sql = "UPDATE config SET val=? WHERE key=?;";
-                if(::sqlite3_prepare(_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
-                    return;
-                if(::sqlite3_bind_blob(stmt, 1, val.c_str(), val.size(), nullptr) != SQLITE_OK)
-                    return;
-                if(::sqlite3_bind_text(stmt, 2, key.c_str(), -1, nullptr) != SQLITE_OK)
-                    return;
+                if (val.size()) {
+                    sql = "UPDATE config SET val=?,cmt=? WHERE key=?;";
+                    if (::sqlite3_prepare(_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+                        return;
+                    if (::sqlite3_bind_blob(stmt, 1, val.c_str(), val.size(), nullptr) != SQLITE_OK)
+                        return;
+                    if (::sqlite3_bind_text(stmt, 2, cmt.c_str(), -1, nullptr) != SQLITE_OK)
+                        return;
+                    if (::sqlite3_bind_text(stmt, 3, key.c_str(), -1, nullptr) != SQLITE_OK)
+                        return;
 
-                int sr = ::sqlite3_step(stmt);
-                ::sqlite3_finalize(stmt);
+                    int sr = ::sqlite3_step(stmt);
+                    ::sqlite3_finalize(stmt);
+                }
+                else {
+                    sql = "DELETE FROM config WHERE key=?;";
+                    if (::sqlite3_prepare(_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+                        return;
+                    if (::sqlite3_bind_text(stmt, 1, key.c_str(), -1, nullptr) != SQLITE_OK)
+                        return;
+
+                    int sr = ::sqlite3_step(stmt);
+                    ::sqlite3_finalize(stmt);
+                }
 
                 return;
             }
             else {
-                sql = "INSERT INTO config (key,val) values (?,?);";
+                sql = "INSERT INTO config (key,val,cmt) values (?,?,?);";
                 if(::sqlite3_prepare(_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
                     return;
                 if(::sqlite3_bind_text(stmt, 1, key.c_str(), -1, nullptr) != SQLITE_OK)
                     return;
                 if(::sqlite3_bind_blob(stmt, 2, val.c_str(), val.size(), nullptr) != SQLITE_OK)
+                    return;
+                if(::sqlite3_bind_text(stmt, 3, cmt.c_str(), -1, nullptr) != SQLITE_OK)
                     return;
 
                 int sr = ::sqlite3_step(stmt);
@@ -361,5 +378,39 @@ namespace taoexec {
                 return;;
             }
         }
+
+        int config_db_t::query(const std::string& pattern, std::vector<item_t*>* items) {
+            const char* sql = "SELECT * FROM config WHERE 1;";
+            sqlite3_stmt* stmt;
+            const char* err = nullptr;
+
+            if (::sqlite3_prepare(_db, sql, -1, &stmt, &err) != SQLITE_OK)
+                return -1;
+
+            items->clear();
+
+            int sr, n = 0;
+            while ((sr = ::sqlite3_step(stmt)) == SQLITE_ROW) {
+                item_t* pi = new item_t;
+                pi->name = (char*)::sqlite3_column_text(stmt, 1);
+
+                int len = (int)::sqlite3_column_bytes(stmt, 2);
+                const void* blob = ::sqlite3_column_blob(stmt, 2);
+                pi->value.assign((const char*)blob, len);
+
+                pi->comment = (char*)::sqlite3_column_text(stmt, 3);
+
+                items->push_back(pi);
+                ++n;
+            }
+
+            ::sqlite3_finalize(stmt);
+
+            if (sr != SQLITE_DONE)
+                return -1;
+
+            return n;
+        }
+
     }
 }

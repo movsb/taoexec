@@ -64,6 +64,13 @@ namespace taoexec {
 
         class config_db_t {
         public:
+            struct item_t {
+                std::string name;
+                std::string value;
+                std::string comment;
+            };
+
+        public:
             config_db_t()
                 : _db(nullptr) 
             {}
@@ -72,7 +79,8 @@ namespace taoexec {
         public:
             bool        has(const std::string& key);
             std::string get(const std::string& key);
-            void        set(const std::string& key, const std::string& val);
+            void        set(const std::string& key, const std::string& val, const std::string& cmt);
+            int         query(const std::string& pattern, std::vector<item_t*>* items);
 
         private:
             int _create_tables();
