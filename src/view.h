@@ -4,6 +4,7 @@
 
 #include "core.h"
 #include "model.h"
+#include "shell.h"
 
 #include <sstream>
 #include <functional>
@@ -69,7 +70,8 @@ class ITEM : public taowin::window_creator {
 private:
     taoexec::model::item_db_t& _db;
     taoexec::model::item_t*    _item;
-    std::function<void(taoexec::model::item_t* p)>   _on_succ;
+    std::function<void(taoexec::model::item_t* p)>          _on_succ;
+    std::function<std::string(const std::string& field)>    _on_init;
 
 private:
     taowin::edit*   _id;
@@ -83,10 +85,15 @@ private:
     taowin::edit*   _show;
 
 public:
-    ITEM(taoexec::model::item_db_t& db, taoexec::model::item_t* item, std::function<void(taoexec::model::item_t*)> on_succ = nullptr)
+    ITEM(taoexec::model::item_db_t& db,
+        taoexec::model::item_t* item,
+        std::function<void(taoexec::model::item_t*)> on_succ = nullptr,
+        std::function<std::string(const std::string& field)> on_init = nullptr)
         : _db(db)
         , _item(item)
-        , _on_succ(on_succ) {
+        , _on_succ(on_succ)
+        , _on_init(on_init) 
+    {
     }
 
 protected:
@@ -165,6 +172,13 @@ protected:
             _work_dir = _root->find<taowin::edit>("work_dir");
             _env = _root->find<taowin::edit>("env");
             _show = _root->find<taowin::edit>("show");
+
+            if(_on_init && !_item) {
+                _path->set_text(_on_init("path").c_str());
+                _params->set_text(_on_init("params").c_str());
+                _work_dir->set_text(_on_init("wd").c_str());
+                _comment->set_text(_on_init("comment").c_str());
+            }
 
             if (_item) {
                 _id->set_text(_item->id.c_str());
@@ -866,6 +880,11 @@ public:
     }
 
 protected:
+    virtual void get_metas(window_meta_t* metas) {
+        __super::get_metas(metas);
+        metas->exstyle |= WS_EX_ACCEPTFILES;
+    }
+
     virtual LPCTSTR get_skin_xml() const override {
         return R"tw(
 <window title="taoexec" size="850,600">
@@ -932,6 +951,47 @@ protected:
             _refresh();
 
             return 0;
+        }
+        case WM_DROPFILES:
+        {
+             taoexec::shell::drop_files(HDROP(wparam)).for_each([&](int i, const std::string& path) {
+                 using namespace taoexec::shell;
+                 if(type(path.c_str()) == file_type::file) {
+                     if(is_ext_link(ext(path))) {
+                         link_info info;
+                         if(parse_link_file(path, &info)) {
+                             // TODO ¸´ÓÃ
+                             taowin::listview* lv = _root->find<taowin::listview>("list");
+                             // callback
+                             auto on_added = [&](taoexec::model::item_t* p) {
+                                 if(_items.size() == 0 || _items.back() != p)
+                                     _items.push_back(p);
+                                 int count = _items.size();
+                                 lv->set_item_count(count, LVSICF_NOINVALIDATEALL);
+                                 lv->redraw_items(count - 1, count - 1);
+                             };
+
+                             auto on_init = [&](const std::string& field) {
+                                 if(field == "path")
+                                     return info.path;
+                                 else if(field == "params")
+                                     return info.args;
+                                 else if(field == "wd")
+                                     return info.wd;
+                                 else if(field == "comment")
+                                     return info.desc;
+                                 else
+                                     return std::string();
+                             };
+
+                             ITEM item(_db, nullptr, on_added, on_init);
+                             item.domodal(this);
+                         }
+                     }
+                 }
+             });
+
+             return 0;
         }
         default:
             break;
