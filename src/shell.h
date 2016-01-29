@@ -63,5 +63,7 @@ enum class file_type
 
 file_type type(const char* file);
 
+bool parse_hotkey_string(const std::string& hotstr, unsigned int* mods, unsigned int* vk, const char** err = nullptr);
+
 }
 }

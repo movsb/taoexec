@@ -126,5 +126,109 @@ std::string query_registry(HKEY root, const std::string& subkey, const std::stri
     return result;
 }
 
+bool parse_hotkey_string(const std::string& hotstr, unsigned int* mods, unsigned int* vk, const char** err) {
+    auto is_blank = [](const char c) {
+        return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+    };
+
+    auto is_ident_char = [](const char c) {
+        return c >= '0' && c <= '9'
+            || c >= 'a' && c <= 'z'
+            || c >= 'A' && c <= 'Z';
+    };
+
+    auto map_modkey = [](const std::string& s) {
+        if (_stricmp(s.c_str(), "ctrl") == 0)
+            return MOD_CONTROL;
+        else if (_stricmp(s.c_str(), "shift") == 0)
+            return MOD_SHIFT;
+        else if (_stricmp(s.c_str(), "alt") == 0)
+            return MOD_ALT;
+        else
+            return 0;
+    };
+
+    auto map_vcode = [](const std::string& s) {
+        auto p = s.c_str();
+
+        // 0-9
+        if (p[0] >= '0' && p[0] <= '9') {
+            if (!p[1]) {
+                return (unsigned int)p[0];
+            }
+        }
+        // A-Z
+        else if ((p[0] >= 'A' && p[0] <= 'Z' || p[0] >= 'a' && p[0] <= 'z') && !p[1]) {
+            return (unsigned int)p[0] & ~0x20;
+        }
+        // F1-F12
+        else if (p[0] == 'f' || p[0] == 'F') {
+            int i;
+            if (sscanf(&p[1], "%d", &i) == 1) {
+                if (i >= 1 && i <= 12) {
+                    return (unsigned int)VK_F1 + i - 1;
+                }
+            }
+        }
+
+        return (unsigned int)0;
+    };
+
+    *mods = 0;
+    *vk = 0;
+
+    for (auto p = hotstr.c_str();;) {
+        if (is_ident_char(*p)) {
+            std::string id;
+            while (is_ident_char(*p)) {
+                id += *p;
+                ++p;
+            }
+
+            while (is_blank(*p))
+                ++p;
+
+            if (*p) { // modifier
+                unsigned int mod = map_modkey(id);
+                if (mod == 0 || *mods & mod) {
+                    if(err) *err = mod == 0 ? "无效辅助键" : "辅助键重复";
+                    return false;
+                }
+                else {
+                    *mods |= mod;
+                }
+
+                if (*p == '+') {
+                    ++p;
+                }
+                else {
+                    if(err) *err = "辅助键后存在无效字符，应该为“+”";
+                    return false;
+                }
+            }
+            else { // keycode
+                unsigned int keycode = map_vcode(id);
+                if (!keycode) {
+                    if (err) *err = "无效键码";
+                    return false;
+                }
+                else {
+                    *vk = keycode;
+                }
+                break;
+            }
+        }
+        else if (is_blank(*p)) {
+            ++p;
+            continue;
+        }
+        else {
+            break;
+        }
+    }
+
+    return true;
+}
+
 }
 }

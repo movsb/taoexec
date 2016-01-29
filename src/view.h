@@ -365,7 +365,20 @@ protected:
                 ::SetLayeredWindowAttributes(_hwnd, 0, std::atoi(_cfg.get("mini_translucent", "50").c_str()), LWA_ALPHA);
             })();
 
-            ::RegisterHotKey(_hwnd, 0, MOD_CONTROL | MOD_SHIFT, 0x5A /* z */);
+            ([&]() {
+                unsigned int mods, keycode;
+                const char* err;
+
+                auto hotkey = _cfg.get("hotkey", "ctrl+shift+z");
+                if (taoexec::shell::parse_hotkey_string(hotkey, &mods, &keycode, &err)) {
+                    if (!::RegisterHotKey(_hwnd, 0, mods, keycode))
+                        msgbox("热键注册失败！", MB_ICONERROR);
+                }
+                else {
+                    msgbox("无效热键组合：" + std::string(err), MB_ICONEXCLAMATION);
+                }
+            })();
+
             _root->find("args")->focus();
             return 0;
         case WM_HOTKEY:
