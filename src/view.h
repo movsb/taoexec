@@ -362,7 +362,7 @@ protected:
                     (cx_screen - window_rect.width()) / 2, 0, 0, 0,
                     SWP_NOSIZE | SWP_NOZORDER);
 
-                ::SetLayeredWindowAttributes(_hwnd, 0, 50, LWA_ALPHA);
+                ::SetLayeredWindowAttributes(_hwnd, 0, std::atoi(_cfg.get("mini_translucent", "50").c_str()), LWA_ALPHA);
             })();
 
             ::RegisterHotKey(_hwnd, 0, MOD_CONTROL | MOD_SHIFT, 0x5A /* z */);
@@ -405,13 +405,15 @@ protected:
     }
 
 public:
-    MINI(taoexec::model::item_db_t& db)
+    MINI(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg)
         : _db(db)
+        , _cfg(cfg)
         , _focus(nullptr) {}
 
 private:
     HWND _focus;
     taoexec::model::item_db_t& _db;
+    taoexec::model::config_db_t& _cfg;
 
 protected:
 
@@ -1113,7 +1115,7 @@ protected:
             return 0;
         }
         else if(pc->name() == "mini") {
-            MINI* mini = new MINI(_db);
+            MINI* mini = new MINI(_db, _cfg);
             mini->create();
             mini->show();
             return 0;

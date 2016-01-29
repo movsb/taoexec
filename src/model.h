@@ -78,7 +78,7 @@ namespace taoexec {
             void    set_db(sqlite3* db);
         public:
             bool        has(const std::string& key);
-            std::string get(const std::string& key);
+            std::string get(const std::string& key, const char* def = nullptr);
             void        set(const std::string& key, const std::string& val, const std::string& cmt);
             int         query(const std::string& pattern, std::vector<item_t*>* items);
 

@@ -302,7 +302,7 @@ namespace taoexec {
             return sr == SQLITE_ROW;
         }
 
-        std::string config_db_t::get(const std::string& key) {
+        std::string config_db_t::get(const std::string& key, const char* def) {
             std::string val;
             auto sql = "SELECT val FROM config WHERE key=? LIMIT 1;";
             sqlite3_stmt* stmt;
@@ -323,11 +323,10 @@ namespace taoexec {
 
             ::sqlite3_finalize(stmt);
 
-            if(sr == SQLITE_ROW) {
-                return val;
-            } else {
-                return "";
-            }
+            if (!val.size() && def && *def)
+                val.assign(def);
+
+            return val;
         }
 
         void config_db_t::set(const std::string& key, const std::string& val, const std::string& cmt) {
