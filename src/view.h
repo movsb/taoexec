@@ -252,7 +252,7 @@ protected:
                         _id->set_text(p->id.c_str());
                         _item = p;
                         _on_succ(p);
-                        msgbox("添加成功");
+                        close();
                         return 0;
                     }
                 }
@@ -268,8 +268,8 @@ protected:
                         _item->show = p->show;
 
                         _on_succ(_item);
-                        msgbox("修改成功");
                         delete p;
+                        close();
                         return 0;
                     }
                     else {
