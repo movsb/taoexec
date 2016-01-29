@@ -806,7 +806,7 @@ protected:
                 case menuid::add:
                 {
                     INPUT input(nullptr, [&](const std::string& name, const std::string& value, const std::string& comment) {
-                        _cfg.set(name, value, "");
+                        _cfg.set(name, value, comment);
                         auto item = new config_db_t::item_t;
                         item->name = name;
                         item->value = value;
