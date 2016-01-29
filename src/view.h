@@ -488,7 +488,7 @@ protected:
 
         auto from_envvar = [&]()->std::string {
             std::string str;
-            std::unique_ptr<char> path(new char[32 * 1024]);
+            std::unique_ptr<char[]> path(new char[32 * 1024]);
             if (::GetEnvironmentVariable(cmd.c_str(), path.get(), 32 * 1024)) {
                 return path.get();
             }

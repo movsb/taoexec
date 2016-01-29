@@ -481,7 +481,7 @@ namespace taoexec {
             search_dirs.push_back(expand_variable("windows"));
             // 6. The directories that are listed in the PATH environment variable
             const int var_size = 32 * 1024;
-            std::unique_ptr<char> path(new char[var_size]);
+            std::unique_ptr<char[]> path(new char[var_size]);
             if(::GetEnvironmentVariable("PATH", path.get(), var_size)) {
                 auto spath = path.get();
                 auto end = spath;
