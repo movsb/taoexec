@@ -975,6 +975,14 @@ protected:
                      if(is_ext_link(ext(path))) {
                          link_info info;
                          if(parse_link_file(path, &info)) {
+                             // 不打算再解析Shell Item IDList信息了，看了下面的文章简直吓尿
+                             // https://github.com/libyal/libfwsi/blob/master/documentation/Windows%20Shell%20Item%20format.asciidoc
+                             // http://forensicswiki.org/wiki/LNK
+                             if (!info.path.size()) {
+                                 msgbox(path + "\n\n" + "不支持的快捷方式文件。", MB_ICONERROR);
+                                 return;
+                             }
+
                              // TODO 复用
                              taowin::listview* lv = _root->find<taowin::listview>("list");
                              // callback
