@@ -621,7 +621,7 @@ private:
             <edit name="comment" font="consolas" style="" exstyle="clientedge" height="20"/>
             <control height="10" />
             <label text="Value: " height="20"/>
-            <edit name="value" font="consolas" exstyle="clientedge" minheight="100"/>
+            <edit name="value" font="consolas" style="multiline,wantreturn" exstyle="clientedge" minheight="100"/>
             <control height="15"/>
             <horizontal height="30">
                 <control />
@@ -641,10 +641,6 @@ private:
                 case VK_ESCAPE:
                     close();
                     return true;
-                case VK_RETURN:
-                {
-                    return true;
-                }
                 default:
                     // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
                     // menu message with id == 2. It is undocumented.
