@@ -83,7 +83,7 @@ namespace taoexec {
                     oss << '=' << v;
                     oss.write("", 1);
                 }
-                for(auto it = _vars.cbegin(), end = _vars.cend(); it != end; it++) {
+                for(auto it = _vars.cbegin(), end = _vars.cend(); it != end; ++it) {
                     oss << it->first << '=' << it->second;
                     oss.write("", 1);
                 }
@@ -100,11 +100,13 @@ namespace taoexec {
             std::map<std::string, std::string>  _vars;
         };
 
-        static std::map<std::string, std::string> g_variables;
-        typedef std::vector<std::string> func_args;
-        static std::map<std::string, std::function<std::string(func_args& args)>> g_functions;
+        static std::map<std::string, std::string>               g_variables;
+        typedef std::vector<std::string>                        func_args;
+        typedef std::function <std::string(func_args& args)>    func_proto;
+        static std::map<std::string, func_proto>                g_functions;
+        extern std::map<std::string, std::string>               g_executer;
 
-        static bool is_64bit() {
+        static bool is_wow64() {
             BOOL b64;
             return IsWow64Process(GetCurrentProcess(), &b64)
                 && b64 != FALSE;
@@ -179,7 +181,7 @@ namespace taoexec {
                             DWORD cb = sizeof(value);
 
                             REGSAM sam = KEY_READ;
-                            if(is_64bit()) {
+                            if(is_wow64()) {
                                 if(args.size() >= 4 && args[3] == "64")
                                     sam |= KEY_WOW64_64KEY;
                                 else
@@ -509,7 +511,7 @@ namespace taoexec {
 
                 WIN32_FIND_DATA wfd;
                 std::string pattern = folder + cmd + '*';
-                if(is_64bit()) ::Wow64DisableWow64FsRedirection(nullptr);
+                if(is_wow64()) ::Wow64DisableWow64FsRedirection(nullptr);
                 HANDLE hfind = ::FindFirstFile(pattern.c_str(), &wfd);
                 if(hfind != INVALID_HANDLE_VALUE) {
                     do {
@@ -533,7 +535,7 @@ namespace taoexec {
                     } while(::FindNextFile(hfind, &wfd));
                     ::FindClose(hfind);
                 }
-                if(is_64bit()) ::Wow64EnableWow64FsRedirection(TRUE);
+                if(is_wow64()) ::Wow64EnableWow64FsRedirection(TRUE);
             }
 
         _exit_for:
@@ -646,6 +648,8 @@ namespace taoexec {
                 if(cb) cb("fail");
             }
         }
+
+        std::string get_executer(const std::string& ext);
 
         static void init() {
             initialize_globals();

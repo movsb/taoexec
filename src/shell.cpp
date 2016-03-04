@@ -223,7 +223,8 @@ bool parse_hotkey_string(const std::string& hotstr, unsigned int* mods, unsigned
             continue;
         }
         else {
-            break;
+            if(err) *err = "ÎÞÐ§ÐòÁÐ£¨¿Õ°×´®£©¡£";
+            return false;
         }
     }
 

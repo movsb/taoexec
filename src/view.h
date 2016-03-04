@@ -107,40 +107,41 @@ protected:
         <vertical padding="5,5,5,5">
             <vertical height="220">
                 <horizontal>
-                    <label style="centerimage" text="id" width="70"/>
+                    <label style="centerimage" text="序号" width="70"/>
                     <edit name="id" style="tabstop" exstyle="clientedge" style="disabled"/>
                 </horizontal>
                 <horizontal>
-                    <label style="centerimage" text="index" width="70"/>
+                    <label style="centerimage" text="索引" width="70"/>
                     <edit name="index" style="tabstop" exstyle="clientedge" />
                 </horizontal>
                 <horizontal>
-                    <label style="centerimage" text="group" width="70"/>
+                    <label style="centerimage" text="分组" width="70"/>
                     <edit name="group" style="tabstop" exstyle="clientedge" />
                 </horizontal>
                 <horizontal>
-                    <label style="centerimage" text="comment" width="70"/>
+                    <label style="centerimage" text="注释" width="70"/>
                     <edit name="comment" style="tabstop" exstyle="clientedge" />
                 </horizontal>
                 <horizontal>
-                    <label style="centerimage" text="path" width="70"/>
-                    <edit name="path" style="tabstop" exstyle="clientedge" />
+                    <label style="centerimage" text="路径" width="70"/>
+                    <edit name="path" style="tabstop,readonly" exstyle="clientedge" />
+                    <button name="show-path" text="..." width="30"/>
                 </horizontal>
                 <horizontal>
-                    <label style="centerimage" text="params" width="70"/>
+                    <label style="centerimage" text="参数" width="70"/>
                     <edit name="params" style="tabstop" exstyle="clientedge" />
                 </horizontal>
                 <horizontal>
-                    <label style="centerimage" text="work_dir" width="70"/>
+                    <label style="centerimage" text="工作目录" width="70"/>
                     <edit name="work_dir" style="tabstop" exstyle="clientedge" />
                 </horizontal>
                 <horizontal>
-                    <label style="centerimage" text="env" width="70"/>
-                    <edit name="env" style="tabstop,disabled" exstyle="clientedge" />
+                    <label style="centerimage" text="环境变量" width="70"/>
+                    <edit name="env" style="tabstop,readonly" exstyle="clientedge" />
                     <button name="show-env" text="..." width="30"/>
                 </horizontal>
                 <horizontal>
-                    <label style="centerimage" text="show" width="70"/>
+                    <label style="centerimage" text="显示与否" width="70"/>
                     <edit name="show" style="tabstop" exstyle="clientedge" />
                 </horizontal>
             </vertical>
@@ -293,6 +294,17 @@ protected:
                 INPUTBOX input(_env->get_text(), [&](INPUTBOX* that, taowin::control* ctl, const std::string& text) {
                     if (ctl->name() == "ok")
                         _root->find<taowin::edit>("env")->set_text(text.c_str());
+                    return true;
+                });
+                input.domodal(this);
+                return 0;
+            }
+        }
+        else if (pc->name() == "show-path") {
+            if (code == BN_CLICKED) {
+                INPUTBOX input(_path->get_text(), [&](INPUTBOX* that, taowin::control* ctl, const std::string& text) {
+                    if (ctl->name() == "ok")
+                        _root->find<taowin::edit>("path")->set_text(text.c_str());
                     return true;
                 });
                 input.domodal(this);
@@ -975,6 +987,14 @@ protected:
                      if(is_ext_link(ext(path))) {
                          link_info info;
                          if(parse_link_file(path, &info)) {
+                             // 不打算再解析Shell Item IDList信息了，看了下面的文章简直吓尿
+                             // https://github.com/libyal/libfwsi/blob/master/documentation/Windows%20Shell%20Item%20format.asciidoc
+                             // http://forensicswiki.org/wiki/LNK
+                             if (!info.path.size()) {
+                                 msgbox(path + "\n\n" + "不支持的快捷方式文件。", MB_ICONERROR);
+                                 return;
+                             }
+
                              // TODO 复用
                              taowin::listview* lv = _root->find<taowin::listview>("list");
                              // callback
