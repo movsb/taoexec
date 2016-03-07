@@ -322,7 +322,9 @@ namespace taoexec {
         static bool parse_args(const std::string& argstr, std::string* const cmd,
             bool* is_envvar,
             bool* is_env, std::string* env, 
-            bool* is_dir, std::string* const arg)
+            bool* is_dir, std::string* const arg,
+            bool* is_selfcmd
+            )
         {
             auto p = argstr.c_str();
             char c;
@@ -347,6 +349,17 @@ namespace taoexec {
                     else {
                         return false;
                     }
+                }
+                else if(c == ':') {
+                    auto& refcmd = *cmd;
+                    ++p;
+                    while(::isalnum(*p)) {
+                        refcmd += *p;
+                        ++p;
+                    }
+
+                    *is_selfcmd = true;
+                    return true;
                 }
                 else if(::isalnum(c)) {
                     auto& refcmd = *cmd;

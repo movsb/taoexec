@@ -448,8 +448,8 @@ protected:
 
     void execute(std::string& args) {
         std::string cmd, env, arg;
-        bool is_dir = false, is_env = false, is_envvar = false;
-        bool parsed = taoexec::core::parse_args(args, &cmd, &is_envvar, &is_env, &env, &is_dir, &arg);
+        bool is_dir = false, is_env = false, is_envvar = false, is_selfcmd = false;
+        bool parsed = taoexec::core::parse_args(args, &cmd, &is_envvar, &is_env, &env, &is_dir, &arg, &is_selfcmd);
         if(!parsed || cmd.size() == 0) {
             if(args.size()) {
                 msgbox("Nothing to do without a cmd specified, correctly specify it.");
@@ -457,6 +457,26 @@ protected:
             }
             else {
                 set_display(0);
+                return;
+            }
+        }
+
+        if(is_selfcmd) {
+            // TODO make init
+            std::map<std::string, std::function<void()>> _selfcmds;
+            _selfcmds["main"] = [this]() {
+                void create_main(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg);
+                create_main(this->_db, this->_cfg);
+            };
+
+            auto found = _selfcmds.find(cmd);
+            if(found != _selfcmds.end()) {
+                found->second();
+                set_display(0);
+                return;
+            }
+            else {
+                msgbox("无此内建命令。");
                 return;
             }
         }
@@ -1162,6 +1182,10 @@ protected:
         return 0;
     }
 
+    virtual void on_final_message() override {
+        delete this;
+    }
+
 private:
     void _refresh() {
         _db.query("", &_items);
@@ -1187,3 +1211,9 @@ private:
 
     }
 };
+
+void create_main(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg) {
+    TW* ptw = new TW(db, cfg);
+    ptw->create();
+    ptw->show();
+}
