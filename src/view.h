@@ -500,8 +500,9 @@ protected:
 
         auto from_envvar = [&]()->std::string {
             std::string str;
-            std::unique_ptr<char[]> path(new char[32 * 1024]);
-            if (::GetEnvironmentVariable(cmd.c_str(), path.get(), 32 * 1024)) {
+            const int size = 32 * 1024;
+            std::unique_ptr<char[]> path(new char[size]);
+            if (::GetEnvironmentVariable(cmd.c_str(), path.get(), size)) {
                 return path.get();
             }
             return "";
@@ -548,7 +549,11 @@ protected:
             }
 
             if(is_dir) {
-                std::string path = taoexec::core::which(taoexec::core::expand(found->path), "");
+                std::string path(taoexec::core::expand(found->path));
+                bool is_abs = path.find('/') != path.npos || path.find('\\') != path.npos || path.find(':') != path.npos;
+                if(!is_abs)
+                    path = taoexec::core::which(path, "");
+
                 taoexec::core::explorer(_hwnd, path, [&](const std::string& err) {
                     errstr = err;
                 });
