@@ -5,6 +5,7 @@
 #include "core.h"
 #include "model.h"
 #include "shell.h"
+#include "utils.h"
 
 #include <sstream>
 #include <functional>
@@ -186,7 +187,7 @@ protected:
                 _index->set_text(_item->index.c_str());
                 _group->set_text(_item->group.c_str());
                 _comment->set_text(_item->comment.c_str());
-                _path->set_text(_item->path.c_str());
+                _path->set_text(_item->paths.c_str());
                 _params->set_text(_item->params.c_str());
                 _work_dir->set_text(_item->work_dir.c_str());
                 _env->set_text(_item->env.c_str());
@@ -235,7 +236,7 @@ protected:
                 p->index = _index->get_text();
                 p->group = _group->get_text();
                 p->comment = _comment->get_text();
-                p->path = _path->get_text();
+                p->paths = _path->get_text();
                 p->params = _params->get_text();
                 p->work_dir = _work_dir->get_text();
                 p->env = _env->get_text();
@@ -262,7 +263,7 @@ protected:
                         _item->index = std::move(p->index);
                         _item->group = std::move(p->group);
                         _item->comment = std::move(p->comment);
-                        _item->path = std::move(p->path);
+                        _item->paths = std::move(p->paths);
                         _item->params = std::move(p->params);
                         _item->work_dir = std::move(p->work_dir);
                         _item->env = std::move(p->env);
@@ -569,7 +570,8 @@ protected:
             }
 
             if(is_dir) {
-                std::string path(taoexec::core::expand(found->path));
+                // TODO bugs here, paths is not single.
+                std::string path(taoexec::core::expand(found->paths));
                 bool is_abs = path.find('/') != path.npos || path.find('\\') != path.npos || path.find(':') != path.npos;
                 if(!is_abs)
                     path = taoexec::core::which(path, "");
@@ -579,8 +581,10 @@ protected:
                 });
             }
             else {
-                std::string path = taoexec::core::expand(found->path);
-                taoexec::core::execute(_hwnd, path, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
+                std::vector<std::string> patharr;
+                taoexec::utils::split_paths(found->paths, &patharr);
+
+                taoexec::core::execute(_hwnd, patharr, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
                     errstr = err;
                 });
             }
@@ -1069,7 +1073,7 @@ protected:
                 case 1: lit->pszText = (LPSTR)rit->index.c_str(); break;
                 case 2: lit->pszText = (LPSTR)rit->group.c_str(); break;
                 case 3: lit->pszText = (LPSTR)rit->comment.c_str(); break;
-                case 4: lit->pszText = (LPSTR)rit->path.c_str(); break;
+                case 4: lit->pszText = (LPSTR)rit->paths.c_str(); break;
                 case 5: lit->pszText = (LPSTR)rit->params.c_str(); break;
                 case 6: lit->pszText = (LPSTR)rit->work_dir.c_str(); break;
                 case 7: lit->pszText = (LPSTR)rit->env.c_str(); break;
@@ -1198,12 +1202,15 @@ private:
         if(i<0 || i>(int)_items.size() - 1)
             return;
 
-        auto& path      = _items[i]->path;
+        auto& paths      = _items[i]->paths;
         auto& params    = _items[i]->params;
         auto& wd        = _items[i]->work_dir;
         auto& env       = _items[i]->env;
 
-        taoexec::core::execute(_hwnd, path, params, "", wd, env, [&](const std::string& err) {
+        std::vector<std::string> patharr;
+        taoexec::utils::split_paths(paths, &patharr);
+
+        taoexec::core::execute(_hwnd, patharr, params, "", wd, env, [&](const std::string& err) {
             if(err != "ok") {
                 msgbox("Ê§°Ü¡£", MB_ICONEXCLAMATION);
             }

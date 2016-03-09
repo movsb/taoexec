@@ -72,7 +72,7 @@ namespace taoexec {
             next = next && ::sqlite3_bind_text(stmt, 1, item->index.c_str(), item->index.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 2, item->group.c_str(), item->group.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 3, item->comment.c_str(), item->comment.size(), nullptr) == SQLITE_OK;
-            next = next && ::sqlite3_bind_text(stmt, 4, item->path.c_str(), item->path.size(), nullptr) == SQLITE_OK;
+            next = next && ::sqlite3_bind_text(stmt, 4, item->paths.c_str(), item->paths.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 5, item->params.c_str(), item->params.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 6, item->work_dir.c_str(), item->work_dir.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 7, item->env.c_str(), item->env.size(), nullptr) == SQLITE_OK;
@@ -158,7 +158,7 @@ namespace taoexec {
                 i.index = (char*)::sqlite3_column_text(stmt, 1);
                 i.group = (char*)::sqlite3_column_text(stmt, 2);
                 i.comment = (char*)::sqlite3_column_text(stmt, 3);
-                i.path = (char*)::sqlite3_column_text(stmt, 4);
+                i.paths = (char*)::sqlite3_column_text(stmt, 4);
                 i.params = (char*)::sqlite3_column_text(stmt, 5);
                 i.work_dir = (char*)::sqlite3_column_text(stmt, 6);
                 i.env = (char*)::sqlite3_column_text(stmt, 7);
@@ -232,7 +232,7 @@ namespace taoexec {
             i.index = (char*)::sqlite3_column_text(stmt, 1);
             i.group = (char*)::sqlite3_column_text(stmt, 2);
             i.comment = (char*)::sqlite3_column_text(stmt, 3);
-            i.path = (char*)::sqlite3_column_text(stmt, 4);
+            i.paths = (char*)::sqlite3_column_text(stmt, 4);
             i.params = (char*)::sqlite3_column_text(stmt, 5);
             i.work_dir = (char*)::sqlite3_column_text(stmt, 6);
             i.env = (char*)::sqlite3_column_text(stmt, 7);
@@ -253,7 +253,7 @@ namespace taoexec {
             next = next && ::sqlite3_bind_text(stmt, 1, item->index.c_str(), item->index.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 2, item->group.c_str(), item->group.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 3, item->comment.c_str(), item->comment.size(), nullptr) == SQLITE_OK;
-            next = next && ::sqlite3_bind_text(stmt, 4, item->path.c_str(), item->path.size(), nullptr) == SQLITE_OK;
+            next = next && ::sqlite3_bind_text(stmt, 4, item->paths.c_str(), item->paths.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 5, item->params.c_str(), item->params.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 6, item->work_dir.c_str(), item->work_dir.size(), nullptr) == SQLITE_OK;
             next = next && ::sqlite3_bind_text(stmt, 7, item->env.c_str(), item->env.size(), nullptr) == SQLITE_OK;

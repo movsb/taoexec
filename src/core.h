@@ -570,7 +570,7 @@ namespace taoexec {
             if(cb) cb("ok");
         }
 
-        static void execute(HWND hwnd, const std::string& path,
+        static bool execute(HWND hwnd, const std::string& path,
             const std::string& params, const std::string& args,
             const std::string& wd_, const std::string& env_,
             std::function<void(const std::string& err)> cb)
@@ -585,7 +585,7 @@ namespace taoexec {
             ){
                 ::ShellExecute(hwnd, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
                 if(cb) cb("ok");
-                return;
+                return true;
             }
 
             std::string path_expanded = expand(path);
@@ -657,9 +657,27 @@ namespace taoexec {
                 ::CloseHandle(pi.hThread);
                 ::CloseHandle(pi.hProcess);
                 if(cb) cb("ok");
+                return true;
             } else {
                 if(cb) cb("fail");
+                return false;
             }
+        }
+
+        static void execute(HWND hwnd, const std::vector<std::string>& paths,
+            const std::string& params, const std::string& args,
+            const std::string& wd_, const std::string& env_,
+            std::function<void(const std::string& err)> cb)
+        {
+            bool  ok = false;
+            for(auto& path : paths) {
+                if(execute(hwnd, expand(path), params, args, wd_, env_, nullptr)) {
+                    ok = true;
+                    break;
+                }
+            }
+
+            if(cb) cb(ok ? "ok" : "fail");
         }
 
         std::string get_executer(const std::string& ext);

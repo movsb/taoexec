@@ -13,7 +13,7 @@ namespace taoexec {
             std::string     index;
             std::string     group;
             std::string     comment;
-            std::string     path;
+            std::string     paths;
             std::string     params;
             std::string     work_dir;
             std::string     env;
