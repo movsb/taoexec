@@ -1,4 +1,5 @@
 #include "model.h"
+#include "utils.h"
 
 namespace taoexec {
     namespace model {
@@ -129,7 +130,18 @@ namespace taoexec {
                 return -1;
             }
 
-            std::string likestr = pattern + "%%";
+            // Ö´ĞĞÈ«Ä£ºıÆ¥Åä
+            std::string likestr;
+            const char* p = pattern.c_str();
+            while(*p) {
+                auto q = utils::char_next(p);
+                likestr.append(p, q - p);
+                likestr.append("%");
+                p = q;
+            }
+            if(!likestr.size())
+                likestr.assign("%");
+
             if(::sqlite3_bind_text(stmt, 1, likestr.c_str(), likestr.size(), nullptr) != SQLITE_OK) {
                 ::sqlite3_finalize(stmt);
                 return -1;
