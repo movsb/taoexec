@@ -49,9 +49,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd
     env_var.patch(configdb.get("user_vars").append(1, '\0'));
     taoexec::core::add_user_variables(env_var);
 
-    TW& tw = * new TW(itemdb, configdb);
-    tw.create();
-    tw.show();
+    //TW& tw = * new TW(itemdb, configdb);
+    //tw.create();
+    //tw.show();
 
     MINI& mini = * new MINI(itemdb, configdb);
     mini.create();

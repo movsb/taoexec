@@ -570,6 +570,39 @@ namespace taoexec {
             if(cb) cb("ok");
         }
 
+        class path_info_t
+        {
+        public:
+            enum class type_t {
+                null,
+                path,
+                sharing,
+                protocol,
+            };
+
+            type_t type;
+
+            union {
+                struct {
+                    std::string path;
+                };
+                struct {
+                    std::string scheme;
+                    std::string spec;
+                };
+                struct {
+                    std::string path;
+                };
+            };
+        };
+
+        static void get_pathinfo(const std::string& path, path_info_t* ppi) {
+            if (std::regex_match(path, std::regex(R"([0-9a-zA-z]+:.*)", std::regex_constants::icase))) {
+                ppi->type = path_info_t::type_t::protocol;
+            }
+                
+        }
+
         static bool execute(HWND hwnd, const std::string& path,
             const std::string& params, const std::string& args,
             const std::string& wd_, const std::string& env_,
