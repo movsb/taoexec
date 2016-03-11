@@ -5,9 +5,9 @@
 namespace taoexec {
 namespace core {
 
-std::map<std::string, std::string>  g_executer;
+std::map<std::string, std::string>  g_executor;
 
-std::string get_executer(const std::string& ext) {
+std::string get_executor(const std::string& ext) {
     std::string cmd;
     std::string lower_ext(utils::tolower(ext));
 
@@ -15,8 +15,8 @@ std::string get_executer(const std::string& ext) {
         return cmd;
 
     // hit from cache
-    if (g_executer.count(lower_ext))
-        return g_executer[lower_ext];
+    if (g_executor.count(lower_ext))
+        return g_executor[lower_ext];
 
     std::string what_file = shell::query_registry(HKEY_CLASSES_ROOT, ext, "");
     if (what_file.size()) {
@@ -27,7 +27,7 @@ std::string get_executer(const std::string& ext) {
     }
 
     // make cache
-    g_executer[lower_ext] = cmd;
+    g_executor[lower_ext] = cmd;
     return cmd;
 }
 

@@ -104,7 +104,7 @@ namespace taoexec {
         typedef std::vector<std::string>                        func_args;
         typedef std::function <std::string(func_args& args)>    func_proto;
         static std::map<std::string, func_proto>                g_functions;
-        extern std::map<std::string, std::string>               g_executer;
+        extern std::map<std::string, std::string>               g_executor;
 
         static bool is_wow64() {
             BOOL b64;
@@ -680,7 +680,7 @@ namespace taoexec {
             if(cb) cb(ok ? "ok" : "fail");
         }
 
-        std::string get_executer(const std::string& ext);
+        std::string get_executor(const std::string& ext);
 
         static void init() {
             initialize_globals();

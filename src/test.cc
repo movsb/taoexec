@@ -4,15 +4,15 @@
 
 namespace taoexec {
 
-static void test_get_executer() {
+static void test_get_executor() {
     std::string exts[] = { "", ".txt", ".exe", ".html", ".BAT", ".jpg", ".EXE" };
     for (auto& e : exts) {
-        std::cout << "get_executer(" << e << "): " << core::get_executer(e) << std::endl;
+        std::cout << "get_executor(" << e << "): " << core::get_executor(e) << std::endl;
     }
 }
 
 void test() {
-    test_get_executer();
+    test_get_executor();
 }
 
 }
