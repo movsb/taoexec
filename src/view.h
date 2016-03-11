@@ -1008,8 +1008,21 @@ protected:
         {
              taoexec::shell::drop_files(HDROP(wparam)).for_each([&](int i, const std::string& path) {
                  using namespace taoexec::shell;
+
+                 // TODO 复用
+                 taowin::listview* lv = _root->find<taowin::listview>("list");
+                 // callback
+                 auto on_added = [&](taoexec::model::item_t* p) {
+                     if (_items.size() == 0 || _items.back() != p)
+                         _items.push_back(p);
+                     int count = _items.size();
+                     lv->set_item_count(count, LVSICF_NOINVALIDATEALL);
+                     lv->redraw_items(count - 1, count - 1);
+                 };
+
                  if(type(path.c_str()) == file_type::file) {
-                     if(is_ext_link(ext(path))) {
+                     auto ext = taoexec::shell::ext(path);
+                     if(is_ext_link(ext)) {
                          link_info info;
                          if(parse_link_file(path, &info)) {
                              // 不打算再解析Shell Item IDList信息了，看了下面的文章简直吓尿
@@ -1019,17 +1032,6 @@ protected:
                                  msgbox(path + "\n\n" + "不支持的快捷方式文件。", MB_ICONERROR);
                                  return;
                              }
-
-                             // TODO 复用
-                             taowin::listview* lv = _root->find<taowin::listview>("list");
-                             // callback
-                             auto on_added = [&](taoexec::model::item_t* p) {
-                                 if(_items.size() == 0 || _items.back() != p)
-                                     _items.push_back(p);
-                                 int count = _items.size();
-                                 lv->set_item_count(count, LVSICF_NOINVALIDATEALL);
-                                 lv->redraw_items(count - 1, count - 1);
-                             };
 
                              auto on_init = [&](const std::string& field) {
                                  if(field == "path")
@@ -1047,6 +1049,23 @@ protected:
                              ITEM item(_db, nullptr, on_added, on_init);
                              item.domodal(this);
                          }
+                     }
+                     /*
+                     // EXE 可以获取到一些特殊的资源块信息，所以可以单独写一个添加函数
+                     else if (stricmp(ext.c_str(), ".exe") == 0) {
+
+                     }
+                     */
+                     else {
+                         auto on_init = [&](const std::string& field)->std::string {
+                             if (field == "path")
+                                 return path;
+
+                             return std::string();
+                         };
+
+                         ITEM item(_db, nullptr, on_added, on_init);
+                         item.domodal(this);
                      }
                  }
              });
