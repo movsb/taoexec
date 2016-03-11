@@ -40,11 +40,13 @@ namespace taoexec {
 
         class item_db_t {
         public:
-            item_db_t ()
+            item_db_t()
                 : _db(nullptr)
+                , _fuzzy_search(true)
             {}
 
             void    set_db(sqlite3* db);
+            void    set_fuzzy_search(bool fuzzy = true);
         public:
             bool    has(int i);
             int     insert(const item_t* item);
@@ -60,6 +62,7 @@ namespace taoexec {
 
         private:
             sqlite3*    _db;
+            bool        _fuzzy_search;
         };
 
         class config_db_t {

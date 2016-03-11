@@ -39,11 +39,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd
     taoexec::model::db_t db;
     db.open(taoexec::charset::a2e(R"(taoexec.db)"));
 
-    taoexec::model::item_db_t itemdb;
-    itemdb.set_db(*db);
-
     taoexec::model::config_db_t configdb;
     configdb.set_db(*db);
+
+    taoexec::model::item_db_t itemdb;
+    itemdb.set_db(*db);
+    itemdb.set_fuzzy_search(configdb.get("fuzzy_search", "1") == "1");
 
     taoexec::core::env_var_t env_var;
     env_var.patch(configdb.get("user_vars").append(1, '\0'));

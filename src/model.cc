@@ -132,15 +132,21 @@ namespace taoexec {
 
             // Ö´ÐÐÈ«Ä£ºýÆ¥Åä
             std::string likestr;
-            const char* p = pattern.c_str();
-            while(*p) {
-                auto q = utils::char_next(p);
-                likestr.append(p, q - p);
-                likestr.append("%");
-                p = q;
+
+            if(_fuzzy_search) {
+                const char* p = pattern.c_str();
+                while(*p) {
+                    auto q = utils::char_next(p);
+                    likestr.append(p, q - p);
+                    likestr.append("%");
+                    p = q;
+                }
+                if(!likestr.size())
+                    likestr.assign("%");
             }
-            if(!likestr.size())
-                likestr.assign("%");
+            else {
+                likestr = pattern + '%';
+            }
 
             if(::sqlite3_bind_text(stmt, 1, likestr.c_str(), likestr.size(), nullptr) != SQLITE_OK) {
                 ::sqlite3_finalize(stmt);
@@ -273,6 +279,10 @@ namespace taoexec {
             ::sqlite3_finalize(stmt);
 
             return true;
+        }
+
+        void item_db_t::set_fuzzy_search(bool fuzzy /*= true*/) {
+            _fuzzy_search = fuzzy;
         }
 
         //------------------------------------------------------------------------------------------
