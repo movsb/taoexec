@@ -326,7 +326,7 @@ protected:
 
     virtual LPCTSTR get_skin_xml() const override {
         return R"tw(
-<window title="mini" size="80,18">
+<window title="mini" size="100,18">
     <res>
         <font name="default" face="微软雅黑" size="12" />
         <font name="consolas" face="Consolas" size="12" />
@@ -392,6 +392,8 @@ protected:
                 }
             })();
 
+            init_commanders();
+
             _root->find("args")->focus();
             return 0;
         case WM_HOTKEY:
@@ -441,163 +443,214 @@ private:
     taoexec::model::item_db_t& _db;
     taoexec::model::config_db_t& _cfg;
 
+    std::map <std::string, std::function<void(const std::string& args)>> _commanders;
+
+private:
+    /* 初始化命令执行者
+     *  带双下划线的是预定义的执行者
+    */
+    void init_commanders() {
+        // 没有指定 `commander` 时的执行者（但冒号必须指定）
+        _commanders["__main__"] = [&](const std::string& args) {
+            // TODO make static
+            std::map<std::string, std::function<void()>> _selfcmds;
+            _selfcmds[""] = [&]() {
+                set_display(0);
+            };
+
+            _selfcmds["main"] = [this]() {
+                void create_main(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg);
+                create_main(this->_db, this->_cfg);
+            };
+
+            _selfcmds["exit"] = [this]() {
+                this->close();
+            };
+
+            auto found = _selfcmds.find(args);
+            if(found != _selfcmds.end()) {
+                found->second();
+                set_display(0);
+                return;
+            } else {
+                msgbox("无此内建命令。");
+                return;
+            }
+        };
+
+        // 没有指定 `commander` 和 `:` 时的执行者，即为数据库索引者
+        _commanders["__indexer__"] = [&](const std::string& args) {
+            std::string index, params;
+            
+            auto p = args.c_str();
+            auto bp = p;
+
+            while(*p && ::isalnum(*p))
+                ++p;
+
+            if(*p == '\0') { // 没有参数
+                index = bp;
+            } else {
+                index = std::string(bp, p - bp);
+
+                while(*p == ' ' || *p == '\t')
+                    ++p;
+                bp = p;
+                for(p = args.c_str() + args.size() - 1; *p == ' ' || *p == '\t';)
+                    --p;
+                params = std::string(bp, p + 1);
+            }
+
+            auto from_db = [&]()->taoexec::model::item_t* {
+                taoexec::model::item_t* found = nullptr;
+                std::vector<taoexec::model::item_t*> items;
+                int rc = _db.query(index, &items);
+                if(rc == -1) {
+                    msgbox("sqlite3 error.");
+                } else if(rc == 0) {
+                    msgbox("Your search `" + index + "` does not match anything.");
+                } else if(rc == 1) {
+                    found = items[0];
+                } else {
+                    decltype(items.cbegin()) it;
+                    for(it = items.cbegin(); it != items.cend(); it++) {
+                        if((*it)->index == index) {
+                            found = *it;
+                            break;
+                        }
+                    }
+
+                    for(auto pi : items) {
+                        if(pi != found)
+                            delete pi;
+                    }
+
+                    if(found == nullptr) {
+                        msgbox("There are many rows match your given prefix.");
+                    }
+                    // found
+                }
+
+                return found;
+            };
+
+            auto item = from_db();
+
+            if(!item) {
+                return;
+            }
+
+            std::vector<std::string> patharr;
+            taoexec::utils::split_paths(item->paths, &patharr);
+            taoexec::core::execute(_hwnd, patharr, item->params, params, item->work_dir, item->env, nullptr);
+
+            delete item;
+
+            set_display(0);
+        };
+
+        // 文件系统执行者
+        _commanders["fs"] = [&](const std::string& args) {
+
+        };
+
+        // 操作系统命令执行者
+        _commanders["os"] = [&](const std::string& args) {
+
+        };
+
+        // QQ好友
+        _commanders["qq"] = [&](const std::string& args) {
+            const char* launcher = R"(F:\Program Files\Tencent\QQ\Bin\QQScLauncher.exe)";
+            const char* uin = "191035066";
+
+            // TODO make static
+            struct comp {
+                bool operator()(const char* lhs, const char* rhs) const {
+                    return _stricmp(lhs, rhs) < 0;
+                }
+            };
+            std::map<const char* /* abbr */, const char* /* hash */, comp> _users;
+            _users["djh"] = "4A0B5EC9DF5B8CE0F362169A3E52EE0D45C184C1742EA350D90F6D6759ABC325996FFD656A25DDBC";
+
+            auto it = _users.find(args.c_str());
+            if(it != _users.end()) {
+                std::string cmd = std::string("/uin:") + uin + " /quicklunch:" + it->second;
+                ::ShellExecute(_hwnd, "open", launcher, cmd.c_str(), nullptr, SW_SHOWNORMAL);
+                set_display(0);
+            }
+            else {
+                // nothing to do.
+            }
+        };
+    }
+
 protected:
 
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
         return 0;
     }
 
-    void execute(std::string& args) {
-        std::string cmd, env, arg;
-        bool is_dir = false, is_env = false, is_envvar = false, is_selfcmd = false;
-        bool parsed = taoexec::core::parse_args(args, &cmd, &is_envvar, &is_env, &env, &is_dir, &arg, &is_selfcmd);
-        if(!parsed || cmd.size() == 0) {
-            if(args.size()) {
-                msgbox("Nothing to do without a cmd specified, correctly specify it.");
+    // 命令行支持的模式：
+    /*
+     *  [commander] [:] [command-specs]
+     **/
+    void execute(std::string& __args) {
+        auto execute_commander = [&](const std::string& commander, const std::string& args) {
+            auto it = _commanders.find(commander);
+            if(it != _commanders.end()) {
+                it->second(args);
                 return;
             }
             else {
-                set_display(0);
+                msgbox("未找到执行者。");
                 return;
             }
-        }
-
-        if(is_selfcmd) {
-            // TODO make init
-            std::map<std::string, std::function<void()>> _selfcmds;
-            _selfcmds["main"] = [this]() {
-                void create_main(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg);
-                create_main(this->_db, this->_cfg);
-            };
-
-            auto found = _selfcmds.find(cmd);
-            if(found != _selfcmds.end()) {
-                found->second();
-                set_display(0);
-                return;
-            }
-            else {
-                msgbox("无此内建命令。");
-                return;
-            }
-        }
-
-        auto from_db = [&]()->taoexec::model::item_t* {
-            taoexec::model::item_t* found = nullptr;
-            std::vector<taoexec::model::item_t*> items;
-            int rc = _db.query(cmd, &items);
-            if(rc == -1) {
-                msgbox("sqlite3 error.");
-            } else if(rc == 0) {
-                msgbox("Your search `" + cmd + "` does not match anything.");
-            } else if(rc == 1) {
-                found = items[0];
-            } else {
-                decltype(items.cbegin()) it;
-                for(it = items.cbegin(); it != items.cend(); it++) {
-                    if((*it)->index == cmd) {
-                        found = *it;
-                        break;
-                    }
-                }
-
-                for(auto pi : items) {
-                    if(pi != found)
-                        delete pi;
-                }
-
-                if(found == nullptr) {
-                    msgbox("There are many rows match your given prefix.");
-                }
-                // found
-            }
-
-            return found;
         };
 
-        auto from_env = [&]()->std::string {
-            return taoexec::core::which(cmd, env);
-        };
+        std::string commander, args;
 
-        auto from_envvar = [&]()->std::string {
-            std::string str;
-            const int size = 32 * 1024;
-            std::unique_ptr<char[]> path(new char[size]);
-            if (::GetEnvironmentVariable(cmd.c_str(), path.get(), size)) {
-                return path.get();
+        auto p = __args.c_str();
+        char c;
+
+        for(;;) {
+            c = *p;
+            if(c == ' ' || c == '\t') {
+                ++p;
+                continue;
             }
-            return "";
-        };
-
-        std::string errstr;
-
-        if (is_envvar) {
-            auto path = from_envvar();
-            if (path.size()) {
-                taoexec::core::execute(_hwnd, path, "", "", "", "", [&errstr](const std::string& err) {
-                    errstr = err;
-                });
+            else if(c == '\0') {
+                commander = "__main__";
+                execute_commander(commander, "");
+                goto _break;
             }
-            goto _exit;
-        }
+            // 到了这里并不知道有没有提供执行者，找到冒号才能确定
+            else if(::isalnum(c) || c == ':') {
+                auto bp = p; // p's backup
+                while((c=*p) && c != ':' && ::isalnum(c))
+                    ++p;
 
-        if(is_env) {
-            std::string path(is_dir
-                ? taoexec::core::which(cmd, env)
-                : cmd);
-
-            if(is_dir) {
-                if(!path.size()) {
-                    msgbox("未找到。");
-                    return;
+                if(c == ':') {  // 找到了执行者
+                    commander = bp == p ? "__main__" : std::string(bp, p - bp);
+                    args = ++p;
+                    execute_commander(commander, args);
+                    goto _break;
+                }
+                else { // 其它则全部判断为 __indexer__
+                    commander = "__indexer__";
+                    args = std::string(bp);
+                    execute_commander(commander, args);
+                    goto _break;
                 }
 
-                taoexec::core::explorer(_hwnd, path, [&errstr](const std::string& err) {
-                    errstr = err;
-                });
             }
             else {
-                taoexec::core::execute(_hwnd, path, "", arg, "", "", [&errstr](const std::string& err) {
-                    errstr = err;
-                });
+                msgbox("无法识别的命令行。");
+                goto _break;
             }
         }
-        else {
-            auto found = from_db();
-            if(!found) {
-                msgbox("未找到。");
-                return;
-            }
 
-            if(is_dir) {
-                // TODO bugs here, paths is not single.
-                std::string path(taoexec::core::expand(found->paths));
-                bool is_abs = path.find('/') != path.npos || path.find('\\') != path.npos || path.find(':') != path.npos;
-                if(!is_abs)
-                    path = taoexec::core::which(path, "");
-
-                taoexec::core::explorer(_hwnd, path, [&](const std::string& err) {
-                    errstr = err;
-                });
-            }
-            else {
-                std::vector<std::string> patharr;
-                taoexec::utils::split_paths(found->paths, &patharr);
-
-                taoexec::core::execute(_hwnd, patharr, found->params, arg, found->work_dir, found->env, [&](const std::string& err) {
-                    errstr = err;
-                });
-            }
-
-            delete found;
-        }
-
-        _exit:
-        if(errstr == "ok")
-            set_display(0);
-        else
-            msgbox("失败。");
-
+    _break:
         return;
     }
 };
