@@ -316,6 +316,331 @@ protected:
     }
 };
 
+class CONFIG : public taowin::window_creator {
+private:
+    using config_db_t = taoexec::model::config_db_t;
+
+    config_db_t&                        _cfg;
+    std::vector<config_db_t::item_t*>   _items;
+
+    HMENU                               _hmenu;
+
+    enum class menuid {
+        none,
+        add,
+        modify,
+        remove,
+    };
+
+    class INPUT : public taowin::window_creator {
+    public:
+        using callback_t = std::function<bool(const std::string& name, const std::string& value, const std::string& comment)>;
+
+    protected:
+        const config_db_t::item_t* _item;
+
+
+        callback_t _onok;
+        //callback_t _oncancel;
+
+    protected:
+        virtual void get_metas(taowin::window::window_meta_t* metas) override {
+            __super::get_metas(metas);
+        }
+
+        virtual LPCTSTR get_skin_xml() const override {
+            return R"tw(
+<window title="INPUT" size="370,300">
+    <res>
+        <font name="default" face="Î¢ÈíÑÅºÚ" size="12" />
+        <font name="consolas" face="Consolas" size="12" />
+    </res>
+    <root>
+        <vertical padding="10,10,10,10">
+            <label text="Name: " height="20" />
+            <edit name="name" font="consolas" style="" exstyle="clientedge" height="20"/>
+            <control height="10" />
+            <label text="Comment: " height="20" />
+            <edit name="comment" font="consolas" style="" exstyle="clientedge" height="20"/>
+            <control height="10" />
+            <label text="Value: " height="20"/>
+            <edit name="value" font="consolas" style="multiline,wantreturn" exstyle="clientedge" minheight="100"/>
+            <control height="15"/>
+            <horizontal height="30">
+                <control />
+                <button name="ok" width="40" text="È·¶¨"/>
+                <control width="10"/>
+                <button name="cancel" width="40" text="È¡Ïû"/>
+            </horizontal>
+        </vertical>
+    </root>
+</window>
+)tw";
+        }
+
+        virtual bool filter_message(MSG* msg) override {
+            if (msg->message == WM_KEYDOWN) {
+                switch (msg->wParam) {
+                case VK_ESCAPE:
+                    close();
+                    return true;
+                default:
+                    // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
+                    // menu message with id == 2. It is undocumented.
+                    // and, this function call doesn't care the variable _is_dialog.
+                    if (::IsDialogMessage(_hwnd, msg))
+                        return true;
+                    break;
+                }
+            }
+            return false;
+        }
+
+        virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
+            switch (umsg) {
+            case WM_CREATE:
+            {
+                auto name = _root->find<taowin::edit>("name");
+                auto value = _root->find<taowin::edit>("value");
+                auto comment = _root->find<taowin::edit>("comment");
+
+                if (_item) {
+                    name->set_text(_item->name.c_str());
+                    value->set_text(_item->value.c_str());
+                    comment->set_text(_item->comment.c_str());
+
+                    name->set_enabled(false);
+                    value->focus();
+                }
+                else {
+                    name->focus();
+                }
+
+                return 0;
+            }
+            }
+            return __super::handle_message(umsg, wparam, lparam);
+        }
+
+    public:
+        INPUT(const config_db_t::item_t* item = nullptr, callback_t onok = nullptr)
+            : _item(item)
+            , _onok(onok)
+            //, _oncancel(nullptr)
+        {
+        }
+
+    protected:
+        virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
+            if (pc->name() == "cancel") {
+                close();
+                return 0;
+            }
+            else if (pc->name() == "ok") {
+                auto name = _root->find<taowin::edit>("name");
+                auto value = _root->find<taowin::edit>("value");
+                auto comment = _root->find<taowin::edit>("comment");
+                if (_onok(name->get_text(), value->get_text(), comment->get_text())) {
+                    close();
+                    return 0;
+                }
+                return 0;
+            }
+            return 0;
+        }
+
+        virtual void on_final_message() {
+            __super::on_final_message();
+        }
+    };
+
+public:
+    CONFIG(taoexec::model::config_db_t& cfg)
+        : _cfg(cfg)
+        , _hmenu(nullptr)
+    {
+
+    }
+
+protected:
+    virtual LPCTSTR get_skin_xml() const override {
+        return R"tw(
+<window title="CONFIG" size="600,400">
+    <res>
+        <font name="default" face="Î¢ÈíÑÅºÚ" size="12" />
+    </res>
+    <root>
+        <vertical padding="5,5,5,5">
+            <listview name="lv" style="showselalways,ownerdata,singlesel" exstyle="clientedge" minwidth="550"/>
+        </vertical>
+    </root>
+</window>
+
+)tw";
+    }
+
+    menuid show_menu() {
+        auto lv = _root->find<taowin::listview>("lv");
+        int nsel = lv->get_selected_count();
+
+        ::EnableMenuItem(_hmenu, (UINT)menuid::modify, MF_BYCOMMAND | (nsel == 1 ? MF_ENABLED : MF_DISABLED | MF_GRAYED));
+        ::EnableMenuItem(_hmenu, (UINT)menuid::remove, MF_BYCOMMAND | (nsel == 1 ? MF_ENABLED : MF_DISABLED | MF_GRAYED));
+
+        ::POINT pt;
+        ::GetCursorPos(&pt);
+        return (menuid)::TrackPopupMenuEx(_hmenu, TPM_LEFTBUTTON | TPM_RETURNCMD, pt.x, pt.y, _hwnd, nullptr);
+    }
+
+    virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
+        switch (umsg) {
+        case WM_CREATE: {
+            ([&]() {
+                static const struct {
+                    const char* name;
+                    int width;
+                } cols[] = {
+                    { "name", 100 },
+                    { "value", 200 },
+                    { "comment", 200 },
+                    { nullptr, 0 }
+                };
+
+                auto lv = _root->find<taowin::listview>("lv");
+                for (int i = 0; i < _countof(cols); ++i) {
+                    auto col = &cols[i];
+                    lv->insert_column(col->name, col->width, i);
+                }
+
+                _cfg.query("", &_items);
+
+                lv->set_item_count(_items.size(), 0);
+            })();
+
+            ([&]() {
+                _hmenu = CreatePopupMenu();
+                ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::add, "Ôö¼Ó");
+                ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::modify, "ÐÞ¸Ä");
+                ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::remove, "É¾³ý");
+            })();
+
+            return 0;
+        }
+        }
+
+        return __super::handle_message(umsg, wparam, lparam);
+    }
+
+    virtual bool filter_message(MSG* msg) override {
+        if (msg->message == WM_KEYDOWN) {
+            switch (msg->wParam) {
+            case VK_ESCAPE:
+                close();
+                return true;
+            case VK_RETURN:
+            {
+                send_message(WM_COMMAND, MAKEWPARAM(BN_CLICKED, 0), LPARAM(_root->find("ok")->hwnd()));
+                return true;
+            }
+            default:
+                // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
+                // menu message with id == 2. It is undocumented.
+                // and, this function call doesn't care the variable _is_dialog.
+                if (::IsDialogMessage(_hwnd, msg))
+                    return true;
+                break;
+            }
+        }
+        return false;
+    }
+
+    virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
+        if (pc->name() == "lv") {
+            auto lv = reinterpret_cast<taowin::listview*>(pc);
+            if (code == NM_RCLICK) {
+                switch (show_menu()) {
+                case menuid::add:
+                {
+                    INPUT input(nullptr, [&](const std::string& name, const std::string& value, const std::string& comment) {
+                        _cfg.set(name, value, comment);
+                        auto item = new config_db_t::item_t;
+                        item->name = name;
+                        item->value = value;
+                        item->comment = comment;
+                        _items.push_back(item);
+                        lv->set_item_count(_items.size(), 0);
+                        return true;
+                    });
+                    input.domodal(this);
+                    break;
+                }
+                case menuid::modify:
+                {
+                    auto nmlv = reinterpret_cast<NMLISTVIEW*>(hdr);
+                    auto it = _items.begin() + nmlv->iItem;
+                    INPUT input(*it, [&](const std::string& name, const std::string& value, const std::string& comment) {
+                        (*it)->value = value;
+                        (*it)->comment = comment;
+                        lv->redraw_items(nmlv->iItem, nmlv->iItem);
+                        _cfg.set(name, value, comment);
+                        return true;
+                    });
+                    input.domodal(this);
+                    break;
+                }
+                case menuid::remove:
+                {
+                    auto nmlv = reinterpret_cast<NMLISTVIEW*>(hdr);
+                    auto it = _items.begin() + nmlv->iItem;
+
+                    _cfg.set((*it)->name, "", "");
+                    lv->delete_item(nmlv->iItem);
+                    _items.erase(it);
+
+                    break;
+                }
+                case menuid::none:
+                default:
+                    break;
+                }
+
+                return 0;
+            }
+            else if (code == NM_DBLCLK) {
+                auto nmlv = reinterpret_cast<NMITEMACTIVATE*>(hdr);
+                if (nmlv->iItem != -1) {
+                    auto it = _items.begin() + nmlv->iItem;
+                    INPUT input(*it, [&](const std::string& name, const std::string& value, const std::string& comment) {
+                        (*it)->value = value;
+                        (*it)->comment = comment;
+                        lv->redraw_items(nmlv->iItem, nmlv->iItem);
+                        _cfg.set(name, value, comment);
+                        return true;
+                    });
+                    input.domodal(this);
+                    return 0;
+                }
+            }
+            else if (code == LVN_GETDISPINFO) {
+                NMLVDISPINFO* pdi = reinterpret_cast<NMLVDISPINFO*>(hdr);
+                auto rit = _items[pdi->item.iItem];
+                auto lit = &pdi->item;
+                switch (lit->iSubItem) {
+                case 0: lit->pszText = (LPSTR)rit->name.c_str(); break;
+                case 1:lit->pszText = (LPSTR)rit->value.c_str(); break;
+                case 2:lit->pszText = (LPSTR)rit->comment.c_str(); break;
+                }
+                return 0;
+            }
+        }
+        return __super::on_notify(hwnd, pc, code, hdr);
+    }
+
+    virtual void on_final_message() override {
+        __super::on_final_message();
+        delete this;
+    }
+};
+
 class MINI : public taowin::window_creator {
 protected:
     virtual void get_metas(taowin::window::window_meta_t* metas) override {
@@ -478,6 +803,13 @@ private:
 
             _cmds["exit"] = [&]() {
                 _pmini->close();
+            };
+
+            _cmds["settings"] = [&]() {
+                CONFIG& cfg = * new CONFIG(_pmini->_cfg);
+                cfg.create();
+                cfg.center();
+                cfg.show();
             };
         }
 
@@ -725,322 +1057,6 @@ protected:
 
     _break:
         return;
-    }
-};
-
-class CONFIG : public taowin::window_creator {
-private:
-    using config_db_t = taoexec::model::config_db_t;
-
-    config_db_t&                        _cfg;
-    std::vector<config_db_t::item_t*>   _items;
-
-    HMENU                               _hmenu;
-
-    enum class menuid {
-        none,
-        add,
-        modify,
-        remove,
-    };
-
-    class INPUT : public taowin::window_creator {
-    public:
-        using callback_t = std::function<bool(const std::string& name, const std::string& value, const std::string& comment)>;
-
-    protected:
-        const config_db_t::item_t* _item;
-
-
-        callback_t _onok;
-        //callback_t _oncancel;
-
-    protected:
-        virtual void get_metas(taowin::window::window_meta_t* metas) override {
-            __super::get_metas(metas);
-        }
-
-        virtual LPCTSTR get_skin_xml() const override {
-            return R"tw(
-<window title="INPUT" size="370,300">
-    <res>
-        <font name="default" face="Î¢ÈíÑÅºÚ" size="12" />
-        <font name="consolas" face="Consolas" size="12" />
-    </res>
-    <root>
-        <vertical padding="10,10,10,10">
-            <label text="Name: " height="20" />
-            <edit name="name" font="consolas" style="" exstyle="clientedge" height="20"/>
-            <control height="10" />
-            <label text="Comment: " height="20" />
-            <edit name="comment" font="consolas" style="" exstyle="clientedge" height="20"/>
-            <control height="10" />
-            <label text="Value: " height="20"/>
-            <edit name="value" font="consolas" style="multiline,wantreturn" exstyle="clientedge" minheight="100"/>
-            <control height="15"/>
-            <horizontal height="30">
-                <control />
-                <button name="ok" width="40" text="È·¶¨"/>
-                <control width="10"/>
-                <button name="cancel" width="40" text="È¡Ïû"/>
-            </horizontal>
-        </vertical>
-    </root>
-</window>
-)tw";
-        }
-
-        virtual bool filter_message(MSG* msg) override {
-            if (msg->message == WM_KEYDOWN) {
-                switch (msg->wParam) {
-                case VK_ESCAPE:
-                    close();
-                    return true;
-                default:
-                    // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
-                    // menu message with id == 2. It is undocumented.
-                    // and, this function call doesn't care the variable _is_dialog.
-                    if (::IsDialogMessage(_hwnd, msg))
-                        return true;
-                    break;
-                }
-            }
-            return false;
-        }
-
-        virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
-            switch (umsg) {
-            case WM_CREATE:
-            {
-                auto name = _root->find<taowin::edit>("name");
-                auto value = _root->find<taowin::edit>("value");
-                auto comment = _root->find<taowin::edit>("comment");
-
-                if (_item) {
-                    name->set_text(_item->name.c_str());
-                    value->set_text(_item->value.c_str());
-                    comment->set_text(_item->comment.c_str());
-
-                    name->set_enabled(false);
-                    value->focus();
-                }
-                else {
-                    name->focus();
-                }
-
-                return 0;
-            }
-            }
-            return __super::handle_message(umsg, wparam, lparam);
-        }
-
-    public:
-        INPUT(const config_db_t::item_t* item = nullptr, callback_t onok = nullptr)
-            : _item(item)
-            , _onok(onok)
-            //, _oncancel(nullptr)
-        {
-        }
-
-    protected:
-        virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
-            if (pc->name() == "cancel") {
-                close();
-                return 0;
-            }
-            else if (pc->name() == "ok") {
-                auto name = _root->find<taowin::edit>("name");
-                auto value = _root->find<taowin::edit>("value");
-                auto comment = _root->find<taowin::edit>("comment");
-                if (_onok(name->get_text(), value->get_text(), comment->get_text())) {
-                    close();
-                    return 0;
-                }
-                return 0;
-            }
-            return 0;
-        }
-    };
-
-public:
-    CONFIG(taoexec::model::config_db_t& cfg)
-        : _cfg(cfg)
-        , _hmenu(nullptr)
-    {
-    }
-
-protected:
-    virtual LPCTSTR get_skin_xml() const override {
-        return R"tw(
-<window title="CONFIG" size="600,400">
-    <res>
-        <font name="default" face="Î¢ÈíÑÅºÚ" size="12" />
-    </res>
-    <root>
-        <vertical padding="5,5,5,5">
-            <listview name="lv" style="showselalways,ownerdata,singlesel" exstyle="clientedge" minwidth="550"/>
-        </vertical>
-    </root>
-</window>
-
-)tw";
-    }
-
-    menuid show_menu() {
-        auto lv = _root->find<taowin::listview>("lv");
-        int nsel = lv->get_selected_count();
-
-        ::EnableMenuItem(_hmenu, (UINT)menuid::modify, MF_BYCOMMAND | (nsel == 1 ? MF_ENABLED : MF_DISABLED | MF_GRAYED));
-        ::EnableMenuItem(_hmenu, (UINT)menuid::remove, MF_BYCOMMAND | (nsel == 1 ? MF_ENABLED : MF_DISABLED | MF_GRAYED));
-
-        ::POINT pt;
-        ::GetCursorPos(&pt);
-        return (menuid)::TrackPopupMenuEx(_hmenu, TPM_LEFTBUTTON | TPM_RETURNCMD, pt.x, pt.y, _hwnd, nullptr);
-    }
-
-    virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
-        switch(umsg)
-        {
-        case WM_CREATE: {
-            ([&]() {
-                static const struct {
-                    const char* name;
-                    int width;
-                } cols[] = {
-                    { "name", 100 },
-                    { "value", 200 },
-                    { "comment", 200 },
-                    { nullptr, 0 }
-                };
-
-                auto lv = _root->find<taowin::listview>("lv");
-                for (int i = 0; i < _countof(cols); ++i) {
-                    auto col = &cols[i];
-                    lv->insert_column(col->name, col->width, i);
-                }
-
-                _cfg.query("", &_items);
-
-                lv->set_item_count(_items.size(), 0);
-            })();
-
-            ([&]() {
-                _hmenu = CreatePopupMenu();
-                ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::add,       "Ôö¼Ó");
-                ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::modify,    "ÐÞ¸Ä");
-                ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::remove ,   "É¾³ý");
-            })();
-
-            return 0;
-        }
-        }
-
-        return __super::handle_message(umsg, wparam, lparam);
-    }
-
-    virtual bool filter_message(MSG* msg) override {
-        if(msg->message == WM_KEYDOWN) {
-            switch(msg->wParam) {
-            case VK_ESCAPE:
-                close();
-                return true;
-            case VK_RETURN:
-            {
-                send_message(WM_COMMAND, MAKEWPARAM(BN_CLICKED, 0), LPARAM(_root->find("ok")->hwnd()));
-                return true;
-            }
-            default:
-                // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
-                // menu message with id == 2. It is undocumented.
-                // and, this function call doesn't care the variable _is_dialog.
-                if(::IsDialogMessage(_hwnd, msg))
-                    return true;
-                break;
-            }
-        }
-        return false;
-    }
-
-    virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
-        if (pc->name() == "lv") {
-            auto lv = reinterpret_cast<taowin::listview*>(pc);
-            if (code == NM_RCLICK) {
-                switch (show_menu()) {
-                case menuid::add:
-                {
-                    INPUT input(nullptr, [&](const std::string& name, const std::string& value, const std::string& comment) {
-                        _cfg.set(name, value, comment);
-                        auto item = new config_db_t::item_t;
-                        item->name = name;
-                        item->value = value;
-                        item->comment = comment;
-                        _items.push_back(item);
-                        lv->set_item_count(_items.size(), 0);
-                        return true;
-                    });
-                    input.domodal(this);
-                    break;
-                }
-                case menuid::modify:
-                {
-                    auto nmlv = reinterpret_cast<NMLISTVIEW*>(hdr);
-                    auto it = _items.begin() + nmlv->iItem;
-                    INPUT input(*it, [&](const std::string& name, const std::string& value, const std::string& comment) {
-                        (*it)->value = value;
-                        (*it)->comment = comment;
-                        lv->redraw_items(nmlv->iItem, nmlv->iItem);
-                        _cfg.set(name, value, comment);
-                        return true;
-                    });
-                    input.domodal(this);
-                    break;
-                }
-                case menuid::remove:
-                {
-                    auto nmlv = reinterpret_cast<NMLISTVIEW*>(hdr);
-                    auto it = _items.begin() + nmlv->iItem;
-
-                    _cfg.set((*it)->name, "", "");
-                    lv->delete_item(nmlv->iItem);
-                    _items.erase(it);
-
-                    break;
-                }
-                case menuid::none:
-                default:
-                    break;
-                }
-
-                return 0;
-            }
-            else if (code == NM_DBLCLK) {
-                auto nmlv = reinterpret_cast<NMITEMACTIVATE*>(hdr);
-                if (nmlv->iItem != -1) {
-                    auto it = _items.begin() + nmlv->iItem;
-                    INPUT input(*it, [&](const std::string& name, const std::string& value, const std::string& comment) {
-                        (*it)->value = value;
-                        (*it)->comment = comment;
-                        lv->redraw_items(nmlv->iItem, nmlv->iItem);
-                        _cfg.set(name, value, comment);
-                        return true;
-                    });
-                    input.domodal(this);
-                    return 0;
-                }
-            }
-            else if (code == LVN_GETDISPINFO) {
-                NMLVDISPINFO* pdi = reinterpret_cast<NMLVDISPINFO*>(hdr);
-                auto rit = _items[pdi->item.iItem];
-                auto lit = &pdi->item;
-                switch (lit->iSubItem) {
-                case 0: lit->pszText = (LPSTR)rit->name.c_str(); break;
-                case 1:lit->pszText = (LPSTR)rit->value.c_str(); break;
-                case 2:lit->pszText = (LPSTR)rit->comment.c_str(); break;
-                }
-                return 0;
-            }
-        }
-        return __super::on_notify(hwnd, pc, code, hdr);
     }
 };
 
@@ -1324,8 +1340,7 @@ protected:
             return 0;
         }
         else if(pc->name() == "settings") {
-            CONFIG cfg(_cfg);
-            cfg.domodal(this);
+            (new CONFIG(_cfg))->domodal(this);
             return 0;
         }
         return 0;
