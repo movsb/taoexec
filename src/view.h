@@ -438,65 +438,101 @@ public:
         , _cfg(cfg)
         , _focus(nullptr) {}
 
+    ~MINI() {
+        for (auto& it : _commanders)
+            delete it.second;
+    }
+
 private:
     HWND _focus;
     taoexec::model::item_db_t& _db;
     taoexec::model::config_db_t& _cfg;
 
-    std::map <std::string, std::function<void(const std::string& args)>> _commanders;
-
 private:
-    /* 初始化命令执行者
-     *  带双下划线的是预定义的执行者
-    */
-    void init_commanders() {
-        // 没有指定 `commander` 时的执行者（但冒号必须指定）
-        _commanders["__main__"] = [&](const std::string& args) {
-            // TODO make static
-            std::map<std::string, std::function<void()>> _selfcmds;
-            _selfcmds[""] = [&]() {
-                set_display(0);
+    class command_executor_i;
+    std::map <std::string, command_executor_i*> _commanders;
+
+    class command_executor_i {
+    public:
+        virtual const std::string get_name() const = 0;
+        virtual bool execute(const std::string& args) = 0;
+    };
+
+    class executor_main : public command_executor_i {
+    private:
+        MINI* _pmini;
+        std::map<std::string, std::function<void()>> _cmds;
+
+    public:
+        executor_main(MINI* pmini)
+            : _pmini(pmini)
+        {
+            _cmds[""] = [&]() {
+                _pmini->set_display(0);
             };
 
-            _selfcmds["main"] = [this]() {
+            _cmds["main"] = [&]() {
                 void create_main(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg);
-                create_main(this->_db, this->_cfg);
+                create_main(_pmini->_db, _pmini->_cfg);
             };
 
-            _selfcmds["exit"] = [this]() {
-                this->close();
+            _cmds["exit"] = [&]() {
+                _pmini->close();
             };
+        }
 
-            auto found = _selfcmds.find(args);
-            if(found != _selfcmds.end()) {
+        const std::string get_name() const override{
+            return "__main__";
+        }
+
+        bool execute(const std::string& args) override {
+            auto found = _cmds.find(args);
+            if (found != _cmds.end()) {
                 found->second();
-                set_display(0);
-                return;
-            } else {
-                msgbox("无此内建命令。");
-                return;
+                return true;
             }
-        };
+            else {
+                _pmini->msgbox("无此内建命令。");
+                return false;
+            }
+        }
+    };
 
-        // 没有指定 `commander` 和 `:` 时的执行者，即为数据库索引者
-        _commanders["__indexer__"] = [&](const std::string& args) {
+    class executor_indexer : public command_executor_i {
+    private:
+        MINI* _pmini;
+        taoexec::model::item_db_t* _itemdb;
+
+    public:
+        executor_indexer(MINI* pmini, taoexec::model::item_db_t* itemdb)
+            : _pmini(pmini)
+            , _itemdb(itemdb) 
+        {
+        }
+
+        const std::string get_name() const override {
+            return "__indexer__";
+        }
+
+        bool execute(const std::string& args) override {
             std::string index, params;
-            
+
             auto p = args.c_str();
             auto bp = p;
 
-            while(*p && ::isalnum(*p))
+            while (*p && ::isalnum(*p))
                 ++p;
 
-            if(*p == '\0') { // 没有参数
+            if (*p == '\0') { // 没有参数
                 index = bp;
-            } else {
+            }
+            else {
                 index = std::string(bp, p - bp);
 
-                while(*p == ' ' || *p == '\t')
+                while (*p == ' ' || *p == '\t')
                     ++p;
                 bp = p;
-                for(p = args.c_str() + args.size() - 1; *p == ' ' || *p == '\t';)
+                for (p = args.c_str() + args.size() - 1; *p == ' ' || *p == '\t';)
                     --p;
                 params = std::string(bp, p + 1);
             }
@@ -504,29 +540,32 @@ private:
             auto from_db = [&]()->taoexec::model::item_t* {
                 taoexec::model::item_t* found = nullptr;
                 std::vector<taoexec::model::item_t*> items;
-                int rc = _db.query(index, &items);
-                if(rc == -1) {
-                    msgbox("sqlite3 error.");
-                } else if(rc == 0) {
-                    msgbox("Your search `" + index + "` does not match anything.");
-                } else if(rc == 1) {
+                int rc = _itemdb->query(index, &items);
+                if (rc == -1) {
+                    _pmini->msgbox("sqlite3 error.");
+                }
+                else if (rc == 0) {
+                    _pmini->msgbox("Your search `" + index + "` does not match anything.");
+                }
+                else if (rc == 1) {
                     found = items[0];
-                } else {
+                }
+                else {
                     decltype(items.cbegin()) it;
-                    for(it = items.cbegin(); it != items.cend(); it++) {
-                        if((*it)->index == index) {
+                    for (it = items.cbegin(); it != items.cend(); it++) {
+                        if ((*it)->index == index) {
                             found = *it;
                             break;
                         }
                     }
 
-                    for(auto pi : items) {
-                        if(pi != found)
+                    for (auto pi : items) {
+                        if (pi != found)
                             delete pi;
                     }
 
-                    if(found == nullptr) {
-                        msgbox("There are many rows match your given prefix.");
+                    if (found == nullptr) {
+                        _pmini->msgbox("There are many rows that match your given prefix.");
                     }
                     // found
                 }
@@ -536,53 +575,86 @@ private:
 
             auto item = from_db();
 
-            if(!item) {
-                return;
+            if (!item) {
+                return false;
             }
 
             std::vector<std::string> patharr;
             taoexec::utils::split_paths(item->paths, &patharr);
-            taoexec::core::execute(_hwnd, patharr, item->params, params, item->work_dir, item->env, nullptr);
+            taoexec::core::execute(_pmini->_hwnd, patharr, item->params, params, item->work_dir, item->env, nullptr);
 
             delete item;
 
-            set_display(0);
+            return true;
+        }
+    };
+
+    class executor_qq : public command_executor_i {
+    private:
+        taoexec::model::config_db_t& _cfg;
+        std::string _uin;
+        std::string _path;
+
+        struct _nickname_compare {
+            bool operator()(const std::string& lhs, const std::string& rhs) {
+                return _stricmp(lhs.c_str(), rhs.c_str()) < 0;
+            }
         };
 
-        // 文件系统执行者
-        _commanders["fs"] = [&](const std::string& args) {
+        std::map<std::string, std::string, _nickname_compare> _users;
 
-        };
+    public:
+        executor_qq(taoexec::model::config_db_t& cfg)
+            : _cfg(cfg) 
+            , _uin("191035066")
+        {
+            _path = _cfg.get("qq_path");
 
-        // 操作系统命令执行者
-        _commanders["os"] = [&](const std::string& args) {
+            auto userstr = _cfg.get("qq_users");
+            std::istringstream iss(userstr);
 
-        };
+            for (std::string line; std::getline(iss, line, '\n');) {
+                std::regex user_n_hash(R"(([0-9a-zA-Z]+),([0-9A-F]{80})\r*)");
+                std::smatch tokens;
 
-        // QQ好友
-        _commanders["qq"] = [&](const std::string& args) {
-            const char* launcher = R"(F:\Program Files\Tencent\QQ\Bin\QQScLauncher.exe)";
-            const char* uin = "191035066";
+                if (std::regex_match(line, tokens, user_n_hash)) {
+                    std::string nickname = tokens[1].str();
+                    std::string hash = tokens[2].str();
 
-            // TODO make static
-            struct comp {
-                bool operator()(const char* lhs, const char* rhs) const {
-                    return _stricmp(lhs, rhs) < 0;
+                    _users[nickname] = hash;
                 }
-            };
-            std::map<const char* /* abbr */, const char* /* hash */, comp> _users;
-            _users["djh"] = "4A0B5EC9DF5B8CE0F362169A3E52EE0D45C184C1742EA350D90F6D6759ABC325996FFD656A25DDBC";
+            }
+        }
 
-            auto it = _users.find(args.c_str());
-            if(it != _users.end()) {
-                std::string cmd = std::string("/uin:") + uin + " /quicklunch:" + it->second;
-                ::ShellExecute(_hwnd, "open", launcher, cmd.c_str(), nullptr, SW_SHOWNORMAL);
-                set_display(0);
+        const std::string get_name() const override {
+            return "qq";
+        }
+
+        bool execute(const std::string& args) override {
+            auto it = _users.find(args);
+            if (it != _users.end()) {
+                std::string cmd = std::string("/uin:") + _uin + " /quicklunch:" + it->second;
+                ::ShellExecute(::GetActiveWindow(), "open", _path.c_str(), cmd.c_str(), nullptr, SW_SHOWNORMAL);
+                return true;
             }
-            else {
-                // nothing to do.
-            }
-        };
+            return false;
+        }
+    };
+
+    /* 初始化命令执行者
+     *  带双下划线的是预定义的执行者
+    */
+    void init_commanders() {
+        command_executor_i* pexec = nullptr;
+
+        pexec = new executor_main(this);
+        _commanders[pexec->get_name()] = pexec;
+
+        pexec = new executor_indexer(this, &this->_db);
+        _commanders[pexec->get_name()] = pexec;
+
+        pexec = new executor_qq(_cfg);
+        _commanders[pexec->get_name()] = pexec;
     }
 
 protected:
@@ -599,7 +671,8 @@ protected:
         auto execute_commander = [&](const std::string& commander, const std::string& args) {
             auto it = _commanders.find(commander);
             if(it != _commanders.end()) {
-                it->second(args);
+                if (it->second->execute(args))
+                    set_display(0);
                 return;
             }
             else {
