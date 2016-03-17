@@ -761,11 +761,17 @@ public:
     MINI(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg)
         : _db(db)
         , _cfg(cfg)
-        , _focus(nullptr) {}
+        , _focus(nullptr) 
+        , _p_registry_executor(nullptr)
+    {
+
+    }
 
     ~MINI() {
         for (auto& it : _commanders)
             delete it.second;
+
+        delete _p_registry_executor;
     }
 
 private:
@@ -777,10 +783,104 @@ private:
     class command_executor_i;
     std::map <std::string, command_executor_i*> _commanders;
 
+    class registry_executor;
+    registry_executor* _p_registry_executor;
+
     class command_executor_i {
     public:
         virtual const std::string get_name() const = 0;
         virtual bool execute(const std::string& args) = 0;
+    };
+
+    class registry_executor {
+    private:
+        struct _name_compare {
+            bool operator()(const std::string& lhs, const std::string& rhs) {
+                return _stricmp(lhs.c_str(), rhs.c_str()) < 0;
+            }
+        };
+
+        std::map<std::string, std::string, _name_compare> _commands;
+
+        MINI* _pMini;
+    public:
+        registry_executor(MINI* pMini)
+            : _pMini(pMini)
+        {
+
+        }
+
+        bool execute(const std::string& all, const std::string& scheme, const std::string& args) {
+            // cache ?
+            if(!_commands.count(scheme)) {
+                bool has_name;
+                taoexec::shell::query_registry(HKEY_CLASSES_ROOT, scheme, "URL Protocol", &has_name);
+                if(has_name) {
+                    std::string subkey = scheme + R"(\shell\open\command)";
+                    _commands[scheme] = taoexec::shell::query_registry(HKEY_CLASSES_ROOT, subkey, "");
+                }
+            }
+
+            auto it = _commands.find(scheme);
+            if(it == _commands.end()) {
+                _pMini->msgbox("尚未向注册表注册的协议。");
+                return false;
+            }
+
+            auto cmd = it->second;
+            if(!cmd.size()) {
+                _pMini->msgbox("未正确注册的协议。");
+                return false;
+            }
+
+            _execute_command(cmd, all);
+
+            return true;
+        }
+
+    private:
+        bool _execute_command(const std::string& cmd, const std::string& all) {
+            std::string str;
+            // 实参替换，目前只支持：%0, %1, %L, %l
+            auto p = cmd.c_str();
+            for(; *p;) {
+                if(*p == '%') {
+                    switch(*++p)
+                    {
+                    case '0':
+                    case '1':
+                    case 'l':
+                    case 'L':
+                        str += all;
+                        ++p;
+                        break;
+                    default:
+                        str += '%';
+                        ++p;
+                        break;
+                    }
+                }
+                else {
+                    auto bp = p;
+                    while(*p && *p != '%')
+                        ++p;
+                    str.append(bp, p);
+                }
+            }
+
+            STARTUPINFO si = {sizeof(si)};
+            PROCESS_INFORMATION pi;
+
+            if(::CreateProcess(nullptr, (LPSTR)str.c_str(), nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, nullptr, &si, &pi)) {
+                ::CloseHandle(pi.hThread);
+                ::CloseHandle(pi.hProcess);
+
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
     };
 
     class executor_main : public command_executor_i {
@@ -1016,6 +1116,9 @@ private:
      *  带双下划线的是预定义的执行者
     */
     void init_commanders() {
+        _p_registry_executor = new registry_executor(this);
+
+
         command_executor_i* pexec = nullptr;
 
         pexec = new executor_main(this);
@@ -1053,7 +1156,8 @@ protected:
                 return;
             }
             else {
-                msgbox("未找到执行者。");
+                if(_p_registry_executor->execute(__args, commander, args))
+                    set_display(0);
                 return;
             }
         };
