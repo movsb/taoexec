@@ -973,6 +973,18 @@ private:
         }
     };
 
+    class executor_fs : public command_executor_i {
+    public:
+        const std::string get_name() const override {
+            return "fs";
+        }
+
+        bool execute(const std::string& args) override {
+            auto x = args;
+            return true;
+        }
+    };
+
     /* 初始化命令执行者
      *  带双下划线的是预定义的执行者
     */
@@ -986,6 +998,9 @@ private:
         _commanders[pexec->get_name()] = pexec;
 
         pexec = new executor_qq(_cfg);
+        _commanders[pexec->get_name()] = pexec;
+
+        pexec = new executor_fs;
         _commanders[pexec->get_name()] = pexec;
     }
 
