@@ -985,6 +985,33 @@ private:
         }
     };
 
+    class executor_shell : public command_executor_i {
+    private:
+        MINI* _pMini;
+
+    public:
+        executor_shell(MINI* pMini)
+            : _pMini(pMini)
+        {
+
+        }
+        const std::string get_name() const override {
+            return "shell";
+        }
+
+        bool execute(const std::string& args) override {
+            // form: ::{00000000-12C9-4305-82F9-43058F20E8D2}
+            if(std::regex_match(args, std::regex(R"(::\{.{36}\})"))) {
+                ::ShellExecute(nullptr, "open", ("shell:" + args).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                return true;
+            }
+            else {
+                _pMini->msgbox("命名空间不正确。");
+                return false;
+            }
+        }
+    };
+
     /* 初始化命令执行者
      *  带双下划线的是预定义的执行者
     */
@@ -1001,6 +1028,9 @@ private:
         _commanders[pexec->get_name()] = pexec;
 
         pexec = new executor_fs;
+        _commanders[pexec->get_name()] = pexec;
+
+        pexec = new executor_shell(this);
         _commanders[pexec->get_name()] = pexec;
     }
 
