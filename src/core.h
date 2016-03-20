@@ -248,136 +248,6 @@ namespace taoexec {
             return "";
         }
 
-        static std::string expand(const std::string& raw) {
-            std::string result;
-            const char* p = raw.c_str();
-
-            auto read_arg = [](const char*& p) {
-                std::string s;
-                while(*p && *p != ',' && *p != ')') {
-                    s += *p;
-                    p++;
-                }
-
-                return s;
-            };
-
-            auto read_ident = [](const char*& p) {
-                std::string s;
-                while(::isalnum(*p) || strchr("_", *p)) {
-                    s += *p;
-                    p++;
-                }
-
-                return s;
-            };
-
-            while(*p != '\0') {
-                if(*p == '$') {
-                    p++;
-                    if(*p == '{') {
-                        p++;
-                        auto var = read_ident(p);
-                        if(*p++ != '}') {
-                            // assert(0);
-                        }
-
-                        result += expand_variable(var);
-                    } else if(::isalpha(*p)) {
-                        auto fn = read_ident(p);
-                        if(*p++ != '(') {
-                            // assert(0);
-                        }
-
-                        func_args args;
-                        while((true)) {
-                            std::string arg(read_arg(p));
-                            args.push_back(arg);
-
-                            if(*p == ',') {
-                                p++;
-                                continue;
-                            } else if(*p == ')') {
-                                break;
-                            }
-                        }
-
-                        if(*p++ != ')') {
-                            // assert(0);
-                        }
-
-                        result += expand_function(fn, args);
-                    } else {
-                        // assert(0);
-                        p++;
-                    }
-                } else {
-                    result += *p;
-                    p++;
-                }
-            }
-            return result;
-        }
-
-        static std::string expand_args(const std::string& params, const std::string& args) {
-            std::string result;
-            result.reserve(params.size() + args.size() + 1);
-
-            bool arg0_used = false;
-            auto p = params.c_str();
-            while(*p) {
-                if(*p == '$') {
-                    p++;
-                    if(*p == '{') {
-                        auto begin = p++;
-                        int argn = 0;
-                        while(::isdigit(*p)) {
-                            argn *= 10;
-                            argn += *p - '0';
-                            p++;
-                        }
-
-                        if(begin == p) { // not like ${0}, ${123}
-
-                        }
-
-                        if(argn == 0) {
-                            result += args;
-                            arg0_used = true;
-                        }
-                        else {  // currently, error
-
-                        }
-
-                        if(*p != '}') { // not enclosed
-
-                        }
-
-                        p++;    // skip `}`
-                    }
-                    else if(*p == '$') {
-                        result += '$';
-                        p++;
-                    }
-                    else { // unexpected
-
-                    }
-                }
-                else if(*p) {
-                    result += *p;
-                    p++;
-                }
-                else {
-                    break;
-                }
-            }
-
-            if(!arg0_used)
-                result += ' ' + args;
-
-            return result;
-        }
-
         static std::string which(const std::string& cmd, const std::string& env/*not used*/) {
             std::string result;
 
@@ -519,12 +389,12 @@ namespace taoexec {
                 return true;
             }
 
-            std::string path_expanded = expand(path);
+            std::string path_expanded;//expand(path);
 
             // cmdline
             std::string cmdline([&]() {
                 std::string s = '"' + path_expanded + '"';
-                std::string param_args = expand_args(params, args);
+                std::string param_args = "";// expand_args(params, args);
                 if(param_args.size())
                     s += " " + param_args;
                 return std::move(s);
@@ -552,7 +422,7 @@ namespace taoexec {
                 else if(is_rel)
                     result = ts;
                 else
-                    result = expand("${desktop}\\");
+                    result = "";// expand("${desktop}\\");
 
                 auto begin = result.c_str();
                 auto p = begin + (int)result.size() - 1;
@@ -602,7 +472,7 @@ namespace taoexec {
         {
             bool  ok = false;
             for(auto& path : paths) {
-                if(execute(hwnd, expand(path), params, args, wd_, env_, nullptr)) {
+                if(0/*execute(hwnd, expand(path), params, args, wd_, env_, nullptr)*/) {
                     ok = true;
                     break;
                 }

@@ -10,6 +10,7 @@
 #include <sstream>
 #include <functional>
 #include <regex>
+#include <shlwapi.h>
 
 class INPUTBOX : public taowin::window_creator {
 public:
@@ -1074,14 +1075,287 @@ private:
     };
 
     class executor_fs : public command_executor_i {
+    private:
+        MINI* _pMini;
     public:
+        executor_fs(MINI* pMini)
+            : _pMini(pMini) 
+        {
+
+        }
+
         const std::string get_name() const override {
             return "fs";
         }
 
         bool execute(const std::string& args) override {
-            auto x = args;
+            std::vector<std::string> argv;
+
+            try {
+                if(!_split_args(args, &argv))
+                    return false;
+            }
+            catch(const char* e) {
+                _pMini->msgbox(e);
+                return false;
+            }
+
+            try {
+                std::string newcmd, argstr;
+                _expand_args(argv[0], argv, &newcmd);
+
+                if(::PathFileExists(newcmd.c_str()) && ::GetFileAttributes(newcmd.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
+                    ::ShellExecute(_pMini->hwnd(), "open", newcmd.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                    return true;
+                }
+
+                if(!::PathFileExists(newcmd.c_str()))
+                    throw "文件未找到。";
+
+                _expand_exec(newcmd, argv, &newcmd);
+
+                STARTUPINFO si = {sizeof(si)};
+                PROCESS_INFORMATION pi;
+
+                if(::CreateProcess(nullptr, (LPSTR)newcmd.c_str(), nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, nullptr, &si, &pi)) {
+                    ::CloseHandle(pi.hThread);
+                    ::CloseHandle(pi.hProcess);
+
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            catch(const char* e) {
+                _pMini->msgbox(e);
+                return false;
+            }
+
             return true;
+        }
+
+    private:
+        void _expand_exec(const std::string& newcmd, const std::vector<std::string>& argv, std::string* __argstr) {
+            std::string executor = taoexec::core::get_executor(taoexec::shell::ext(newcmd));
+            // 实参替换，目前只支持：%0, %1, %L, %l
+            auto p = executor.c_str();
+            std::string str;
+            for(; *p;) {
+                if(*p == '%') {
+                    ++p;
+                    if(*p == '*') {
+                        for(int i = 1; i < (int)argv.size(); i++) {
+                            auto& s = argv[i];
+                            if(s.find(' ') != s.npos)
+                                str += '"' + s + "\" ";
+                            else
+                                str += s + ' ';
+                        }
+                        ++p;
+                    }
+                    else if(::isdigit(*p)) {
+                        auto bp = p;
+                        while(::isdigit(*p))
+                            ++p;
+
+                        int n = atoi(bp);
+                        if(n == 0)
+                            n = 1;
+
+                        if(n < 0 || n > (int)argv.size())
+                            throw "参数范围超出。";
+
+                        if(n == 1)
+                            str += newcmd;
+                        else
+                            str += argv[n-1];
+                    }
+                } else {
+                    auto bp = p;
+                    while(*p && *p != '%')
+                        ++p;
+                    str.append(bp, p);
+                }
+            }
+
+            *__argstr = std::move(str);
+        }
+
+        // 变量展开
+        // 支持的替换：$foo() - 函数调用，${variable} - 变量展开，${number} - 基于位置的变量展开
+        void _expand_args(const std::string& cmd, const std::vector<std::string>& argv, std::string* __newcmd) {
+            std::string newcmd([&](){
+                auto p = cmd.c_str();
+                auto q = cmd.c_str() + cmd.size();
+                if(*p == '\'' || *p == '"') {
+                    ++p;
+                    --q;
+                    if(p >= q)
+                        throw "第1个参数不正确。";
+                }
+
+                std::string s;
+
+                for(;;) {
+                    if(*p == '$') {
+                        ++p;
+                        if(*p == '$') {
+                            s += '$';
+                            ++p;
+                        }
+                        else if(::isalnum(*p)) {
+                            std::string fn;
+                            while(::isalnum(*p))
+                                fn += *p++;
+                            if(*p == '(') {
+                                ++p;
+
+                                taoexec::core::func_args fargs;
+
+                                for(;;) {
+                                    auto bp = p;
+                                    while(p < q && *p != ',' && *p != ')')
+                                        ++p;
+                                    if(p == q)
+                                        throw "函数调用期待`)`。";
+                                    else {
+                                        fargs.push_back({bp, p});
+                                        if(*p == ')') {
+                                            ++p;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                s += taoexec::core::expand_function(fn, fargs);
+                            }
+                            else {
+                                throw "函数调用需要`(`。";
+                            }
+                        }
+                        else if(*p == '{') {
+                            ++p;
+                            if(p == q || *p == '}')
+                                throw "需要变量名。";
+
+                            auto bp = p;
+
+                            if(::isdigit(*p)) {
+                                while(::isdigit(*p))
+                                    ++p;
+                            }
+                            else if(::isalpha(*p)) {
+                                while(::isalnum(*p))
+                                    ++p;
+                            }
+
+                            if(p == bp)
+                                throw "变量名不规范。";
+                            else if(*p != '}')
+                                throw "变量展开期待`}`。";
+
+                            if(::isdigit(*bp)) {
+                                int n = atoi(bp);
+                                if(n<0 || n>(int)argv.size())
+                                    throw "参数范围超出。";
+                                s += argv[n];
+                            }
+                            else {
+                                s += taoexec::core::expand_variable({bp, p});
+                            }
+
+                            ++p;
+                        }
+                        else {
+                            throw "$后面存在不可识别的字符。";
+                        }
+                    }
+                    else if(*p == '%') {
+                        ++p;
+                        if(p == q || *p == '%')
+                            throw "需要变量名。";
+
+                        auto bp = p;
+                        while(::isalnum(*p))
+                            ++p;
+
+                        if(*p != '%')
+                            throw "需要以`%`结束。";
+
+                        s += [&]() {
+                            const int bufsize = 32 * 1024 * 1024;
+                            std::unique_ptr<char[]> var(new char[bufsize]);
+                            var.get()[0] = '\0';
+                            ::GetEnvironmentVariable(std::string(bp, p).c_str(), var.get(), bufsize);
+                            return std::move(std::string(var.get()));
+                        }();
+
+                        ++p;
+                    }
+                    else if(p == q)
+                        break;
+                    else {
+                        auto bp = p;
+                        while(p < q && *p != '$' && *p != '%')
+                            ++p;
+                        s.append(bp, p);
+                    }
+                }
+
+                return s;
+            }());
+
+            if(std::regex_match(newcmd, std::regex(R"([0-9a-zA-z_]+)")))
+                newcmd = taoexec::core::which(newcmd, "");
+            
+            if(!newcmd.size())
+                throw "无法取得可执行文件路径。";
+
+            *__newcmd = newcmd;
+        }
+
+        // 基于词法规则的参数分隔函数
+        // 单词分隔符：不处在引号中的 <space> <tab>。
+        int _split_args(const std::string& args, std::vector<std::string>* __argv) {
+            auto& argv = *__argv;
+            auto p = args.c_str();
+            bool bound_check = false;
+
+            argv.clear();
+
+            for(;;) {
+                if(bound_check) {
+                    if(!(!*p || *p == ' ' || *p == '\t'))
+                        throw "单词边界分隔符不明确。";
+                    bound_check = false;
+                }
+
+                if(!*p) {
+                    break;
+                }
+                else if(*p == '\'' || *p == '"') {
+                    auto bp = p++;
+                    while(*p && *p != *bp)
+                        ++p;
+                    if(!*p)
+                        throw "常量字符串未正确闭合。";
+                    ++p;
+                    argv.push_back({bp, p}); // 包含引号在内
+                    bound_check = true;
+                }
+                else if(*p == ' ' || *p == '\t') {
+                    ++p;
+                }
+                else {
+                    auto bp = p;
+                    while(*p && (*p != ' ' && *p != '\t'))
+                        ++p;
+                    argv.push_back({bp, p});
+                    bound_check = true;
+                }
+            }
+
+            return (int)argv.size();
         }
     };
 
@@ -1130,7 +1404,7 @@ private:
         pexec = new executor_qq(_cfg);
         _commanders[pexec->get_name()] = pexec;
 
-        pexec = new executor_fs;
+        pexec = new executor_fs(this);
         _commanders[pexec->get_name()] = pexec;
 
         pexec = new executor_shell(this);
