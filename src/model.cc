@@ -25,6 +25,7 @@ namespace taoexec {
         }
 
         //---------------------------------------------------------------------
+
         void item_db_t::set_db(sqlite3* db) {
             _db = db;
             _create_tables();
@@ -286,6 +287,7 @@ namespace taoexec {
         }
 
         //------------------------------------------------------------------------------------------
+
         void config_db_t::set_db(sqlite3* db) {
             _db = db;
             _create_tables();
@@ -349,6 +351,31 @@ namespace taoexec {
                 val.assign(def);
 
             return val;
+        }
+
+        int config_db_t::get(const std::string& key, int def) {
+            auto sv = get(key);
+
+            int rv;
+
+            if (!sv.size()) {
+                rv = def;
+            }
+            else {
+                rv = atoi(sv.c_str());
+                if (std::to_string(rv) != sv)
+                    rv = def;
+            }
+
+            return rv;
+        }
+
+        bool config_db_t::get(const std::string& key, bool def) {
+            auto sv = get(key);
+
+            if (sv == "true")       return true;
+            else if(sv == "false")  return false;
+            else                    return def;
         }
 
         void config_db_t::set(const std::string& key, const std::string& val, const std::string& cmt) {
