@@ -108,6 +108,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\shell.h" />
+    <ClInclude Include="..\src\types.hpp" />
     <ClInclude Include="..\src\utils.h" />
     <ClInclude Include="..\third\taowin\tw_control.h" />
     <ClInclude Include="..\third\taowin\tw_parser.h" />
