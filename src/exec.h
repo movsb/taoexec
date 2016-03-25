@@ -26,6 +26,7 @@ namespace taoexec {
             virtual bool execute(const std::string& args) = 0;
         };
 
+        /*
         class registry_executor
         {
         private:
@@ -88,40 +89,35 @@ namespace taoexec {
 
             bool execute(const std::string& args) override;
         };
-
+        */
         class executor_fs : public command_executor_i
         {
         private:
-            MINI* _pMini;
-
             class env_var_t
             {
             public:
-
-                env_var_t() {
-
-                }
-
+                env_var_t() { }
                 void set(const std::string& envstr);
                 void patch(const std::string& envstr);
                 void patch_current();
                 std::string serialize() const;
-                const std::map<std::string, std::string>& get_vars() const {
+                const taoexec::strstrimap& get_vars() const {
                     return _vars;
                 }
 
             protected:
-                std::vector<std::string>            _nameless;
-                std::map<std::string, std::string>  _vars;
-                static std::map<std::string, std::string>               g_variables;
-                typedef std::vector<std::string>                        func_args;
-                typedef std::function<std::string(func_args& args)>    func_proto;
-                static std::map<std::string, func_proto>                g_functions;
+                std::vector<std::string>    _nameless;
+                taoexec::strstrimap         _vars;
             };
 
+        protected:
+            typedef std::vector<std::string>                        func_args;
+            typedef std::function<std::string(func_args& args)>     func_proto;
+            std::map<std::string, func_proto>                       _functions;
+            std::map<std::string, std::string>               		_variables;
+
         public:
-            executor_fs(MINI* pMini)
-                : _pMini(pMini) {
+            executor_fs() {
 
             }
 
@@ -143,22 +139,12 @@ namespace taoexec {
             int _split_args(const std::string& args, std::vector<std::string>* __argv);
 
 
-            static void _add_user_variables(const env_var_t& env_var) {
-                for(auto& kv : env_var.get_vars())
-                    g_variables[kv.first] = kv.second;
-            }
-
             void _initialize_globals();
-
+            void _add_user_variables(const env_var_t& env_var);
             std::string _expand_variable(const std::string& var);
-
             std::string _expand_function(const std::string& fn, func_args& args);
-
             std::string _which(const std::string& cmd, const std::string& env/*not used*/);
-
-            void explorer(HWND hwnd, const std::string& path,
-                std::function<void(const std::string& err)> cb
-                );
+            void explorer(HWND hwnd, const std::string& path, std::function<void(const std::string& err)> cb);
 
             class path_info_t
             {
@@ -205,15 +191,16 @@ namespace taoexec {
 
             std::string get_executor(const std::string& ext);
 
-            static void init() {
-                initialize_globals();
+            void init() {
+                _initialize_globals();
             }
 
-            static void uninit() {
+            void uninit() {
 
             }
         };
 
+        /*
         class executor_shell : public command_executor_i
         {
         private:
@@ -230,6 +217,7 @@ namespace taoexec {
 
             bool execute(const std::string& args) override;
         };
+        */
 
         class executor_manager_t 
         {
@@ -250,9 +238,5 @@ namespace taoexec {
         protected:
             std::map<std::string, command_executor_i*, taoexec::__string_nocase_compare> _command_executors;
         };
-    }
-
-    namespace core {
-
     }
 }

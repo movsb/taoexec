@@ -1,10 +1,12 @@
-#include "core.h"
+#include "exec.h"
 #include "shell.h"
 #include "utils.h"
 
+#include <Shlwapi.h>
+
 namespace taoexec {
 namespace exec {
-
+/*
 // ----- registry_executor -----
 registry_executor::registry_executor() {
 
@@ -223,7 +225,76 @@ bool executor_qq::execute(const std::string& args) {
 
 // ----- executor_qq -----
 
+*/
+
 // ----- executor_fs -----
+
+std::string executor_fs::env_var_t::serialize() const {
+    std::ostringstream oss;
+    for (auto& v : _nameless) {
+        oss << '=' << v;
+        oss.write("", 1);
+    }
+    for (auto it = _vars.cbegin(), end = _vars.cend(); it != end; ++it) {
+        oss << it->first << '=' << it->second;
+        oss.write("", 1);
+    }
+    oss.write("", 1);
+    return std::move(oss.str());
+}
+
+void executor_fs::env_var_t::patch_current() {
+    std::string def_env([]() {
+        auto def_env = ::GetEnvironmentStrings();
+        auto p = def_env;
+        while (*p) while (*p++);
+        std::string def_env_str(def_env, p + 1);
+        ::FreeEnvironmentStrings(def_env);
+        return std::move(def_env_str);
+    }());
+
+    patch(def_env);
+}
+
+void executor_fs::env_var_t::patch(const std::string& envstr) {
+    const char* p = envstr.c_str();
+    for (; *p;) {
+        auto key_begin = p;
+        while (*p != '=') p++; // buggy
+        auto key_end = p++;
+        std::string key(key_begin, key_end);
+
+        std::string val;
+        while (*p && *p != '\r' && *p != '\n') {
+            if (*p == '%') {
+                auto var_start = ++p;
+                while (*p != '%') p++; // buggy
+                auto var_end = p++;
+                std::string var(var_start, var_end);
+                if (_vars.count(var))
+                    val += _vars[var];
+            }
+            else {
+                val += *p++;
+            }
+        }
+
+        if (key.size() == 0)
+            _nameless.push_back(std::move(val));
+        else
+            _vars[std::move(key)] = std::move(val);
+
+        while (*p == '\r' || *p == '\n')
+            p++;
+        if (!*p) p++;
+    }
+}
+
+void executor_fs::env_var_t::set(const std::string& envstr) {
+    _vars.clear();
+    patch(envstr);
+}
+
 bool executor_fs::execute(const std::string& args) {
     std::vector<std::string> argv;
 
@@ -231,7 +302,7 @@ bool executor_fs::execute(const std::string& args) {
         if(!_split_args(args, &argv))
             return false;
     } catch(const char* e) {
-        _pMini->msgbox(e);
+        //_pMini->msgbox(e);
         return false;
     }
 
@@ -240,7 +311,7 @@ bool executor_fs::execute(const std::string& args) {
         _expand_args(argv[0], argv, &newcmd);
 
         if(::PathFileExists(newcmd.c_str()) && ::GetFileAttributes(newcmd.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
-            ::ShellExecute(_pMini->hwnd(), "open", newcmd.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+            ::ShellExecute(nullptr, "open", newcmd.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
             return true;
         }
 
@@ -261,7 +332,7 @@ bool executor_fs::execute(const std::string& args) {
             return false;
         }
     } catch(const char* e) {
-        _pMini->msgbox(e);
+        //_pMini->msgbox(e);
         return false;
     }
 
@@ -302,7 +373,7 @@ bool executor_fs::execute(HWND hwnd, const std::string& path, const std::string&
         if(wd2.size() && wd2.back() != '\\' &&  wd2.back() != '/')
             wd2 += '\\';
         std::string ts = wd2.size() ? wd2 : path_expanded;
-        bool is_abs = ts.size() > 3 /* C:\ */
+        bool is_abs = ts.size() > 3 // C:\ ~~
             && ts[1] == ':'
             && (ts[2] == '/' || ts[2] == '\\');
         bool is_rel = !is_abs
@@ -371,7 +442,7 @@ void executor_fs::execute(HWND hwnd, const std::vector<std::string>& paths, cons
 }
 
 void executor_fs::_expand_exec(const std::string& newcmd, const std::vector<std::string>& argv, std::string* __argstr) {
-    std::string executor = taoexec::core::get_executor(taoexec::shell::ext(newcmd));
+    std::string executor = get_executor(taoexec::shell::ext(newcmd));
     // 实参替换，目前只支持：%0, %1, %L, %l
     auto p = executor.c_str();
     std::string str;
@@ -441,7 +512,7 @@ void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::st
                     if(*p == '(') {
                         ++p;
 
-                        taoexec::core::func_args fargs;
+                        func_args fargs;
 
                         for(;;) {
                             auto bp = p;
@@ -458,7 +529,7 @@ void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::st
                             }
                         }
 
-                        s += taoexec::core::expand_function(fn, fargs);
+                        s += _expand_function(fn, fargs);
                     } else {
                         throw "函数调用需要`(`。";
                     }
@@ -488,7 +559,7 @@ void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::st
                             throw "参数范围超出。";
                         s += argv[n];
                     } else {
-                        s += taoexec::core::expand_variable({bp, p});
+                        s += _expand_variable({bp, p});
                     }
 
                     ++p;
@@ -530,7 +601,7 @@ void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::st
     }());
 
     if(std::regex_match(newcmd, std::regex(R"([0-9a-zA-z_]+)")))
-        newcmd = taoexec::core::which(newcmd, "");
+        newcmd = _which(newcmd, "");
 
     if(!newcmd.size())
         throw "无法取得可执行文件路径。";
@@ -578,53 +649,53 @@ int executor_fs::_split_args(const std::string& args, std::vector<std::string>* 
 }
 
 void executor_fs::_initialize_globals() {
-    auto initialize_variables = []() {
+    auto initialize_variables = [this]() {
         char path[MAX_PATH];
 
         // the exe directory
         if(GetModuleFileName(NULL, path, _countof(path)) > 0) {
             *strrchr(path, '\\') = '\0';
-            g_variables["exe_dir"] = path;
+            _variables["exe_dir"] = path;
         }
 
         // the Windows directory
         path[GetWindowsDirectory(path, _countof(path))] = '\0';
         if(path[3] == '\0') path[2] = '\0'; // on root drive, removes backslash
-        g_variables["windows"] = path;
+        _variables["windows"] = path;
 
         // the Current Directory
         path[GetCurrentDirectory(_countof(path), path)] = '\0';
         if(path[3] == '\0') path[2] = '\0'; // on root drive, removes backslash
-        g_variables["cd"] = path;
+        _variables["cd"] = path;
 
         // the System directory
         path[GetSystemDirectory(path, _countof(path))] = '\0';
         if(path[3] == '\0') path[2] = '\0'; // on root drive, removes backslash
-        g_variables["system"] = path;
+        _variables["system"] = path;
 
         // the AppData
         if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, path)))
-            g_variables["appdata"] = path;
+            _variables["appdata"] = path;
 
         // the home
         if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, 0, path)))
-            g_variables["home"] = path;
+            _variables["home"] = path;
 
         // the desktop
         if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, path)))
-            g_variables["desktop"] = path;
+            _variables["desktop"] = path;
 
         // the Program Files (x86)
         if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROGRAM_FILES, NULL, 0, path)))
-            g_variables["program_x86"] = path;
+            _variables["program_x86"] = path;
 
         // the Program Files
         if(GetEnvironmentVariable("ProgramW6432", path, _countof(path)) > 0)
-            g_variables["program"] = path;
+            _variables["program"] = path;
     };
 
-    auto initialize_functions = []() {
-        g_functions["reg"] = [](func_args& args)->std::string {
+    auto initialize_functions = [this]() {
+        _functions["reg"] = [](func_args& args)->std::string {
             std::string result;
             if(args.size() >= 3) {
                 static std::map<std::string, HKEY> _hkeys {
@@ -641,7 +712,7 @@ void executor_fs::_initialize_globals() {
                     DWORD cb = sizeof(value);
 
                     REGSAM sam = KEY_READ;
-                    if(is_wow64()) {
+                    if(taoexec::shell::is_wow64()) {
                         if(args.size() >= 4 && args[3] == "64")
                             sam |= KEY_WOW64_64KEY;
                         else
@@ -661,7 +732,7 @@ void executor_fs::_initialize_globals() {
             return result;
         };
 
-        g_functions["env"] = [](func_args& args)->std::string {
+        _functions["env"] = [](func_args& args)->std::string {
             std::string result;
             if(args.size() >= 1) {
                 char buf[2048];
@@ -673,9 +744,9 @@ void executor_fs::_initialize_globals() {
             return result;
         };
 
-        g_functions["app_path"] = [](func_args& args)->std::string {
+        _functions["app_path"] = [this](func_args& args)->std::string {
             std::string result;
-            auto reg = g_functions["reg"];
+            auto reg = _functions["reg"];
 
             if(args.size() >= 1) {
                 func_args as {
@@ -695,15 +766,15 @@ void executor_fs::_initialize_globals() {
 }
 
 std::string executor_fs::_expand_variable(const std::string& var) {
-    if(g_variables.count(var) > 0)
-        return g_variables[var];
+    if(_variables.count(var) > 0)
+        return _variables[var];
 
     return "";
 }
 
 std::string executor_fs::_expand_function(const std::string& fn, func_args& args) {
-    if(g_functions.count(fn))
-        return g_functions[fn](args);
+    if(_functions.count(fn))
+        return _functions[fn](args);
 
     return "";
 }
@@ -714,14 +785,14 @@ std::string executor_fs::_which(const std::string& cmd, const std::string& env/*
     // collect all search directories that match CreateProcess' behavior
     std::vector<std::string> search_dirs;
     // 1. the directory from which the application loaded
-    search_dirs.push_back(expand_variable("exe_dir"));
+    search_dirs.push_back(_expand_variable("exe_dir"));
     // 2. the current directory for the parent process
-    search_dirs.push_back(expand_variable("cd"));
+    search_dirs.push_back(_expand_variable("cd"));
     // 3. The 32-bit Windows system directory
-    search_dirs.push_back(expand_variable("system"));
+    search_dirs.push_back(_expand_variable("system"));
     // 4. The 16-bit Windows system directory (not implemented)
     // 5. The Windows directory
-    search_dirs.push_back(expand_variable("windows"));
+    search_dirs.push_back(_expand_variable("windows"));
     // 6. The directories that are listed in the PATH environment variable
     const int var_size = 32 * 1024;
     std::unique_ptr<char[]> path(new char[var_size]);
@@ -752,7 +823,7 @@ std::string executor_fs::_which(const std::string& cmd, const std::string& env/*
 
         WIN32_FIND_DATA wfd;
         std::string pattern = folder + cmd + '*';
-        if(is_wow64()) ::Wow64DisableWow64FsRedirection(nullptr);
+        if(taoexec::shell::is_wow64()) ::Wow64DisableWow64FsRedirection(nullptr);
         HANDLE hfind = ::FindFirstFile(pattern.c_str(), &wfd);
         if(hfind != INVALID_HANDLE_VALUE) {
             do {
@@ -775,7 +846,7 @@ std::string executor_fs::_which(const std::string& cmd, const std::string& env/*
             } while(::FindNextFile(hfind, &wfd));
             ::FindClose(hfind);
         }
-        if(is_wow64()) ::Wow64EnableWow64FsRedirection(TRUE);
+        if(taoexec::shell::is_wow64()) ::Wow64EnableWow64FsRedirection(TRUE);
     }
 
 _exit_for:
@@ -794,8 +865,37 @@ void executor_fs::explorer(HWND hwnd, const std::string& path, std::function<voi
     if(cb) cb("ok");
 }
 
-// ----- executor_fs -----
+void executor_fs::_add_user_variables(const env_var_t& env_var) {
+    for (auto& kv : env_var.get_vars())
+        _variables[kv.first] = kv.second;
+}
 
+std::string executor_fs::get_executor(const std::string& ext) {
+    std::string cmd;
+    std::string lower_ext(utils::tolower(ext));
+
+    if (!lower_ext.size())
+        return cmd;
+
+    // hit from cache
+    //if (g_executor.count(lower_ext))
+    //    return g_executor[lower_ext];
+
+    std::string what_file = shell::query_registry(HKEY_CLASSES_ROOT, ext, "");
+    if (what_file.size()) {
+        cmd = shell::query_registry(HKEY_CLASSES_ROOT, what_file + R"(\shell\open\command)", "");
+        if (cmd.size()) {
+
+        }
+    }
+
+    // make cache
+    //g_executor[lower_ext] = cmd;
+    return cmd;
+}
+
+// ----- executor_fs -----
+/*
 // ----- executor_shell -----
 bool executor_shell::execute(const std::string& args) {
     // form: ::{00000000-12C9-4305-82F9-43058F20E8D2}
@@ -809,75 +909,13 @@ bool executor_shell::execute(const std::string& args) {
 }
 
 // ----- executor_shell -----
+*/
 
-std::string executor_fs::env_var_t::serialize() const {
-    std::ostringstream oss;
-    for(auto& v : _nameless) {
-        oss << '=' << v;
-        oss.write("", 1);
-    }
-    for(auto it = _vars.cbegin(), end = _vars.cend(); it != end; ++it) {
-        oss << it->first << '=' << it->second;
-        oss.write("", 1);
-    }
-    oss.write("", 1);
-    return std::move(oss.str());
-}
-
-void executor_fs::env_var_t::patch_current() {
-    std::string def_env([]() {
-        auto def_env = ::GetEnvironmentStrings();
-        auto p = def_env;
-        while(*p) while(*p++);
-        std::string def_env_str(def_env, p + 1);
-        ::FreeEnvironmentStrings(def_env);
-        return std::move(def_env_str);
-    }());
-
-    patch(def_env);
-}
-
-void executor_fs::env_var_t::patch(const std::string& envstr) {
-    const char* p = envstr.c_str();
-    for(; *p;) {
-        auto key_begin = p;
-        while(*p != '=') p++; // buggy
-        auto key_end = p++;
-        std::string key(key_begin, key_end);
-
-        std::string val;
-        while(*p && *p != '\r' && *p != '\n') {
-            if(*p == '%') {
-                auto var_start = ++p;
-                while(*p != '%') p++; // buggy
-                auto var_end = p++;
-                std::string var(var_start, var_end);
-                if(_vars.count(var))
-                    val += _vars[var];
-            } else {
-                val += *p++;
-            }
-        }
-
-        if(key.size() == 0)
-            _nameless.push_back(std::move(val));
-        else
-            _vars[std::move(key)] = std::move(val);
-
-        while(*p == '\r' || *p == '\n')
-            p++;
-        if(!*p) p++;
-    }
-}
-
-void executor_fs::env_var_t::set(const std::string& envstr) {
-    _vars.clear();
-    patch(envstr);
-}
 
 
 // ----- executor_manager -----
 void executor_manager_t::init_commanders() {
+    /*
     _p_registry_executor = new registry_executor(this);
 
 
@@ -897,39 +935,11 @@ void executor_manager_t::init_commanders() {
 
     pexec = new executor_shell(this);
     _commanders[pexec->get_name()] = pexec;
+    */
 }
 
 // ----- executor_manager -----
-}
+} // namespace exec
 
-namespace core {
+} // namespace taoexec
 
-std::map<std::string, std::string>  g_executor;
-
-std::string get_executor(const std::string& ext) {
-    std::string cmd;
-    std::string lower_ext(utils::tolower(ext));
-
-    if (!lower_ext.size())
-        return cmd;
-
-    // hit from cache
-    if (g_executor.count(lower_ext))
-        return g_executor[lower_ext];
-
-    std::string what_file = shell::query_registry(HKEY_CLASSES_ROOT, ext, "");
-    if (what_file.size()) {
-        cmd = shell::query_registry(HKEY_CLASSES_ROOT, what_file + R"(\shell\open\command)", "");
-        if (cmd.size()) {
-
-        }
-    }
-
-    // make cache
-    g_executor[lower_ext] = cmd;
-    return cmd;
-}
-
-}
-
-}

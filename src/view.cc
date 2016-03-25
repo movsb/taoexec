@@ -1,7 +1,10 @@
 #pragma once
 
+#include "view.h"
+
 namespace taoexec {
-int i;
+
+namespace view {
 
 // ----- INPUTBOX -----
 LPCTSTR INPUTBOX::get_skin_xml() const {
@@ -373,7 +376,7 @@ LPCTSTR CONFIG::get_skin_xml() const {
 )tw";
 }
 
-taoexec::CONFIG::menuid CONFIG::show_menu() {
+taoexec::view::CONFIG::menuid CONFIG::show_menu() {
     auto lv = _root->find<taowin::listview>("lv");
     int nsel = lv->get_selected_count();
 
@@ -388,37 +391,37 @@ taoexec::CONFIG::menuid CONFIG::show_menu() {
 LRESULT CONFIG::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
     switch(umsg) {
     case WM_CREATE: {
-                        ([&]() {
-                            static const struct
-                            {
-                                const char* name;
-                                int width;
-                            } cols[] = {
-                                {"name", 100},
-                                {"value", 200},
-                                {"comment", 200},
-                                {nullptr, 0}
-                            };
+        ([&]() {
+            static const struct
+            {
+                const char* name;
+                int width;
+            } cols[] = {
+                {"name", 100},
+                {"value", 200},
+                {"comment", 200},
+                {nullptr, 0}
+            };
 
-                            auto lv = _root->find<taowin::listview>("lv");
-                            for(int i = 0; i < _countof(cols); ++i) {
-                                auto col = &cols[i];
-                                lv->insert_column(col->name, col->width, i);
-                            }
+            auto lv = _root->find<taowin::listview>("lv");
+            for(int i = 0; i < _countof(cols); ++i) {
+                auto col = &cols[i];
+                lv->insert_column(col->name, col->width, i);
+            }
 
-                            _cfg.query("", &_items);
+            _cfg.query("", &_items);
 
-                            lv->set_item_count(_items.size(), 0);
-                        })();
+            lv->set_item_count(_items.size(), 0);
+        })();
 
-                        ([&]() {
-                            _hmenu = CreatePopupMenu();
-                            ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::add, "增加");
-                            ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::modify, "修改");
-                            ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::remove, "删除");
-                        })();
+        ([&]() {
+            _hmenu = CreatePopupMenu();
+            ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::add, "增加");
+            ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::modify, "修改");
+            ::AppendMenu(_hmenu, MF_STRING, (UINT_PTR)menuid::remove, "删除");
+        })();
 
-                        return 0;
+        return 0;
     }
     }
 
@@ -539,9 +542,9 @@ bool MINI::filter_message(MSG* msg) {
             return true;
         case VK_RETURN:
         {
-                          auto edit = _root->find<taowin::edit>("args");
-                          execute(edit->get_text());
-                          return true;
+            auto edit = _root->find<taowin::edit>("args");
+            execute(edit->get_text());
+            return true;
         }
         default:
             // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
@@ -582,16 +585,16 @@ LRESULT MINI::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
             }
         })();
 
-        init_commanders();
+        //init_commanders();
 
         _root->find("args")->focus();
         return 0;
     case WM_HOTKEY:
     {
-                      if(wparam == 0) {
-                          set_display(2);
-                      }
-                      return 0;
+        if(wparam == 0) {
+            set_display(2);
+        }
+        return 0;
     }
     case WM_SETFOCUS:
         if(auto edit = _root->find("args"))
@@ -619,6 +622,7 @@ void MINI::set_display(int cmd) {
 
 void MINI::execute(std::string& __args) {
     auto execute_commander = [&](const std::string& commander, const std::string& args) {
+        /*
         auto it = _commanders.find(commander);
         if(it != _commanders.end()) {
             if(it->second->execute(args))
@@ -629,6 +633,7 @@ void MINI::execute(std::string& __args) {
                 set_display(0);
             return;
         }
+        */
     };
 
     std::string commander, args;
@@ -964,11 +969,13 @@ void TW::_execute(int i) {
     std::vector<std::string> patharr;
     taoexec::utils::split_paths(paths, &patharr);
 
-    taoexec::core::execute(_hwnd, patharr, params, "", wd, env, [&](const std::string& err) {
+    /*
+    taoexec::::execute(_hwnd, patharr, params, "", wd, env, [&](const std::string& err) {
         if(err != "ok") {
             msgbox("失败。", MB_ICONEXCLAMATION);
         }
     });
+    */
 }
 
 void TW::_refresh() {
@@ -978,4 +985,7 @@ void TW::_refresh() {
     lv->set_item_count(_items.size(), 0);   // cause invalidate all.
 }
 
-}
+} // namespace view
+
+} // namespace taoexec
+

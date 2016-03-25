@@ -98,7 +98,7 @@
     <ClCompile Include="..\third\taowin\tw_util.cpp" />
     <ClCompile Include="..\third\taowin\tw_window.cpp" />
     <ClCompile Include="..\src\charset.cc" />
-    <ClCompile Include="..\src\core.cc" />
+    <ClCompile Include="..\src\exec.cc" />
     <ClCompile Include="..\src\main.cc" />
     <ClCompile Include="..\src\model.cc" />
     <ClCompile Include="..\src\view.cc" />
@@ -118,7 +118,7 @@
     <ClInclude Include="..\third\taowin\tw_util.h" />
     <ClInclude Include="..\third\taowin\tw_window.h" />
     <ClInclude Include="..\src\charset.h" />
-    <ClInclude Include="..\src\core.h" />
+    <ClInclude Include="..\src\exec.h" />
     <ClInclude Include="..\src\model.h" />
     <ClInclude Include="..\src\view.h" />
     <ClInclude Include="..\third\sqlite3\sqlite3.h" />

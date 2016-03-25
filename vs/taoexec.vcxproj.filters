@@ -36,9 +36,6 @@
     <ClCompile Include="..\src\view.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\core.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\third\taowin\tw_control.cpp">
       <Filter>Source Files\taowin</Filter>
     </ClCompile>
@@ -69,6 +66,9 @@
     <ClCompile Include="..\src\test.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\exec.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\third\sqlite3\sqlite3.h">
@@ -81,9 +81,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\view.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\core.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\third\taowin\tw_control.h">
@@ -117,6 +114,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\types.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\exec.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

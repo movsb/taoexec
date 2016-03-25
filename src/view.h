@@ -2,7 +2,7 @@
 
 #include <taowin/tw_taowin.h>
 
-#include "core.h"
+#include "exec.h"
 #include "model.h"
 #include "shell.h"
 #include "utils.h"
@@ -13,6 +13,9 @@
 #include <shlwapi.h>
 
 namespace taoexec {
+
+namespace view {
+
 class INPUTBOX : public taowin::window_creator {
 public:
     typedef std::function<bool(INPUTBOX* that, taowin::control* ctl, const std::string& text)> callback_t;
@@ -251,10 +254,13 @@ private:
     void _execute(int i);
 };
 
+/*
 void create_main(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg) {
     TW* ptw = new TW(db, cfg);
     ptw->create();
     ptw->show();
-}
+}*/
 
-}
+} // namespace view
+
+} // namespace taoexec
