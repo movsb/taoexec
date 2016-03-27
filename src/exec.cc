@@ -897,7 +897,8 @@ std::string executor_fs::get_executor(const std::string& ext) {
 }
 
 // ----- executor_fs -----
-// 
+*/
+
 // ----- executor_shell -----
 bool executor_shell::execute(const std::string& args) {
     // form: ::{00000000-12C9-4305-82F9-43058F20E8D2}
@@ -905,18 +906,19 @@ bool executor_shell::execute(const std::string& args) {
         ::ShellExecute(nullptr, "open", ("shell:" + args).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         return true;
     } else {
-        _pMini->msgbox("命名空间不正确。");
+        _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("命名空间不正确。"));
         return false;
-}
+    }
 }
 
 // ----- executor_shell -----
-*/
+
 
 // ----- executor_manager -----
 
 void executor_manager_t::_init_commanders() {
     add(new executor_main);
+    add(new executor_shell);
     add(new executor_indexer(_itemdb));
     add(new executor_qq(_cfgdb));
 }

@@ -201,15 +201,11 @@ namespace taoexec {
             }
         }; */
 
-        /*
         class executor_shell : public command_executor_i
         {
-        private:
-            MINI* _pMini;
-
         public:
-            executor_shell(MINI* pMini)
-                : _pMini(pMini) {
+            executor_shell()
+            {
 
             }
             const std::string get_name() const override {
@@ -218,7 +214,6 @@ namespace taoexec {
 
             bool execute(const std::string& args) override;
         };
-        */
 
         class executor_manager_t 
         {
