@@ -11,6 +11,7 @@
 
 #include "types.hpp"
 #include "charset.h"
+#include "model.h"
 
 #include <windows.h>
 #include <shellapi.h>
@@ -38,6 +39,7 @@ namespace taoexec {
         private:
             bool _execute_command(const std::string& cmd, const std::string& all);
         };
+        */
 
         class executor_main : public command_executor_i
         {
@@ -45,7 +47,7 @@ namespace taoexec {
             std::map<std::string, std::function<void()>> _cmds;
 
         public:
-            executor_main(MINI* pmini);
+            executor_main();
 
             const std::string get_name() const override {
                 return "__main__";
@@ -57,13 +59,11 @@ namespace taoexec {
         class executor_indexer : public command_executor_i
         {
         private:
-            MINI* _pmini;
             taoexec::model::item_db_t* _itemdb;
 
         public:
-            executor_indexer(MINI* pmini, taoexec::model::item_db_t* itemdb)
-                : _pmini(pmini)
-                , _itemdb(itemdb) {}
+            executor_indexer(taoexec::model::item_db_t* itemdb)
+                : _itemdb(itemdb) {}
 
             const std::string get_name() const override {
                 return "__indexer__";
@@ -71,17 +71,17 @@ namespace taoexec {
 
             bool execute(const std::string& args) override;
         };
-
+        
         class executor_qq : public command_executor_i
         {
         private:
-            taoexec::model::config_db_t& _cfg;
+            taoexec::model::config_db_t* _cfg;
             std::string _uin;
             std::string _path;
             std::map<std::string, std::string, __string_nocase_compare> _users;
 
         public:
-            executor_qq(taoexec::model::config_db_t& cfg);
+            executor_qq(taoexec::model::config_db_t* cfg);
 
             const std::string get_name() const override {
                 return "qq";
@@ -89,7 +89,8 @@ namespace taoexec {
 
             bool execute(const std::string& args) override;
         };
-        */
+
+        /*
         class executor_fs : public command_executor_i
         {
         private:
@@ -143,7 +144,7 @@ namespace taoexec {
             void _add_user_variables(const env_var_t& env_var);
             std::string _expand_variable(const std::string& var);
             std::string _expand_function(const std::string& fn, func_args& args);
-            std::string _which(const std::string& cmd, const std::string& env/*not used*/);
+            std::string _which(const std::string& cmd, const std::string& env);
             void explorer(HWND hwnd, const std::string& path, std::function<void(const std::string& err)> cb);
 
             class path_info_t
@@ -198,7 +199,7 @@ namespace taoexec {
             void uninit() {
 
             }
-        };
+        }; */
 
         /*
         class executor_shell : public command_executor_i
@@ -222,6 +223,25 @@ namespace taoexec {
         class executor_manager_t 
         {
         public:
+            executor_manager_t()
+            try {
+
+            }
+            catch(...) {
+                throw;
+            }
+
+            ~executor_manager_t()
+            try {
+                _uninit_commanders();
+            }
+            catch(...) {
+                throw;
+            }
+
+        public:
+            void
+                init();
             void
                 add(command_executor_i* p);
             command_executor_i*
@@ -230,11 +250,13 @@ namespace taoexec {
                 exec(const std::string& args);
 
         protected:
+            void _init_commanders();
+            void _uninit_commanders();
 
-            /* 初始化命令执行者
-            *  带双下划线的是预定义的执行者
-            */
-            void init_commanders();
+            void _init_event_listners();
+        public:
+            taoexec::model::item_db_t*      _itemdb;
+            taoexec::model::config_db_t*    _cfgdb;
         protected:
             std::map<std::string, command_executor_i*, taoexec::__string_nocase_compare> _command_executors;
         };

@@ -1,6 +1,8 @@
 #pragma once
 
+#include "types.hpp"
 #include "view.h"
+#include "event.h"
 
 namespace taoexec {
 
@@ -585,14 +587,14 @@ LRESULT MINI::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
             }
         })();
 
-        //init_commanders();
+        _init_event_listeners();
 
         _root->find("args")->focus();
         return 0;
     case WM_HOTKEY:
     {
         if(wparam == 0) {
-            set_display(2);
+            _evtmgr->trigger("mini:show");
         }
         return 0;
     }
@@ -621,19 +623,11 @@ void MINI::set_display(int cmd) {
 }
 
 void MINI::execute(std::string& __args) {
-    auto execute_commander = [&](const std::string& commander, const std::string& args) {
-        /*
-        auto it = _commanders.find(commander);
-        if(it != _commanders.end()) {
-            if(it->second->execute(args))
-                set_display(0);
-            return;
-        } else {
-            if(_p_registry_executor->execute(__args, commander, args))
-                set_display(0);
-            return;
-        }
-        */
+    auto execute_commander = [](const conststring& commander, conststring& args) {
+        auto p = new event_exec_args();
+        p->commander = commander;
+        p->args = args;
+        _evtmgr->trigger("exec", p);
     };
 
     std::string commander, args;
@@ -693,6 +687,31 @@ LPCTSTR MINI::get_skin_xml() const {
     </root>
 </window>
 )tw";
+}
+
+MINI::MINI(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg) : _db(db)
+, _cfg(cfg)
+, _focus(nullptr) 
+{
+
+}
+
+void MINI::_init_event_listeners() {
+    _event_cookies["mini:hide"] = _evtmgr->attach("mini:hide", [&](eventx::event_args_i* __args) {
+        set_display(0);
+        return true;
+    });
+
+    _event_cookies["mini:show"] = _evtmgr->attach("mini:show", [&](eventx::event_args_i* __args) {
+        set_display(1);
+        return true;
+    });
+
+    _event_cookies["msgbox"] = _evtmgr->attach("msgbox", [&](eventx::event_args_i* __args) {
+        auto args = reinterpret_cast<eventx::event_msgbox_args*>(__args);
+        msgbox(args->content, args->type, args->title);
+        return true;
+    });
 }
 
 // ----- MINI -----

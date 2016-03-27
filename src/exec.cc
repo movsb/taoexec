@@ -1,6 +1,7 @@
 #include "exec.h"
 #include "shell.h"
 #include "utils.h"
+#include "event.h"
 
 #include <Shlwapi.h>
 
@@ -81,28 +82,25 @@ bool registry_executor::_execute_command(const std::string& cmd, const std::stri
 }
 
 // ----- registry_executor -----
-
+*/
 
 // ----- executor_main -----
-executor_main::executor_main(MINI* pmini) : _pmini(pmini) {
+executor_main::executor_main()
+{
     _cmds[""] = [&]() {
-        _pmini->set_display(0);
+        _evtmgr->trigger("mini:hide");
     };
 
     _cmds["main"] = [&]() {
-        void create_main(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg);
-        create_main(_pmini->_db, _pmini->_cfg);
+        _evtmgr->trigger("main:show");
     };
 
     _cmds["exit"] = [&]() {
-        _pmini->close();
+        _evtmgr->trigger("exit");
     };
 
     _cmds["settings"] = [&]() {
-        CONFIG& cfg = *new CONFIG(_pmini->_cfg);
-        cfg.create();
-        cfg.center();
-        cfg.show();
+        _evtmgr->trigger("settings:show");
     };
 }
 
@@ -112,7 +110,7 @@ bool executor_main::execute(const std::string& args) {
         found->second();
         return true;
     } else {
-        _pmini->msgbox("无此内建命令。");
+        _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("无此内建命令。"));
         return false;
     }
 }
@@ -147,9 +145,9 @@ bool executor_indexer::execute(const std::string& args) {
         std::vector<taoexec::model::item_t*> items;
         int rc = _itemdb->query(index, &items);
         if(rc == -1) {
-            _pmini->msgbox("sqlite3 error.");
+            //_pmini->msgbox("sqlite3 error.");
         } else if(rc == 0) {
-            _pmini->msgbox("Your search `" + index + "` does not match anything.");
+            //_pmini->msgbox("Your search `" + index + "` does not match anything.");
         } else if(rc == 1) {
             found = items[0];
         } else {
@@ -167,7 +165,7 @@ bool executor_indexer::execute(const std::string& args) {
             }
 
             if(found == nullptr) {
-                _pmini->msgbox("There are many rows that match your given prefix.");
+                //_pmini->msgbox("There are many rows that match your given prefix.");
             }
             // found
         }
@@ -181,9 +179,9 @@ bool executor_indexer::execute(const std::string& args) {
         return false;
     }
 
-    std::vector<std::string> patharr;
-    taoexec::utils::split_paths(item->paths, &patharr);
-    taoexec::core::execute(_pmini->_hwnd, patharr, item->params, params, item->work_dir, item->env, nullptr);
+    // std::vector<std::string> patharr;
+    // taoexec::utils::split_paths(item->paths, &patharr);
+    // taoexec::core::execute(_pmini->_hwnd, patharr, item->params, params, item->work_dir, item->env, nullptr);
 
     delete item;
 
@@ -193,11 +191,13 @@ bool executor_indexer::execute(const std::string& args) {
 // ----- executor_indexer -----
 
 // ----- executor_qq -----
-executor_qq::executor_qq(taoexec::model::config_db_t& cfg) : _cfg(cfg)
-, _uin("191035066") {
-    _path = _cfg.get("qq_path");
+executor_qq::executor_qq(taoexec::model::config_db_t* cfg) 
+: _cfg(cfg)
+, _uin("191035066")
+{
+    _path = _cfg->get("qq_path");
 
-    auto userstr = _cfg.get("qq_users");
+    auto userstr = _cfg->get("qq_users");
     std::istringstream iss(userstr);
 
     for(std::string line; std::getline(iss, line, '\n');) {
@@ -220,13 +220,15 @@ bool executor_qq::execute(const std::string& args) {
         ::ShellExecute(::GetActiveWindow(), "open", _path.c_str(), cmd.c_str(), nullptr, SW_SHOWNORMAL);
         return true;
     }
-    return false;
+    else {
+        _evtmgr->trigger("msgbox", new eventx::event_msgbox_args(std::string("找不到此QQ用户：") + args));
+        return false;
+    }
 }
 
 // ----- executor_qq -----
 
-*/
-
+/*
 // ----- executor_fs -----
 
 std::string executor_fs::env_var_t::serialize() const {
@@ -432,7 +434,7 @@ bool executor_fs::execute(HWND hwnd, const std::string& path, const std::string&
 void executor_fs::execute(HWND hwnd, const std::vector<std::string>& paths, const std::string& params, const std::string& args, const std::string& wd_, const std::string& env_, std::function<void(const std::string& err)> cb) {
     bool  ok = false;
     for(auto& path : paths) {
-        if(0/*execute(hwnd, expand(path), params, args, wd_, env_, nullptr)*/) {
+        if(0 execute(hwnd, expand(path), params, args, wd_, env_, nullptr)) {
             ok = true;
             break;
         }
@@ -779,7 +781,7 @@ std::string executor_fs::_expand_function(const std::string& fn, func_args& args
     return "";
 }
 
-std::string executor_fs::_which(const std::string& cmd, const std::string& env/*not used*/) {
+std::string executor_fs::_which(const std::string& cmd, const std::string& env) {
     std::string result;
 
     // collect all search directories that match CreateProcess' behavior
@@ -895,7 +897,7 @@ std::string executor_fs::get_executor(const std::string& ext) {
 }
 
 // ----- executor_fs -----
-/*
+// 
 // ----- executor_shell -----
 bool executor_shell::execute(const std::string& args) {
     // form: ::{00000000-12C9-4305-82F9-43058F20E8D2}
@@ -911,34 +913,60 @@ bool executor_shell::execute(const std::string& args) {
 // ----- executor_shell -----
 */
 
-
-
 // ----- executor_manager -----
-void executor_manager_t::init_commanders() {
-    /*
-    _p_registry_executor = new registry_executor(this);
 
+void executor_manager_t::_init_commanders() {
+    add(new executor_main);
+    add(new executor_indexer(_itemdb));
+    add(new executor_qq(_cfgdb));
+}
 
-    command_executor_i* pexec = nullptr;
+void executor_manager_t::_uninit_commanders() {
+    for(auto& it : _command_executors) {
+        delete it.second;
+    }
+}
 
-    pexec = new executor_main(this);
-    _commanders[pexec->get_name()] = pexec;
+void executor_manager_t::init() {
+    _init_commanders();
+    _init_event_listners();
+}
 
-    pexec = new executor_indexer(this, &this->_db);
-    _commanders[pexec->get_name()] = pexec;
+void executor_manager_t::_init_event_listners() {
+    _evtmgr->attach("exec", [&](eventx::event_args_i* __args) {
+        struct event_exec_args : eventx::event_args_i
+        {
+            std::string commander;
+            std::string args;
+        };
 
-    pexec = new executor_qq(_cfg);
-    _commanders[pexec->get_name()] = pexec;
+        auto args = reinterpret_cast<event_exec_args*>(__args);
+        auto it = _command_executors.find(args->commander);
+        if(it == _command_executors.cend()) {
+            _evtmgr->trigger("msgbox", new eventx::event_msgbox_args(std::string("未找到执行者：") + args->commander));
+            return false;
+        }
+        else {
+            return it->second->execute(args->args);
+        }
+    });
+}
 
-    pexec = new executor_fs(this);
-    _commanders[pexec->get_name()] = pexec;
+void executor_manager_t::add(command_executor_i* p) {
+    auto name = p->get_name();
+    if(!get(name))
+        _command_executors[name] = p;
+}
 
-    pexec = new executor_shell(this);
-    _commanders[pexec->get_name()] = pexec;
-    */
+command_executor_i* executor_manager_t::get(const std::string& name) {
+    auto it = _command_executors.find(name);
+    return it != _command_executors.cend()
+        ? it->second
+        : nullptr;
 }
 
 // ----- executor_manager -----
+
 } // namespace exec
 
 } // namespace taoexec

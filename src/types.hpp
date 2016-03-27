@@ -10,6 +10,9 @@
 #include <functional>
 
 namespace taoexec {
+    typedef std::string string;
+    typedef const std::string conststring;
+
     typedef std::map<std::string, std::string> strstrmap;
 
     struct __string_nocase_compare {

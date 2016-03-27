@@ -130,7 +130,7 @@ namespace eventx {
                 it->second.del(p);
         }
 
-        void trigger(const std::string& name, event_args_i* args) {
+        void trigger(const std::string& name, event_args_i* args = nullptr) {
             _events[name].call(args);
             delete args;
         }

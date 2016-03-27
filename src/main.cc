@@ -1,6 +1,7 @@
 #include <cstring>
 #include <string>
 
+#include "event.h"
 #include "exec.h"
 #include "model.h"
 #include "view.h"
@@ -23,18 +24,20 @@ static void prompt_elevation() {
     }
 #endif
 
-
 #ifdef _DEBUG
 int main() {
 #else
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd) {
 #endif
+
     taowin::init();
-    // taoexec::core::init();
 
 #ifdef TEST
     taoexec::test();
 #endif
+
+    taoexec::eventx::event_manager_t evtmgr;
+    _evtmgr = &evtmgr;
 
     taoexec::model::db_t db;
     db.open(taoexec::charset::a2e(R"(taoexec.db)"));
@@ -46,17 +49,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd
     itemdb.set_db(*db);
     itemdb.set_fuzzy_search(configdb.get("fuzzy_search", "1") == "1");
 
-    // taoexec::core::env_var_t env_var;
-    // env_var.patch(configdb.get("user_vars").append(1, '\0'));
-    // taoexec::core::add_user_variables(env_var);
+    taoexec::exec::executor_manager_t exec_mgr;
+    exec_mgr._itemdb = &itemdb;
+    exec_mgr._cfgdb = &configdb;
+    exec_mgr.init();
 
-    //TW& tw = * new TW(itemdb, configdb);
-    //tw.create();
-    //tw.show();
+    taoexec::view::TW& tw = *new taoexec::view::TW(itemdb, configdb);
+    tw.create();
+    tw.show();
 
-    // MINI& mini = * new MINI(itemdb, configdb);
-    // mini.create();
-    // mini.show();
+    taoexec::view::MINI& mini = * new taoexec::view::MINI(itemdb, configdb);
+    mini.create();
+    mini.show();
 
     prompt_elevation();
 

@@ -2,6 +2,7 @@
 
 #include <taowin/tw_taowin.h>
 
+#include "event.h"
 #include "exec.h"
 #include "model.h"
 #include "shell.h"
@@ -30,9 +31,7 @@ private:
 
 protected:
     virtual LPCTSTR get_skin_xml() const override;
-
     virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) override;
-
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) override;
 };
 
@@ -96,9 +95,7 @@ private:
     protected:
         const config_db_t::item_t* _item;
 
-
         callback_t _onok;
-        //callback_t _oncancel;
 
     protected:
         virtual void get_metas(taowin::window::window_meta_t* metas) override {
@@ -106,25 +103,19 @@ private:
         }
 
         virtual LPCTSTR get_skin_xml() const override;
-
         virtual bool filter_message(MSG* msg) override;
-
         virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam);
 
     public:
         INPUT(const config_db_t::item_t* item = nullptr, callback_t onok = nullptr)
             : _item(item)
             , _onok(onok)
-            //, _oncancel(nullptr)
         {
         }
 
     protected:
         virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr);
 
-        virtual void on_final_message() {
-            __super::on_final_message();
-        }
     };
 
 public:
@@ -139,11 +130,8 @@ protected:
     virtual LPCTSTR get_skin_xml() const override;
 
     menuid show_menu();
-
     virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam);
-
     virtual bool filter_message(MSG* msg) override;
-
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr);
 
     virtual void on_final_message() override {
@@ -161,32 +149,21 @@ protected:
     }
 
     virtual LPCTSTR get_skin_xml() const override;
-
     virtual bool filter_message(MSG* msg) override;
-
     virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam);
 
     void set_display(int cmd);
 
     virtual void on_final_message() override {
+        __super::on_final_message();
         delete this;
     }
 
 public:
-    MINI(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg)
-        : _db(db)
-        , _cfg(cfg)
-        , _focus(nullptr) 
-        , _p_registry_executor(nullptr)
-    {
-
-    }
+    MINI(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg);
 
     ~MINI() {
-        for (auto& it : _commanders)
-            delete it.second;
 
-        delete _p_registry_executor;
     }
 
 private:
@@ -195,28 +172,21 @@ private:
     taoexec::model::config_db_t& _cfg;
 
 private:
-    class command_executor_i;
-    std::map <std::string, command_executor_i*> _commanders;
-
-    class registry_executor;
-    registry_executor* _p_registry_executor;
-
-
-
-
-
+    struct event_exec_args : taoexec::eventx::event_args_i
+    {
+        std::string commander;
+        std::string args;
+    };
 
 protected:
-
-    virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
-        return 0;
-    }
-
     // 命令行支持的模式：
     /*
      *  [commander] [:] [command-specs]
      **/
     void execute(std::string& __args);
+
+    eventx::event_cookies_t _event_cookies;
+    void _init_event_listeners();
 };
 
 class TW : public taowin::window_creator {
@@ -239,27 +209,16 @@ protected:
     }
 
     virtual LPCTSTR get_skin_xml() const override;
-
     virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) override;
-
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) override;
-
     virtual void on_final_message() override {
         delete this;
     }
 
 private:
     void _refresh();
-
     void _execute(int i);
 };
-
-/*
-void create_main(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg) {
-    TW* ptw = new TW(db, cfg);
-    ptw->create();
-    ptw->show();
-}*/
 
 } // namespace view
 
