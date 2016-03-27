@@ -87,6 +87,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\event.cpp" />
     <ClCompile Include="..\src\shell.cpp" />
     <ClCompile Include="..\src\test.cc" />
     <ClCompile Include="..\src\utils.cc" />
@@ -107,6 +108,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\event.h" />
     <ClInclude Include="..\src\shell.h" />
     <ClInclude Include="..\src\types.hpp" />
     <ClInclude Include="..\src\utils.h" />
