@@ -54,9 +54,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd
     exec_mgr._cfgdb = &configdb;
     exec_mgr.init();
 
-    taoexec::view::TW& tw = *new taoexec::view::TW(itemdb, configdb);
-    tw.create();
-    tw.show();
+    _evtmgr->attach("main:new", [&](taoexec::eventx::event_args_i* __args) {
+        taoexec::view::TW& tw = *new taoexec::view::TW(itemdb, configdb);
+        tw.create();
+        tw.show();
+        return true;
+    });
 
     taoexec::view::MINI& mini = * new taoexec::view::MINI(itemdb, configdb);
     mini.create();

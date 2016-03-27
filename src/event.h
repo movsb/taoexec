@@ -58,10 +58,14 @@ namespace eventx {
         }
 
     public:
-        void call(event_args_i* args) {
+        bool call(event_args_i* args) {
+            bool ok = true;
             for_each([&](int i, event_handler* p) {
-                return (*p)(args);
+                auto r = (*p)(args);
+                if(!r) ok = false;
+                return r;
             });
+            return ok;
         }
 
         void add(event_handler* p) {
@@ -130,9 +134,10 @@ namespace eventx {
                 it->second.del(p);
         }
 
-        void trigger(const std::string& name, event_args_i* args = nullptr) {
-            _events[name].call(args);
+        bool trigger(const std::string& name, event_args_i* args = nullptr) {
+            auto r = _events[name].call(args);
             delete args;
+            return r;
         }
 
     protected:

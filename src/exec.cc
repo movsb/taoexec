@@ -92,7 +92,7 @@ executor_main::executor_main()
     };
 
     _cmds["main"] = [&]() {
-        _evtmgr->trigger("main:show");
+        _evtmgr->trigger("main:new");
     };
 
     _cmds["exit"] = [&]() {
@@ -100,7 +100,7 @@ executor_main::executor_main()
     };
 
     _cmds["settings"] = [&]() {
-        _evtmgr->trigger("settings:show");
+        _evtmgr->trigger("settings:new");
     };
 }
 
@@ -145,9 +145,9 @@ bool executor_indexer::execute(const std::string& args) {
         std::vector<taoexec::model::item_t*> items;
         int rc = _itemdb->query(index, &items);
         if(rc == -1) {
-            //_pmini->msgbox("sqlite3 error.");
+            _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("sqlite3 error."));
         } else if(rc == 0) {
-            //_pmini->msgbox("Your search `" + index + "` does not match anything.");
+            _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("Your search `" + index + "` does not match anything."));
         } else if(rc == 1) {
             found = items[0];
         } else {
@@ -165,7 +165,7 @@ bool executor_indexer::execute(const std::string& args) {
             }
 
             if(found == nullptr) {
-                //_pmini->msgbox("There are many rows that match your given prefix.");
+                _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("There are many rows that match your given prefix."));
             }
             // found
         }
@@ -179,13 +179,19 @@ bool executor_indexer::execute(const std::string& args) {
         return false;
     }
 
-    // std::vector<std::string> patharr;
-    // taoexec::utils::split_paths(item->paths, &patharr);
-    // taoexec::core::execute(_pmini->_hwnd, patharr, item->params, params, item->work_dir, item->env, nullptr);
+    struct event_execitem_args : eventx::event_args_i
+    {
+        model::item_t* item;
+    };
+
+    auto pargs = new event_execitem_args;
+    pargs->item = item;
+
+    bool r = _evtmgr->trigger("exec:item", pargs);
 
     delete item;
 
-    return true;
+    return r;
 }
 
 // ----- executor_indexer -----
@@ -228,8 +234,20 @@ bool executor_qq::execute(const std::string& args) {
 
 // ----- executor_qq -----
 
-/*
 // ----- executor_fs -----
+
+executor_fs::executor_fs() {
+    _evtmgr->attach("exec:item", [&](eventx::event_args_i* __args) {
+        struct event_execitem_args : eventx::event_args_i
+        {
+            model::item_t* item;
+        };
+
+        auto item = reinterpret_cast<event_execitem_args*>(__args)->item;
+
+        return true;
+    });
+}
 
 std::string executor_fs::env_var_t::serialize() const {
     std::ostringstream oss;
@@ -434,7 +452,7 @@ bool executor_fs::execute(HWND hwnd, const std::string& path, const std::string&
 void executor_fs::execute(HWND hwnd, const std::vector<std::string>& paths, const std::string& params, const std::string& args, const std::string& wd_, const std::string& env_, std::function<void(const std::string& err)> cb) {
     bool  ok = false;
     for(auto& path : paths) {
-        if(0 execute(hwnd, expand(path), params, args, wd_, env_, nullptr)) {
+        if(0 /*execute(hwnd, expand(path), params, args, wd_, env_, nullptr)*/) {
             ok = true;
             break;
         }
@@ -880,8 +898,8 @@ std::string executor_fs::get_executor(const std::string& ext) {
         return cmd;
 
     // hit from cache
-    //if (g_executor.count(lower_ext))
-    //    return g_executor[lower_ext];
+    if (_exec_strs.count(lower_ext))
+        return _exec_strs[lower_ext];
 
     std::string what_file = shell::query_registry(HKEY_CLASSES_ROOT, ext, "");
     if (what_file.size()) {
@@ -892,12 +910,11 @@ std::string executor_fs::get_executor(const std::string& ext) {
     }
 
     // make cache
-    //g_executor[lower_ext] = cmd;
+    _exec_strs[lower_ext] = cmd;
     return cmd;
 }
 
 // ----- executor_fs -----
-*/
 
 // ----- executor_shell -----
 bool executor_shell::execute(const std::string& args) {
@@ -917,6 +934,7 @@ bool executor_shell::execute(const std::string& args) {
 // ----- executor_manager -----
 
 void executor_manager_t::_init_commanders() {
+    add(new executor_fs);
     add(new executor_main);
     add(new executor_shell);
     add(new executor_indexer(_itemdb));
@@ -935,21 +953,67 @@ void executor_manager_t::init() {
 }
 
 void executor_manager_t::_init_event_listners() {
-    _evtmgr->attach("exec", [&](eventx::event_args_i* __args) {
-        struct event_exec_args : eventx::event_args_i
+    _evtmgr->attach("exec:cmdstr", [&](eventx::event_args_i* ____args) {
+        struct event_cmdstr_args : eventx::event_args_i
         {
-            std::string commander;
             std::string args;
         };
 
-        auto args = reinterpret_cast<event_exec_args*>(__args);
-        auto it = _command_executors.find(args->commander);
+        auto __args = reinterpret_cast<event_cmdstr_args*>(____args)->args;
+
+        std::string commander, args;
+
+        auto p = __args.c_str();
+        char c;
+
+        // 特殊处理的部分
+        if(__args.size() >= 3 && __args[1] == ':' && (__args[2] == '/' || __args[2] == '\\')) {
+            commander = "fs";
+            args = __args;
+            goto _break;
+        }
+
+        for(;;) {
+            c = *p;
+            if(c == ' ' || c == '\t') {
+                ++p;
+                continue;
+            } else if(c == '\0') {
+                commander = "__main__";
+                goto _break;
+            }
+            // 到了这里并不知道有没有提供执行者，找到冒号才能确定
+            else if(::isalnum(c) || c == ':') {
+                auto bp = p; // p's backup
+                while((c = *p) && c != ':' && ::isalnum(c))
+                    ++p;
+
+                if(c == ':') {  // 找到了执行者
+                    commander = bp == p ? "__main__" : std::string(bp, p - bp);
+                    args = ++p;
+                    goto _break;
+                } else { // 其它则全部判断为 __indexer__
+                    commander = "__indexer__";
+                    args = std::string(bp);
+                    goto _break;
+                }
+            } else {
+                _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("无法识别的命令行。"));
+                goto _exit;
+            }
+        }
+
+    _exit:
+        return false;
+
+    _break:
+        auto it = _command_executors.find(commander);
         if(it == _command_executors.cend()) {
-            _evtmgr->trigger("msgbox", new eventx::event_msgbox_args(std::string("未找到执行者：") + args->commander));
+            _evtmgr->trigger("msgbox", new eventx::event_msgbox_args(std::string("未找到执行者：") + commander));
             return false;
         }
         else {
-            return it->second->execute(args->args);
+            return it->second->execute(args);
         }
     });
 }

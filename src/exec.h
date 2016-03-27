@@ -90,7 +90,6 @@ namespace taoexec {
             bool execute(const std::string& args) override;
         };
 
-        /*
         class executor_fs : public command_executor_i
         {
         private:
@@ -116,11 +115,10 @@ namespace taoexec {
             typedef std::function<std::string(func_args& args)>     func_proto;
             std::map<std::string, func_proto>                       _functions;
             std::map<std::string, std::string>               		_variables;
+            strstrimap                                              _exec_strs;
 
         public:
-            executor_fs() {
-
-            }
+            executor_fs();
 
             const std::string get_name() const override {
                 return "fs";
@@ -199,7 +197,7 @@ namespace taoexec {
             void uninit() {
 
             }
-        }; */
+        };
 
         class executor_shell : public command_executor_i
         {

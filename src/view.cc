@@ -623,54 +623,16 @@ void MINI::set_display(int cmd) {
 }
 
 void MINI::execute(std::string& __args) {
-    auto execute_commander = [](const conststring& commander, conststring& args) {
-        auto p = new event_exec_args();
-        p->commander = commander;
-        p->args = args;
-        _evtmgr->trigger("exec", p);
+    struct event_cmdstr_args : eventx::event_args_i
+    {
+        std::string args;
     };
 
-    std::string commander, args;
+    auto args = new event_cmdstr_args;
+    args->args = std::move(__args);
 
-    auto p = __args.c_str();
-    char c;
-
-    for(;;) {
-        c = *p;
-        if(c == ' ' || c == '\t') {
-            ++p;
-            continue;
-        } else if(c == '\0') {
-            commander = "__main__";
-            execute_commander(commander, "");
-            goto _break;
-        }
-        // 到了这里并不知道有没有提供执行者，找到冒号才能确定
-        else if(::isalnum(c) || c == ':') {
-            auto bp = p; // p's backup
-            while((c = *p) && c != ':' && ::isalnum(c))
-                ++p;
-
-            if(c == ':') {  // 找到了执行者
-                commander = bp == p ? "__main__" : std::string(bp, p - bp);
-                args = ++p;
-                execute_commander(commander, args);
-                goto _break;
-            } else { // 其它则全部判断为 __indexer__
-                commander = "__indexer__";
-                args = std::string(bp);
-                execute_commander(commander, args);
-                goto _break;
-            }
-
-        } else {
-            msgbox("无法识别的命令行。");
-            goto _break;
-        }
-    }
-
-_break:
-    return;
+    if(_evtmgr->trigger("exec:cmdstr", args))
+        set_display(0);
 }
 
 LPCTSTR MINI::get_skin_xml() const {
