@@ -42,12 +42,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>../bin/$(Configuration)/</OutDir>
-    <IntDir>../output/$(Configuration)/</IntDir>
+    <IntDir>../tmp/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>../bin/$(Configuration)/</OutDir>
-    <IntDir>../output/$(Configuration)/</IntDir>
+    <IntDir>../tmp/$(Configuration)/</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -57,7 +57,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../third</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../3rd</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -75,7 +75,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../third</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../3rd</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -91,19 +91,19 @@
     <ClCompile Include="..\src\shell.cpp" />
     <ClCompile Include="..\src\test.cc" />
     <ClCompile Include="..\src\utils.cc" />
-    <ClCompile Include="..\third\taowin\tw_control.cpp" />
-    <ClCompile Include="..\third\taowin\tw_parser.cpp" />
-    <ClCompile Include="..\third\taowin\tw_resmgr.cpp" />
-    <ClCompile Include="..\third\taowin\tw_syscontrols.cpp" />
-    <ClCompile Include="..\third\taowin\tw_taowin.cpp" />
-    <ClCompile Include="..\third\taowin\tw_util.cpp" />
-    <ClCompile Include="..\third\taowin\tw_window.cpp" />
+    <ClCompile Include="..\3rd\taowin\tw_control.cpp" />
+    <ClCompile Include="..\3rd\taowin\tw_parser.cpp" />
+    <ClCompile Include="..\3rd\taowin\tw_resmgr.cpp" />
+    <ClCompile Include="..\3rd\taowin\tw_syscontrols.cpp" />
+    <ClCompile Include="..\3rd\taowin\tw_taowin.cpp" />
+    <ClCompile Include="..\3rd\taowin\tw_util.cpp" />
+    <ClCompile Include="..\3rd\taowin\tw_window.cpp" />
     <ClCompile Include="..\src\charset.cc" />
     <ClCompile Include="..\src\exec.cc" />
     <ClCompile Include="..\src\main.cc" />
     <ClCompile Include="..\src\model.cc" />
     <ClCompile Include="..\src\view.cc" />
-    <ClCompile Include="..\third\sqlite3\sqlite3.c">
+    <ClCompile Include="..\3rd\sqlite3\sqlite3.c">
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4703;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
   </ItemGroup>
@@ -112,18 +112,18 @@
     <ClInclude Include="..\src\shell.h" />
     <ClInclude Include="..\src\types.hpp" />
     <ClInclude Include="..\src\utils.h" />
-    <ClInclude Include="..\third\taowin\tw_control.h" />
-    <ClInclude Include="..\third\taowin\tw_parser.h" />
-    <ClInclude Include="..\third\taowin\tw_resmgr.h" />
-    <ClInclude Include="..\third\taowin\tw_syscontrols.h" />
-    <ClInclude Include="..\third\taowin\tw_taowin.h" />
-    <ClInclude Include="..\third\taowin\tw_util.h" />
-    <ClInclude Include="..\third\taowin\tw_window.h" />
+    <ClInclude Include="..\3rd\taowin\tw_control.h" />
+    <ClInclude Include="..\3rd\taowin\tw_parser.h" />
+    <ClInclude Include="..\3rd\taowin\tw_resmgr.h" />
+    <ClInclude Include="..\3rd\taowin\tw_syscontrols.h" />
+    <ClInclude Include="..\3rd\taowin\tw_taowin.h" />
+    <ClInclude Include="..\3rd\taowin\tw_util.h" />
+    <ClInclude Include="..\3rd\taowin\tw_window.h" />
     <ClInclude Include="..\src\charset.h" />
     <ClInclude Include="..\src\exec.h" />
     <ClInclude Include="..\src\model.h" />
     <ClInclude Include="..\src\view.h" />
-    <ClInclude Include="..\third\sqlite3\sqlite3.h" />
+    <ClInclude Include="..\3rd\sqlite3\sqlite3.h" />
     <ClInclude Include="..\res\resource.h" />
   </ItemGroup>
   <ItemGroup>

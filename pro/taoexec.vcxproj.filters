@@ -24,7 +24,7 @@
     <ClCompile Include="..\src\main.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\third\sqlite3\sqlite3.c">
+    <ClCompile Include="..\3rd\sqlite3\sqlite3.c">
       <Filter>Source Files\sqlite3</Filter>
     </ClCompile>
     <ClCompile Include="..\src\model.cc">
@@ -36,25 +36,25 @@
     <ClCompile Include="..\src\view.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\third\taowin\tw_control.cpp">
+    <ClCompile Include="..\3rd\taowin\tw_control.cpp">
       <Filter>Source Files\taowin</Filter>
     </ClCompile>
-    <ClCompile Include="..\third\taowin\tw_parser.cpp">
+    <ClCompile Include="..\3rd\taowin\tw_parser.cpp">
       <Filter>Source Files\taowin</Filter>
     </ClCompile>
-    <ClCompile Include="..\third\taowin\tw_resmgr.cpp">
+    <ClCompile Include="..\3rd\taowin\tw_resmgr.cpp">
       <Filter>Source Files\taowin</Filter>
     </ClCompile>
-    <ClCompile Include="..\third\taowin\tw_syscontrols.cpp">
+    <ClCompile Include="..\3rd\taowin\tw_syscontrols.cpp">
       <Filter>Source Files\taowin</Filter>
     </ClCompile>
-    <ClCompile Include="..\third\taowin\tw_taowin.cpp">
+    <ClCompile Include="..\3rd\taowin\tw_taowin.cpp">
       <Filter>Source Files\taowin</Filter>
     </ClCompile>
-    <ClCompile Include="..\third\taowin\tw_util.cpp">
+    <ClCompile Include="..\3rd\taowin\tw_util.cpp">
       <Filter>Source Files\taowin</Filter>
     </ClCompile>
-    <ClCompile Include="..\third\taowin\tw_window.cpp">
+    <ClCompile Include="..\3rd\taowin\tw_window.cpp">
       <Filter>Source Files\taowin</Filter>
     </ClCompile>
     <ClCompile Include="..\src\shell.cpp">
@@ -74,7 +74,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\third\sqlite3\sqlite3.h">
+    <ClInclude Include="..\3rd\sqlite3\sqlite3.h">
       <Filter>Source Files\sqlite3</Filter>
     </ClInclude>
     <ClInclude Include="..\src\model.h">
@@ -86,25 +86,25 @@
     <ClInclude Include="..\src\view.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\third\taowin\tw_control.h">
+    <ClInclude Include="..\3rd\taowin\tw_control.h">
       <Filter>Source Files\taowin</Filter>
     </ClInclude>
-    <ClInclude Include="..\third\taowin\tw_parser.h">
+    <ClInclude Include="..\3rd\taowin\tw_parser.h">
       <Filter>Source Files\taowin</Filter>
     </ClInclude>
-    <ClInclude Include="..\third\taowin\tw_resmgr.h">
+    <ClInclude Include="..\3rd\taowin\tw_resmgr.h">
       <Filter>Source Files\taowin</Filter>
     </ClInclude>
-    <ClInclude Include="..\third\taowin\tw_syscontrols.h">
+    <ClInclude Include="..\3rd\taowin\tw_syscontrols.h">
       <Filter>Source Files\taowin</Filter>
     </ClInclude>
-    <ClInclude Include="..\third\taowin\tw_taowin.h">
+    <ClInclude Include="..\3rd\taowin\tw_taowin.h">
       <Filter>Source Files\taowin</Filter>
     </ClInclude>
-    <ClInclude Include="..\third\taowin\tw_util.h">
+    <ClInclude Include="..\3rd\taowin\tw_util.h">
       <Filter>Source Files\taowin</Filter>
     </ClInclude>
-    <ClInclude Include="..\third\taowin\tw_window.h">
+    <ClInclude Include="..\3rd\taowin\tw_window.h">
       <Filter>Source Files\taowin</Filter>
     </ClInclude>
     <ClInclude Include="..\res\resource.h">
