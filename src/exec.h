@@ -125,69 +125,22 @@ namespace taoexec {
             }
 
             bool execute(const std::string& args) override;
+            bool execute(conststring& path, conststring& args, conststring& wd="", conststring& env="");
 
         private:
-            void _expand_exec(const std::string& newcmd, const std::vector<std::string>& argv, std::string* __argstr);
+            void _expand_exec(conststring& exec_str, conststring& path, conststring& rest, std::string* __cmdline);
 
-            // 变量展开
-            // 支持的替换：$foo() - 函数调用，${variable} - 变量展开，${number} - 基于位置的变量展开
-            void _expand_args(const std::string& cmd, const std::vector<std::string>& argv, std::string* __newcmd);
-
-            // 基于词法规则的参数分隔函数
-            // 单词分隔符：不处在引号中的 <space> <tab>。
-            int _split_args(const std::string& args, std::vector<std::string>* __argv);
-
+            // 取得目标文件（可执行与不可执行），使用变量展开与函数调用技术
+            // 支持的替换：$foo() - 函数调用，${variable} - 变量展开，%var% - 环境变量展开
+            void _expand_path(const std::string& before,  std::string* after);
 
             void _initialize_event_listners();
             void _initialize_globals();
             void _add_user_variables(const env_var_t& env_var);
             std::string _expand_variable(const std::string& var);
             std::string _expand_function(const std::string& fn, func_args& args);
+
             std::string _which(const std::string& cmd, const std::string& env);
-            void explorer(HWND hwnd, const std::string& path, std::function<void(const std::string& err)> cb);
-
-            class path_info_t
-            {
-            public:
-                enum class type_t {
-                    null,
-                    path,
-                    sharing,
-                    protocol,
-                };
-
-                type_t type;
-
-                union {
-                    struct {
-                        std::string path;
-                    };
-                    struct {
-                        std::string scheme;
-                        std::string spec;
-                    };
-                    struct {
-                        std::string path;
-                    };
-                };
-            };
-
-            void get_pathinfo(const std::string& path, path_info_t* ppi) {
-                if (std::regex_match(path, std::regex(R"([0-9a-zA-z]+:.*)", std::regex_constants::icase))) {
-                    ppi->type = path_info_t::type_t::protocol;
-                }
-                    
-            }
-
-            bool execute(HWND hwnd, const std::string& path,
-                const std::string& params, const std::string& args,
-                const std::string& wd_, const std::string& env_,
-                std::function<void(const std::string& err)> cb);
-
-            void execute(HWND hwnd, const std::vector<std::string>& paths,
-                const std::string& params, const std::string& args,
-                const std::string& wd_, const std::string& env_,
-                std::function<void(const std::string& err)> cb);
 
             std::string get_executor(const std::string& ext);
         };

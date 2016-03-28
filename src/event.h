@@ -92,7 +92,7 @@ namespace eventx {
                 if(!r) ok = false;
                 return r;
             });
-            return ok;
+            return size() ? ok : false;
         }
 
         void add(event_handler* p) {
@@ -163,20 +163,24 @@ namespace eventx {
 
         bool trigger(const std::string& name, event_args_i* args = nullptr) {
             auto& container = _events[name];
+            auto r = container.call(args);
+
+            if (args && args->flag & flags::auto_delete)
+                delete args;
 
 #if !defined(__PR__)
             if (!container.size() && name != "msgbox") {
                 auto msg = new event_msgbox_args("事件 " + name + " 没有处理器。");
                 trigger("msgbox", msg);
+                r = false;
             }
 #endif
 
-            auto r = container.call(args);
-
-            if (args->flag & flags::auto_delete)
-                delete args;
-
             return r;
+        }
+
+        int msgbox(conststring& content_, conststring& title_ = "", unsigned int type_ = MB_OK, void* hwnd_ = (void*)::GetActiveWindow()) {
+            return trigger("msgbox", new event_msgbox_args(content_, title_, type_, hwnd_));
         }
 
     protected:

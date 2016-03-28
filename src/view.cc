@@ -438,8 +438,8 @@ bool CONFIG::filter_message(MSG* msg) {
             return true;
         case VK_RETURN:
         {
-                          send_message(WM_COMMAND, MAKEWPARAM(BN_CLICKED, 0), LPARAM(_root->find("ok")->hwnd()));
-                          return true;
+            send_message(WM_COMMAND, MAKEWPARAM(BN_CLICKED, 0), LPARAM(_root->find("ok")->hwnd()));
+            return true;
         }
         default:
             // I don't want IsDialogMessage to process VK_ESCAPE, because it produces a WM_COMMAND
@@ -673,6 +673,11 @@ void MINI::_init_event_listeners() {
         auto args = reinterpret_cast<eventx::event_msgbox_args*>(__args);
         msgbox(args->content, args->type, args->title);
         return true;
+    });
+
+    _event_cookies["exit"] = _evtmgr->attach("exit", [&](eventx::event_args_i* __args) {
+        close();
+        return false;
     });
 }
 

@@ -145,9 +145,9 @@ bool executor_indexer::execute(const std::string& args) {
         std::vector<taoexec::model::item_t*> items;
         int rc = _itemdb->query(index, &items);
         if(rc == -1) {
-            _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("sqlite3 error."));
+            _evtmgr->msgbox("sqlite3 error.");
         } else if(rc == 0) {
-            _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("Your search `" + index + "` does not match anything."));
+            _evtmgr->msgbox("Your search `" + index + "` does not match anything.");
         } else if(rc == 1) {
             found = items[0];
         } else {
@@ -165,7 +165,7 @@ bool executor_indexer::execute(const std::string& args) {
             }
 
             if(found == nullptr) {
-                _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("There are many rows that match your given prefix."));
+                _evtmgr->msgbox("There are many rows that match your given prefix.");
             }
             // found
         }
@@ -179,15 +179,56 @@ bool executor_indexer::execute(const std::string& args) {
         return false;
     }
 
-    struct event_execitem_args : eventx::event_args_i
-    {
-        model::item_t* item;
-    };
+    bool r = false;
 
-    auto pargs = new event_execitem_args;
-    pargs->item = item;
+    std::vector<std::string> path_arr;
+    utils::split_paths(item->paths, &path_arr);
+    for(auto& path : path_arr) {
+        struct event_parsescheme_args : eventx::event_args_i {
+            std::string raw;
+            std::string scheme;
+            std::string args;
 
-    bool r = _evtmgr->trigger("exec:item", pargs);
+            event_parsescheme_args() {
+                flag &= ~eventx::flags::auto_delete;
+            }
+        };
+
+        event_parsescheme_args schemeargs;
+        schemeargs.raw = path;
+        if(_evtmgr->trigger("exec:parse-scheme", &schemeargs)) {
+            if(schemeargs.scheme == "__none__")
+                schemeargs.scheme = "fs";
+            else if(schemeargs.scheme == "file")
+                schemeargs.scheme = "fs";
+
+            if(schemeargs.scheme == "fs") {
+                struct event_execfile_args : eventx::event_args_i {
+                    std::string path;
+                    std::string args;
+                    std::string wd;
+                    std::string env;
+                };
+
+                auto thefile = new event_execfile_args;
+                thefile->path = schemeargs.args;
+                thefile->args = item->params;
+                thefile->wd = item->work_dir;
+                thefile->env = item->env;
+
+                if(_evtmgr->trigger("exec:file", thefile)) {
+                    r = true;
+                    break;
+                }
+            }
+            else {
+                if(_evtmgr->trigger("exec:any", &schemeargs)) {
+                    r = true;
+                    break;
+                }
+            }
+        }
+    }
 
     delete item;
 
@@ -307,185 +348,83 @@ void executor_fs::env_var_t::set(const std::string& envstr) {
     patch(envstr);
 }
 
-bool executor_fs::execute(const std::string& args) {
-    std::vector<std::string> argv;
+bool executor_fs::execute(const std::string& __args) {
+    std::string path, args;
 
     try {
-        if(!_split_args(args, &argv))
-            return false;
-    } catch(const char* e) {
-        //_pMini->msgbox(e);
+        auto p = __args.c_str();
+
+        // skip prefix white spaces
+        while(*p == ' ' || *p == '\t')
+            ++p;
+
+        // get path
+        if(*p == '\'' || *p == '"') {
+            auto bp = p++;
+            while(*p && *p != *bp)
+                ++p;
+            if(!*p)
+                throw "路径中的引号未配对。";
+            path.assign(bp + 1, p);
+            ++p;
+        }
+        else {
+            auto bp = p;
+            while(*p && *p != ' ' && *p != '\t')
+                ++p;
+            if(bp == p) {
+                path = "";
+            }
+            else {
+                path.assign(bp, p);
+            }
+        }
+
+        // span
+        if(*p && *p != ' ' && *p != '\t')
+            throw "路径与参数之间应该至少有一个空白字符。";
+
+        // skip
+        while(*p == ' ' || *p == '\t')
+            ++p;
+
+        // got args, get args
+        if(*p) {
+            auto q = __args.c_str() + (int)__args.size() - 1;
+            while(*q == ' ' || *q == '\t')
+                --q;
+            ++q;
+            args.assign(p, q);
+        }
+    }
+    catch(const char* e) {
+        _evtmgr->msgbox(e);
         return false;
     }
 
-    try {
-        std::string newcmd, argstr;
-        _expand_args(argv[0], argv, &newcmd);
-
-        if(::PathFileExists(newcmd.c_str()) && ::GetFileAttributes(newcmd.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
-            ::ShellExecute(nullptr, "open", newcmd.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-            return true;
-        }
-
-        if(!::PathFileExists(newcmd.c_str()))
-            throw "文件未找到。";
-
-        _expand_exec(newcmd, argv, &newcmd);
-
-        STARTUPINFO si = {sizeof(si)};
-        PROCESS_INFORMATION pi;
-
-        if(::CreateProcess(nullptr, (LPSTR)newcmd.c_str(), nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, nullptr, &si, &pi)) {
-            ::CloseHandle(pi.hThread);
-            ::CloseHandle(pi.hProcess);
-
-            return true;
-        } else {
-            return false;
-        }
-    } catch(const char* e) {
-        //_pMini->msgbox(e);
-        return false;
-    }
-
-    return true;
+    return execute(path, args);
 }
 
-bool executor_fs::execute(HWND hwnd, const std::string& path, const std::string& params, const std::string& args, const std::string& wd_, const std::string& env_, std::function<void(const std::string& err)> cb) {
-    // not specified as absolute path or as relative path to a file.
-    if(std::regex_match(path, std::regex(R"(shell:::\{.{36}\})", std::regex_constants::icase))                      // shell clsid
-        || std::regex_match(path, std::regex(R"(shell:[^:/]+)", std::regex_constants::icase))                       // shell command
-        || std::regex_match(path, std::regex(R"(https?://.*)", std::regex_constants::icase))                        // http(s) protocol
-        || std::regex_match(path, std::regex(R"(\\.*\.*)", std::regex_constants::icase))                            // Windows Sharing
-        || path.size() > 2 && (path[1] == ':' || path.find('/') != path.npos || path.find('\\') != path.npos)
-        && !std::regex_match(path, std::regex(R"(.*(\.exe|\.bat|\.cmd|\.com))", std::regex_constants::icase))   // non-executable
-        ) {
-        ::ShellExecute(hwnd, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
-        if(cb) cb("ok");
-        return true;
-    }
-
-    std::string path_expanded;//expand(path);
-
-    // cmdline
-    std::string cmdline([&]() {
-        std::string s = '"' + path_expanded + '"';
-        std::string param_args = "";// expand_args(params, args);
-        if(param_args.size())
-            s += " " + param_args;
-        return std::move(s);
-    }());
-
-    // working directory
-    // absolute:    c:\windows\notepad.exe  -> c:\windows
-    // relative:    ./notepad.exe           -> current directory + ./
-    // unspecified: notepad                 -> ${desktop}
-    std::string wd([&]() {
-        std::string wd2 = std::move(wd_);
-        if(wd2.size() && wd2.back() != '\\' &&  wd2.back() != '/')
-            wd2 += '\\';
-        std::string ts = wd2.size() ? wd2 : path_expanded;
-        bool is_abs = ts.size() > 3 // C:\ ~~
-            && ts[1] == ':'
-            && (ts[2] == '/' || ts[2] == '\\');
-        bool is_rel = !is_abs
-            && ts.size() > 0
-            && ts[0] == '.'; // filenames which start with a period is not processed.
-
-        std::string result;
-        if(is_abs)
-            result = ts;
-        else if(is_rel)
-            result = ts;
-        else
-            result = "";// expand("${desktop}\\");
-
-        auto begin = result.c_str();
-        auto p = begin + (int)result.size() - 1;
-        if(p < begin) p = begin; // size() maybe 0
-        while(p > begin && *p != '/' && *p != '\\')
-            --p;
-        if(p > begin && (*p == '/' || *p == '\\'))
-            return std::string(result.c_str(), p - begin);
-        else
-            return std::move(ts);
-    }());
-
-    // environment variables
-    std::string env([&]() {
-        std::string env2 = std::move(env_);
-        if(env2.size() == 0)
-            return std::string();
-
-        env_var_t env_var;
-        env_var.patch_current();
-        env_var.patch(env2.append(2, '\0'));
-
-        return std::move(env_var.serialize());
-    }());
-
-    ::STARTUPINFO si = {sizeof(si)};
-    ::PROCESS_INFORMATION pi;
-
-    if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
-        nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE,
-        (void*)(env.size() ? env.c_str() : nullptr), wd.c_str(),
-        &si, &pi)) {
-        ::CloseHandle(pi.hThread);
-        ::CloseHandle(pi.hProcess);
-        if(cb) cb("ok");
-        return true;
-    } else {
-        if(cb) cb("fail");
-        return false;
-    }
-}
-
-void executor_fs::execute(HWND hwnd, const std::vector<std::string>& paths, const std::string& params, const std::string& args, const std::string& wd_, const std::string& env_, std::function<void(const std::string& err)> cb) {
-    bool  ok = false;
-    for(auto& path : paths) {
-        if(0 /*execute(hwnd, expand(path), params, args, wd_, env_, nullptr)*/) {
-            ok = true;
-            break;
-        }
-    }
-
-    if(cb) cb(ok ? "ok" : "fail");
-}
-
-void executor_fs::_expand_exec(const std::string& newcmd, const std::vector<std::string>& argv, std::string* __argstr) {
-    std::string executor = get_executor(taoexec::shell::ext(newcmd));
-    // 实参替换，目前只支持：%0, %1, %L, %l
-    auto p = executor.c_str();
+void executor_fs::_expand_exec(conststring& exec_str, conststring& path, conststring& rest, std::string* __cmdline) {
+    // 实参替换，目前只支持：%0, %1, %L, %l, %*
     std::string str;
+    auto p = exec_str.c_str();
     for(; *p;) {
         if(*p == '%') {
-            ++p;
-            if(*p == '*') {
-                for(int i = 1; i < (int)argv.size(); i++) {
-                    auto& s = argv[i];
-                    if(s.find(' ') != s.npos)
-                        str += '"' + s + "\" ";
-                    else
-                        str += s + ' ';
-                }
+            switch(*++p) {
+            case '0':
+            case '1':
+            case 'l':
+            case 'L':
+                str += path;
                 ++p;
-            } else if(::isdigit(*p)) {
-                auto bp = p;
-                while(::isdigit(*p))
-                    ++p;
-
-                int n = atoi(bp);
-                if(n == 0)
-                    n = 1;
-
-                if(n < 0 || n >(int)argv.size())
-                    throw "参数范围超出。";
-
-                if(n == 1)
-                    str += newcmd;
-                else
-                    str += argv[n - 1];
+                break;
+            case '*':
+                str += rest;
+                ++p;
+                break;
+            default:
+                throw "不支持的变量替换。";
             }
         } else {
             auto bp = p;
@@ -495,13 +434,13 @@ void executor_fs::_expand_exec(const std::string& newcmd, const std::vector<std:
         }
     }
 
-    *__argstr = std::move(str);
+    *__cmdline = std::move(str);
 }
 
-void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::string>& argv, std::string* __newcmd) {
-    std::string newcmd([&]() {
-        auto p = cmd.c_str();
-        auto q = cmd.c_str() + cmd.size();
+void executor_fs::_expand_path(const std::string& before, std::string* __after) {
+    std::string after([&]() {
+        auto p = before.c_str();
+        auto q = before.c_str() + before.size();
         if(*p == '\'' || *p == '"') {
             ++p;
             --q;
@@ -517,9 +456,9 @@ void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::st
                 if(*p == '$') {
                     s += '$';
                     ++p;
-                } else if(::isalnum(*p)) {
+                } else if(::isalpha(*p)) {
                     std::string fn;
-                    while(::isalnum(*p))
+                    while(::isalnum(*p) || (*p && ::strchr("_", *p)))
                         fn += *p++;
                     if(*p == '(') {
                         ++p;
@@ -552,27 +491,16 @@ void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::st
 
                     auto bp = p;
 
-                    if(::isdigit(*p)) {
-                        while(::isdigit(*p))
+                    if(::isalpha(*p))
+                        while(::isalnum(*p) || (*p && ::strchr("_", *p)))
                             ++p;
-                    } else if(::isalpha(*p)) {
-                        while(::isalnum(*p))
-                            ++p;
-                    }
 
                     if(p == bp)
                         throw "变量名不规范。";
                     else if(*p != '}')
                         throw "变量展开期待`}`。";
 
-                    if(::isdigit(*bp)) {
-                        int n = atoi(bp);
-                        if(n<0 || n>(int)argv.size())
-                            throw "参数范围超出。";
-                        s += argv[n];
-                    } else {
-                        s += _expand_variable({bp, p});
-                    }
+                    s += _expand_variable({bp, p});
 
                     ++p;
                 } else {
@@ -584,7 +512,7 @@ void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::st
                     throw "需要变量名。";
 
                 auto bp = p;
-                while(::isalnum(*p))
+                while(::isalnum(*p) || (*p && ::strchr("_", *p)))
                     ++p;
 
                 if(*p != '%')
@@ -609,55 +537,16 @@ void executor_fs::_expand_args(const std::string& cmd, const std::vector<std::st
             }
         }
 
-        return s;
+        return std::move(s);
     }());
 
-    if(std::regex_match(newcmd, std::regex(R"([0-9a-zA-z_]+)")))
-        newcmd = _which(newcmd, "");
+    if(std::regex_match(after, std::regex(R"([0-9a-zA-z_]+)")))
+        after = _which(after, "");
 
-    if(!newcmd.size())
-        throw "无法取得可执行文件路径。";
+    if(!after.size())
+        throw "无法取得目标文件路径。";
 
-    *__newcmd = newcmd;
-}
-
-int executor_fs::_split_args(const std::string& args, std::vector<std::string>* __argv) {
-    auto& argv = *__argv;
-    auto p = args.c_str();
-    bool bound_check = false;
-
-    argv.clear();
-
-    for(;;) {
-        if(bound_check) {
-            if(!(!*p || *p == ' ' || *p == '\t'))
-                throw "单词边界分隔符不明确。";
-            bound_check = false;
-        }
-
-        if(!*p) {
-            break;
-        } else if(*p == '\'' || *p == '"') {
-            auto bp = p++;
-            while(*p && *p != *bp)
-                ++p;
-            if(!*p)
-                throw "常量字符串未正确闭合。";
-            ++p;
-            argv.push_back({bp, p}); // 包含引号在内
-            bound_check = true;
-        } else if(*p == ' ' || *p == '\t') {
-            ++p;
-        } else {
-            auto bp = p;
-            while(*p && (*p != ' ' && *p != '\t'))
-                ++p;
-            argv.push_back({bp, p});
-            bound_check = true;
-        }
-    }
-
-    return (int)argv.size();
+    *__after = std::move(after);
 }
 
 void executor_fs::_initialize_globals() {
@@ -756,7 +645,7 @@ void executor_fs::_initialize_globals() {
             return result;
         };
 
-        _functions["apppath"] = [this](func_args& args)->std::string {
+        _functions["app_path"] = [this](func_args& args)->std::string {
             std::string result;
             auto reg = _functions["reg"];
 
@@ -869,13 +758,6 @@ _exit_for:
     return "";
 }
 
-void executor_fs::explorer(HWND hwnd, const std::string& path, std::function<void(const std::string& err)> cb) {
-    std::string escpath(path);
-    if(escpath.find(' ') != std::string::npos)
-        escpath = '"' + escpath + '"';
-    ::ShellExecute(hwnd, "open", "explorer", ("/select," + escpath).c_str(), nullptr, SW_SHOW);
-    if(cb) cb("ok");
-}
 
 void executor_fs::_add_user_variables(const env_var_t& env_var) {
     for (auto& kv : env_var.get_vars())
@@ -907,16 +789,147 @@ std::string executor_fs::get_executor(const std::string& ext) {
 }
 
 void executor_fs::_initialize_event_listners() {
-    _evtmgr->attach("exec:item", [&](eventx::event_args_i* __args) {
-        struct event_execitem_args : eventx::event_args_i
+    _evtmgr->attach("exec:file", [&](eventx::event_args_i* ____args) {
+        struct event_execfile_args : eventx::event_args_i
         {
-            model::item_t* item;
+            std::string path;
+            std::string args;
+            std::string wd;
+            std::string env;
         };
+    
+        auto __args = reinterpret_cast<event_execfile_args*>(____args);
 
-        auto item = reinterpret_cast<event_execitem_args*>(__args)->item;
-
-        return true;
+        return execute(__args->path, __args->args, __args->wd, __args->env);
     });
+}
+
+bool executor_fs::execute(conststring& path, conststring& args, conststring& wd, conststring& env) {
+    using string = std::string;
+
+    // the file to be executed
+    string path_expanded;
+    try {
+        _expand_path(path, &path_expanded);
+    }
+    catch(const char* e) {
+        _evtmgr->msgbox(e);
+        return false;
+    }
+
+    if(!::PathFileExists(path_expanded.c_str())) {
+        _evtmgr->msgbox("无法找到目标文件。");
+        return false;
+    }
+
+    // the working directory
+    string wd_expanded;
+    if(wd.size()) {
+        try {
+            _expand_path(wd, &wd_expanded);
+        }
+        catch(const char* e) {
+            _evtmgr->msgbox(e);
+            return false;
+        }
+
+        if(!::PathFileExists(wd_expanded.c_str())) {
+            _evtmgr->msgbox("无法找到工作目录。");
+            return false;
+        }
+    }
+
+    // before executing
+
+    if(::GetFileAttributes(path_expanded.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
+        ::ShellExecute(::GetActiveWindow(), "open", "explorer", ("/select,\"" + path_expanded + "\"").c_str(), nullptr, SW_SHOWNORMAL);
+        return true;
+    }
+
+    if(shell::is_ext_link(shell::ext(path_expanded))) {
+        ::ShellExecute(::GetActiveWindow(), "open", path_expanded.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        return true;
+    }
+
+    // cmdline
+    string exec_str = get_executor(shell::ext(path_expanded));
+    if(!exec_str.size()) {
+        _evtmgr->msgbox("此文件没有与之关联的打开方式。");
+        return false;
+    }
+
+    string cmdline;
+    try {
+        _expand_exec(exec_str, path_expanded, args, &cmdline);
+    }
+    catch(const char* e) {
+        _evtmgr->msgbox(e);
+        return false;
+    }
+
+    /*
+    // working directory
+    // absolute:    c:\windows\notepad.exe  -> c:\windows
+    // relative:    ./notepad.exe           -> current directory + ./
+    // unspecified: notepad                 -> ${desktop}
+    std::string wd([&]() {
+        std::string wd2 = std::move(wd_);
+        if(wd2.size() && wd2.back() != '\\' &&  wd2.back() != '/')
+            wd2 += '\\';
+        std::string ts = wd2.size() ? wd2 : path_expanded;
+        bool is_abs = ts.size() > 3 // C:\ ~~
+            && ts[1] == ':'
+            && (ts[2] == '/' || ts[2] == '\\');
+        bool is_rel = !is_abs
+            && ts.size() > 0
+            && ts[0] == '.'; // filenames which start with a period is not processed.
+
+        std::string result;
+        if(is_abs)
+            result = ts;
+        else if(is_rel)
+            result = ts;
+        else
+            result = "";// expand("${desktop}\\");
+
+        auto begin = result.c_str();
+        auto p = begin + (int)result.size() - 1;
+        if(p < begin) p = begin; // size() maybe 0
+        while(p > begin && *p != '/' && *p != '\\')
+            --p;
+        if(p > begin && (*p == '/' || *p == '\\'))
+            return std::string(result.c_str(), p - begin);
+        else
+            return std::move(ts);
+    }());
+
+    // environment variables
+    std::string env([&]() {
+        std::string env2 = std::move(env_);
+        if(env2.size() == 0)
+            return std::string();
+
+        env_var_t env_var;
+        env_var.patch_current();
+        env_var.patch(env2.append(2, '\0'));
+
+        return std::move(env_var.serialize());
+    }());
+    */
+
+    ::STARTUPINFO si = {sizeof(si)};
+    ::PROCESS_INFORMATION pi;
+
+    if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
+        nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE,
+        (void*)(env.size() ? env.c_str() : nullptr), wd_expanded.size() ? wd_expanded.c_str() : nullptr,
+        &si, &pi)) {
+        ::CloseHandle(pi.hThread);
+        ::CloseHandle(pi.hProcess);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 // ----- executor_fs -----
@@ -963,6 +976,10 @@ void executor_manager_t::_init_event_listners() {
             std::string raw;
             std::string cmd;
             std::string args;
+
+            event_parsescheme_args() {
+                flag &= ~eventx::flags::auto_delete;
+            }
         };
 
         auto data = reinterpret_cast<event_parsescheme_args*>(____args);
@@ -1006,14 +1023,13 @@ void executor_manager_t::_init_event_listners() {
                     args = ++p;
                     goto _break;
                 }
-                else { // 其它则全部判断为 __indexer__
-                    commander = "__indexer__";
+                else { // 其它则全部判断为 __none__，自行决定
+                    commander = "__none__";
                     args = std::string(bp);
                     goto _break;
                 }
             }
             else {
-                //_evtmgr->trigger("msgbox", new eventx::event_msgbox_args("无法识别的命令行。"));
                 goto _exit;
             }
         }
@@ -1024,26 +1040,45 @@ void executor_manager_t::_init_event_listners() {
         return true;
 
     _exit:
-        return false;
+        data->cmd = "fs";
+        data->args = __args;
+        return true;
     });
 
     _evtmgr->attach("exec:cmdstr", [&](eventx::event_args_i* ____args) {
-        struct event_cmdstr_args : eventx::event_args_i
-        {
+        struct event_cmdstr_args : eventx::event_args_i {
             std::string args;
         };
 
         auto __args = reinterpret_cast<event_cmdstr_args*>(____args)->args;
+        struct event_parsescheme_args : eventx::event_args_i {
+            std::string raw;
+            std::string cmd;
+            std::string args;
 
+            event_parsescheme_args() {
+                flag &= ~eventx::flags::auto_delete;
+            }
+        };
 
-    _break:
-        auto it = _command_executors.find(commander);
+        event_parsescheme_args parsedscheme;
+        parsedscheme.raw = __args;
+
+        if(!_evtmgr->trigger("exec:parse-scheme", &parsedscheme)) {
+            _evtmgr->msgbox("无法解析的命令行。");
+            return false;
+        }
+
+        if(parsedscheme.cmd == "__none__")
+            parsedscheme.cmd = "__indexer__";
+
+        auto it = _command_executors.find(parsedscheme.cmd);
         if(it == _command_executors.cend()) {
-            _evtmgr->trigger("msgbox", new eventx::event_msgbox_args(std::string("未找到执行者：") + commander));
+            _evtmgr->msgbox("未找到执行者：" + parsedscheme.cmd);
             return false;
         }
         else {
-            return it->second->execute(args);
+            return it->second->execute(parsedscheme.args);
         }
     });
 }
