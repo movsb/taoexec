@@ -24,10 +24,10 @@ static void prompt_elevation() {
     }
 #endif
 
-#ifdef _DEBUG
-int main() {
-#else
+#ifdef __PR__
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd) {
+#else
+int main() {
 #endif
 
     taowin::init();
