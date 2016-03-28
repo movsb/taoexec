@@ -138,6 +138,7 @@ namespace taoexec {
             int _split_args(const std::string& args, std::vector<std::string>* __argv);
 
 
+            void _initialize_event_listners();
             void _initialize_globals();
             void _add_user_variables(const env_var_t& env_var);
             std::string _expand_variable(const std::string& var);
@@ -189,14 +190,6 @@ namespace taoexec {
                 std::function<void(const std::string& err)> cb);
 
             std::string get_executor(const std::string& ext);
-
-            void init() {
-                _initialize_globals();
-            }
-
-            void uninit() {
-
-            }
         };
 
         class executor_shell : public command_executor_i

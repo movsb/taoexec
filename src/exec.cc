@@ -237,16 +237,8 @@ bool executor_qq::execute(const std::string& args) {
 // ----- executor_fs -----
 
 executor_fs::executor_fs() {
-    _evtmgr->attach("exec:item", [&](eventx::event_args_i* __args) {
-        struct event_execitem_args : eventx::event_args_i
-        {
-            model::item_t* item;
-        };
-
-        auto item = reinterpret_cast<event_execitem_args*>(__args)->item;
-
-        return true;
-    });
+    _initialize_globals();
+    _initialize_event_listners();
 }
 
 std::string executor_fs::env_var_t::serialize() const {
@@ -725,7 +717,7 @@ void executor_fs::_initialize_globals() {
                     {"HKCU", HKEY_CURRENT_USER},
                     {"HKEY_LOCAL_MACHINE", HKEY_LOCAL_MACHINE},
                     {"HKLM", HKEY_LOCAL_MACHINE},
-            };
+                };
 
                 if(_hkeys.count(args[0])) {
                     char value[2048];
@@ -764,16 +756,16 @@ void executor_fs::_initialize_globals() {
             return result;
         };
 
-        _functions["app_path"] = [this](func_args& args)->std::string {
+        _functions["apppath"] = [this](func_args& args)->std::string {
             std::string result;
             auto reg = _functions["reg"];
 
             if(args.size() >= 1) {
                 func_args as {
-                "HKLM",
-                "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + args[0],
-                ""
-            };
+                    "HKLM",
+                    "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + args[0],
+                    ""
+                };
                 result = reg(as);
             }
 
@@ -914,6 +906,19 @@ std::string executor_fs::get_executor(const std::string& ext) {
     return cmd;
 }
 
+void executor_fs::_initialize_event_listners() {
+    _evtmgr->attach("exec:item", [&](eventx::event_args_i* __args) {
+        struct event_execitem_args : eventx::event_args_i
+        {
+            model::item_t* item;
+        };
+
+        auto item = reinterpret_cast<event_execitem_args*>(__args)->item;
+
+        return true;
+    });
+}
+
 // ----- executor_fs -----
 
 // ----- executor_shell -----
@@ -953,21 +958,23 @@ void executor_manager_t::init() {
 }
 
 void executor_manager_t::_init_event_listners() {
-    _evtmgr->attach("exec:cmdstr", [&](eventx::event_args_i* ____args) {
-        struct event_cmdstr_args : eventx::event_args_i
-        {
+    _evtmgr->attach("exec:parse-scheme", [&](eventx::event_args_i* ____args) {
+        struct event_parsescheme_args : eventx::event_args_i {
+            std::string raw;
+            std::string cmd;
             std::string args;
         };
 
-        auto __args = reinterpret_cast<event_cmdstr_args*>(____args)->args;
+        auto data = reinterpret_cast<event_parsescheme_args*>(____args);
 
         std::string commander, args;
 
+        auto& __args = data->raw;
         auto p = __args.c_str();
         char c;
 
         // 特殊处理的部分
-        if(__args.size() >= 3 && ::isalpha(__args[0]) && __args[1] == ':' && (__args[2] == '/' || __args[2] == '\\')) {
+        if (__args.size() >= 3 && ::isalpha(__args[0]) && __args[1] == ':' && (__args[2] == '/' || __args[2] == '\\')) {
             commander = "fs";
             args = __args;
             goto _break;
@@ -978,38 +985,56 @@ void executor_manager_t::_init_event_listners() {
             goto _break;
         }
 
-        for(;;) {
+        for (;;) {
             c = *p;
-            if(c == ' ' || c == '\t') {
+            if (c == ' ' || c == '\t') {
                 ++p;
                 continue;
-            } else if(c == '\0') {
+            }
+            else if (c == '\0') {
                 commander = "__main__";
                 goto _break;
             }
             // 到了这里并不知道有没有提供执行者，找到冒号才能确定
-            else if(::isalnum(c) || c == ':') {
+            else if (::isalnum(c) || c == ':') {
                 auto bp = p; // p's backup
-                while((c = *p) && c != ':' && ::isalnum(c))
+                while ((c = *p) && c != ':' && ::isalnum(c))
                     ++p;
 
-                if(c == ':') {  // 找到了执行者
+                if (c == ':') {  // 找到了执行者
                     commander = bp == p ? "__main__" : std::string(bp, p - bp);
                     args = ++p;
                     goto _break;
-                } else { // 其它则全部判断为 __indexer__
+                }
+                else { // 其它则全部判断为 __indexer__
                     commander = "__indexer__";
                     args = std::string(bp);
                     goto _break;
                 }
-            } else {
-                _evtmgr->trigger("msgbox", new eventx::event_msgbox_args("无法识别的命令行。"));
+            }
+            else {
+                //_evtmgr->trigger("msgbox", new eventx::event_msgbox_args("无法识别的命令行。"));
                 goto _exit;
             }
         }
+ 
+    _break:
+        data->cmd = commander;
+        data->args = args;
+        return true;
 
     _exit:
         return false;
+    });
+
+    _evtmgr->attach("exec:cmdstr", [&](eventx::event_args_i* ____args) {
+        struct event_cmdstr_args : eventx::event_args_i
+        {
+            std::string args;
+        };
+
+        auto __args = reinterpret_cast<event_cmdstr_args*>(____args)->args;
+
 
     _break:
         auto it = _command_executors.find(commander);

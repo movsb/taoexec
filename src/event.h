@@ -14,11 +14,22 @@ namespace taoexec {
 namespace eventx {
 
     // 事件参数原型
+    namespace flags {
+        const unsigned int auto_delete = 0x00000001;
+
+    }
+
     struct event_args_i
     {
+        event_args_i() {
+            flag = flags::auto_delete;
+        }
+
         virtual ~event_args_i() {
 
         }
+
+        unsigned int flag;
     };
 
     // 常用事件
@@ -161,7 +172,10 @@ namespace eventx {
 #endif
 
             auto r = container.call(args);
-            delete args;
+
+            if (args->flag & flags::auto_delete)
+                delete args;
+
             return r;
         }
 
