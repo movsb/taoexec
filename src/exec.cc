@@ -967,7 +967,12 @@ void executor_manager_t::_init_event_listners() {
         char c;
 
         // 特殊处理的部分
-        if(__args.size() >= 3 && __args[1] == ':' && (__args[2] == '/' || __args[2] == '\\')) {
+        if(__args.size() >= 3 && ::isalpha(__args[0]) && __args[1] == ':' && (__args[2] == '/' || __args[2] == '\\')) {
+            commander = "fs";
+            args = __args;
+            goto _break;
+        }
+        if (__args.size() >= 3 && __args[0] == '\\' && __args[1] == '\\') {
             commander = "fs";
             args = __args;
             goto _break;
