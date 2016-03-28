@@ -21,6 +21,22 @@ namespace eventx {
         }
     };
 
+    // 常用事件
+    struct event_msgbox_args : event_args_i
+    {
+        std::string title;
+        std::string content;
+        unsigned int type;
+        void* hwnd;
+
+        event_msgbox_args(conststring& content_, conststring& title_ = "", unsigned int type_ = MB_OK, void* hwnd_ = (void*)::GetActiveWindow()) {
+            title = title_;
+            content = content_;
+            type = type_;
+            hwnd = hwnd_;
+        }
+    };
+
     // 事件处理器
     class event_handler
     {
@@ -135,7 +151,16 @@ namespace eventx {
         }
 
         bool trigger(const std::string& name, event_args_i* args = nullptr) {
-            auto r = _events[name].call(args);
+            auto& container = _events[name];
+
+#if !defined(__PR__)
+            if (!container.size() && name != "msgbox") {
+                auto msg = new event_msgbox_args("事件 " + name + " 没有处理器。");
+                trigger("msgbox", msg);
+            }
+#endif
+
+            auto r = container.call(args);
             delete args;
             return r;
         }
@@ -144,21 +169,6 @@ namespace eventx {
         std::map<std::string, event_handler_container_t>    _events;
     };
 
-    // 常用事件
-    struct event_msgbox_args : event_args_i
-    {
-        std::string title;
-        std::string content;
-        unsigned int type;
-        void* hwnd;
-
-        event_msgbox_args(conststring& content_, conststring& title_ = "", unsigned int type_ = MB_OK, void* hwnd_ = (void*)::GetActiveWindow()) {
-            title = title_;
-            content = content_;
-            type = type_;
-            hwnd = hwnd_;
-        }
-    };
 
 } // namespace eventx
 } // namespace taoexec
