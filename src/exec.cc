@@ -830,33 +830,44 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& wd,
         return false;
     }
 
-    // the working directory
-    string wd_expanded;
-    if(wd.size()) {
-        try {
-            _expand_path(wd, &wd_expanded);
-        }
-        catch(const char* e) {
-            _evtmgr->msgbox(e);
-            return false;
-        }
+    // before next/executing
 
-        if(!::PathFileExists(wd_expanded.c_str())) {
-            _evtmgr->msgbox("无法找到工作目录。");
-            return false;
-        }
-    }
-
-    // before executing
-
-    if(::GetFileAttributes(path_expanded.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
+    if (::GetFileAttributes(path_expanded.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
         ::ShellExecute(::GetActiveWindow(), "open", "explorer", ("/select,\"" + path_expanded + "\"").c_str(), nullptr, SW_SHOWNORMAL);
         return true;
     }
 
-    if(shell::is_ext_link(shell::ext(path_expanded))) {
+    if (shell::is_ext_link(shell::ext(path_expanded))) {
         ::ShellExecute(::GetActiveWindow(), "open", path_expanded.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         return true;
+    }
+
+    // working directory
+    // absolute:    c:\windows\notepad.exe  -> c:\windows
+    // relative:    ./notepad.exe           -> current directory + ./
+    // unspecified: notepad                 -> ${desktop}
+    std::string wd_expanded;
+    if (wd.size()) {
+        try {
+            _expand_path(wd, &wd_expanded);
+        }
+        catch (const char* e) {
+            _evtmgr->msgbox(e);
+            return false;
+        }
+    }
+    else {
+        auto p = path_expanded.c_str();
+        auto q = path_expanded.c_str() + path_expanded.size();
+        while (q > p && *q != '/' && *q != '\\')
+            --q;
+        ++q;
+        wd_expanded.assign(p, q);
+    }
+
+    if (!::PathFileExists(wd_expanded.c_str())) {
+        _evtmgr->msgbox("无法找到工作目录。");
+        return false;
     }
 
     // cmdline
@@ -876,41 +887,6 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& wd,
     }
 
     /*
-    // working directory
-    // absolute:    c:\windows\notepad.exe  -> c:\windows
-    // relative:    ./notepad.exe           -> current directory + ./
-    // unspecified: notepad                 -> ${desktop}
-    std::string wd([&]() {
-        std::string wd2 = std::move(wd_);
-        if(wd2.size() && wd2.back() != '\\' &&  wd2.back() != '/')
-            wd2 += '\\';
-        std::string ts = wd2.size() ? wd2 : path_expanded;
-        bool is_abs = ts.size() > 3 // C:\ ~~
-            && ts[1] == ':'
-            && (ts[2] == '/' || ts[2] == '\\');
-        bool is_rel = !is_abs
-            && ts.size() > 0
-            && ts[0] == '.'; // filenames which start with a period is not processed.
-
-        std::string result;
-        if(is_abs)
-            result = ts;
-        else if(is_rel)
-            result = ts;
-        else
-            result = "";// expand("${desktop}\\");
-
-        auto begin = result.c_str();
-        auto p = begin + (int)result.size() - 1;
-        if(p < begin) p = begin; // size() maybe 0
-        while(p > begin && *p != '/' && *p != '\\')
-            --p;
-        if(p > begin && (*p == '/' || *p == '\\'))
-            return std::string(result.c_str(), p - begin);
-        else
-            return std::move(ts);
-    }());
-
     // environment variables
     std::string env([&]() {
         std::string env2 = std::move(env_);
