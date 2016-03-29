@@ -473,7 +473,11 @@ void executor_fs::_expand_path(const std::string& before, std::string* __after) 
                                 throw "函数调用期待`)`。";
                             else {
                                 fargs.push_back({bp, p});
-                                if(*p == ')') {
+
+                                if (*p == ',') {
+                                    ++p;
+                                }
+                                else if(*p == ')') {
                                     ++p;
                                     break;
                                 }
