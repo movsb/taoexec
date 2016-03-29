@@ -61,6 +61,24 @@ int main() {
         return true;
     });
 
+    _evtmgr->attach("settings:new", [&](taoexec::eventx::event_args_i* __args) {
+        taoexec::view::CONFIG& cfg = *new taoexec::view::CONFIG(configdb);
+        cfg.create();
+        cfg.show();
+        return true;
+    });
+
+    _evtmgr->attach("item:new", [&](taoexec::eventx::event_args_i* __args) {
+        auto on_succ = [](taoexec::model::item_t* p) {
+            delete p;
+        };
+
+        auto item = new taoexec::view::ITEM(itemdb, nullptr, on_succ);
+        item->create();
+        item->show();
+        return true;
+    });
+
     taoexec::view::MINI& mini = * new taoexec::view::MINI(itemdb, configdb);
     mini.create();
     mini.show();

@@ -102,6 +102,10 @@ executor_main::executor_main()
     _cmds["settings"] = [&]() {
         _evtmgr->trigger("settings:new");
     };
+
+    _cmds["add"] = [&]() {
+        _evtmgr->trigger("item:new");
+    };
 }
 
 bool executor_main::execute(const std::string& args) {

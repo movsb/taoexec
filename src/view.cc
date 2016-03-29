@@ -23,6 +23,7 @@ LPCTSTR INPUTBOX::get_skin_xml() const {
                 <control/>
                 <button name="ok" text="确定" width="40"/>
                 <button name="cancel" text="取消" width="40"/>
+            </horizontal>
         </vertical>
     </root>
 </window>
@@ -103,12 +104,11 @@ LPCTSTR ITEM::get_skin_xml() const {
                 </horizontal>
             </vertical>
             <control minheight="5"/>
-            <horizontal height="40">
-                <control/>
-                <horizontal width="80">
-                    <button name="ok" text="保存"/>
-                    <button name="cancel" text="取消"/>
-                </horizontal> 
+            <horizontal height="40" padding="5,5,5,5">
+                <control />
+                <button name="ok" width="40" text="确定"/>
+                <control width="10"/>
+                <button name="cancel" width="40" text="取消"/>
             </horizontal>
         </vertical>
     </root>
