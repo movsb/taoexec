@@ -6,6 +6,7 @@
 #include "model.h"
 #include "view.h"
 #include "charset.h"
+#include "script.h"
 
 static void prompt_elevation() {
     if(taoexec::shell::is_wow64() && !::IsUserAnAdmin()) {
@@ -38,6 +39,8 @@ int main() {
 
     taoexec::eventx::event_manager_t evtmgr;
     _evtmgr = &evtmgr;
+
+    taoexec::script::scriptable the_script;
 
     taoexec::model::db_t db;
     db.open(taoexec::charset::a2e(R"(taoexec.db)"));
