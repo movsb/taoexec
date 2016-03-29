@@ -106,6 +106,10 @@ executor_main::executor_main()
     _cmds["add"] = [&]() {
         _evtmgr->trigger("item:new");
     };
+
+    _cmds["lock"] = []() {
+        ::LockWorkStation();
+    };
 }
 
 bool executor_main::execute(const std::string& args) {
