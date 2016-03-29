@@ -117,8 +117,11 @@ namespace taoexec {
             std::map<std::string, std::string>               		_variables;
             strstrimap                                              _exec_strs;
 
+        protected:
+            model::config_db_t&     _cfgdb;
+
         public:
-            executor_fs();
+            executor_fs(model::config_db_t& cfgdb);
 
             const std::string get_name() const override {
                 return "fs";

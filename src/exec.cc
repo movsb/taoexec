@@ -281,7 +281,9 @@ bool executor_qq::execute(const std::string& args) {
 
 // ----- executor_fs -----
 
-executor_fs::executor_fs() {
+executor_fs::executor_fs(model::config_db_t& cfgdb)
+    : _cfgdb(cfgdb)
+{
     _initialize_globals();
     _initialize_event_listners();
 }
@@ -670,8 +672,18 @@ void executor_fs::_initialize_globals() {
         };
     };
 
+    auto initialize_user_variables = [this]() {
+        env_var_t envvars;
+        envvars.set(_cfgdb.get("user_vars").append(1, '\0'));
+        for(auto& it : envvars.get_vars()) {
+            _variables[it.first] = it.second;
+        }
+    };
+
     initialize_variables();
     initialize_functions();
+
+    initialize_user_variables();
 }
 
 std::string executor_fs::_expand_variable(const std::string& var) {
@@ -936,7 +948,7 @@ bool executor_shell::execute(const std::string& args) {
 // ----- executor_manager -----
 
 void executor_manager_t::_init_commanders() {
-    add(new executor_fs);
+    add(new executor_fs(*_cfgdb));
     add(new executor_main);
     add(new executor_shell);
     add(new executor_indexer(_itemdb));
