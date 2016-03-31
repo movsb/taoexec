@@ -41,6 +41,8 @@ int main() {
     _evtmgr = &evtmgr;
 
     taoexec::script::scriptable the_script;
+    the_script.init();
+    taoexec::exec::luaopen_exec(the_script.get_state());
 
     taoexec::model::db_t db;
     db.open(taoexec::charset::a2e(R"(taoexec.db)"));
@@ -87,6 +89,8 @@ int main() {
     mini.show();
 
     prompt_elevation();
+
+    the_script.load_all();
 
     taowin::loop_message();
 

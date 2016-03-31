@@ -12,6 +12,7 @@
 #include "types.hpp"
 #include "charset.h"
 #include "model.h"
+#include "script.h"
 
 #include <windows.h>
 #include <shellapi.h>
@@ -202,5 +203,10 @@ namespace taoexec {
         protected:
             std::map<std::string, command_executor_i*, taoexec::__string_nocase_compare> _command_executors;
         };
+
+        // ------------------------------------------------------------------------------------------------------------------
+
+        int luaopen_exec(lua_State* L);
+
     }
 }

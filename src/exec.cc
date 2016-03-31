@@ -1081,6 +1081,49 @@ void executor_manager_t::_init_event_listners() {
             return it->second->execute(parsedscheme.args);
         }
     });
+
+    _evtmgr->attach("exec:addexec", [&](eventx::event_args_i* ____args) {
+        struct event_register_executor_args : eventx::event_args_i
+        {
+            lua_State* L;
+            std::string type;
+            int fnrefid;
+        };
+
+        auto __args = reinterpret_cast<event_register_executor_args*>(____args);
+
+        class executor_x : public command_executor_i
+        {
+        public:
+            executor_x(lua_State* L, conststring& type, int fnrefid)
+                : _L(L)
+                , _type(type)
+                , _fnrefid(fnrefid)                
+            {
+
+            }
+
+            const std::string get_name() const override {
+                return _type;
+            }
+
+            bool execute(const std::string& args) override {
+                ::lua_rawgeti(_L, LUA_REGISTRYINDEX, _fnrefid);
+                ::lua_pushstring(_L, args.c_str());
+                lua_pcall(_L, 1, 1, 0);
+                return !!lua_toboolean(_L, 1);
+            }
+
+        private:
+            std::string _type;
+            lua_State* _L;
+            int _fnrefid;
+        };
+
+        add(new executor_x(__args->L, __args->type, __args->fnrefid));
+
+        return true;
+    });
 }
 
 void executor_manager_t::add(command_executor_i* p) {
@@ -1095,8 +1138,54 @@ command_executor_i* executor_manager_t::get(const std::string& name) {
         ? it->second
         : nullptr;
 }
-
 // ----- executor_manager -----
+
+
+// --------------------------------------------------------------------------------------------------
+static int execlib_exec(lua_State* L) {
+    auto cmd = luaL_checkstring(L, 1);
+    struct event_cmdstr_args : eventx::event_args_i
+    {
+        std::string args;
+    };
+
+    auto& args = * new event_cmdstr_args;
+    args.args = cmd;
+
+    return _evtmgr->trigger("exec:cmdstr", &args);
+}
+
+static int execlib_register_executor(lua_State* L) {
+    auto type = luaL_checkstring(L, 1);
+    if(!lua_isfunction(L, 2))
+        return 0;
+
+    auto func = luaL_ref(L, LUA_REGISTRYINDEX);
+    
+    struct event_register_executor_args : eventx::event_args_i {
+        lua_State* L;
+        std::string type;
+        int fnrefid;
+    };
+
+    auto args = new event_register_executor_args;
+    args->L = L;
+    args->type = type;
+    args->fnrefid = func;
+
+    return _evtmgr->trigger("exec:addexec", args);
+}
+
+int luaopen_exec(lua_State* L) {
+    lua_pushcfunction(L, execlib_exec);
+    lua_setglobal(L, "exec");
+
+    lua_pushcfunction(L, execlib_register_executor);
+    lua_setglobal(L, "register_executor");
+
+    return 0;
+}
+
 
 } // namespace exec
 
