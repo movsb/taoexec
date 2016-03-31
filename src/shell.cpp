@@ -1,5 +1,9 @@
 #include <ShObjIdl.h>
 #include <ShlGuid.h>
+#include <windows.h>
+
+#include <vector>
+#include <string>
 
 #include "shell.h"
 #include "charset.h"
@@ -229,6 +233,36 @@ bool parse_hotkey_string(const std::string& hotstr, unsigned int* mods, unsigned
     }
 
     return true;
+}
+
+int get_directory_files(const char* root, const char* extname, std::vector<std::string>* matches) {
+    std::string folder = root;
+    if(folder.back() != '/' && folder.back() != '\\')
+        folder.append(1, '\\');
+
+    WIN32_FIND_DATA wfd;
+    std::string pattern = folder + '*' + extname;
+    if(is_wow64())
+        ::Wow64DisableWow64FsRedirection(nullptr);
+    HANDLE hfind = ::FindFirstFile(pattern.c_str(), &wfd);
+    if(hfind != INVALID_HANDLE_VALUE) {
+        do {
+            std::string file = folder + wfd.cFileName;
+            matches->push_back(std::move(file));
+        } while(::FindNextFile(hfind, &wfd));
+        ::FindClose(hfind);
+    }
+    if(taoexec::shell::is_wow64())
+        ::Wow64EnableWow64FsRedirection(TRUE);
+
+    return (int)matches->size();
+}
+
+std::string exe_dir() {
+    char path[2048];
+    path[GetModuleFileName(nullptr, path, _countof(path))] = '\0';
+    *strrchr(path, '\\') = '\0';
+    return path;
 }
 
 }

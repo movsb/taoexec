@@ -9,6 +9,8 @@
 namespace taoexec {
 namespace shell {
 
+std::string exe_dir();
+
 inline bool is_wow64() {
     BOOL b64;
     return IsWow64Process(GetCurrentProcess(), &b64)
@@ -64,6 +66,8 @@ enum class file_type
 file_type type(const char* file);
 
 bool parse_hotkey_string(const std::string& hotstr, unsigned int* mods, unsigned int* vk, const char** err = nullptr);
+
+int get_directory_files(const char* root, const char* extname, std::vector<std::string>* matches);
 
 }
 }
