@@ -32,7 +32,7 @@ void scriptable::add_lib(const char* name, lua_CFunction openfunc) {
 
 void scriptable::load_all() {
     std::vector<std::string> scripts;
-    shell::get_directory_files(shell::exe_dir().c_str(), ".lua", &scripts);
+    shell::get_directory_files((shell::exe_dir() + "/../").c_str(), ".lua", &scripts);
 
     for(auto& sf : scripts) {
         if(luaL_dofile(_state, sf.c_str()) != 0) {

@@ -2,6 +2,7 @@
 #include "shell.h"
 #include "utils.h"
 #include "event.h"
+#include "charset.h"
 
 #include <Shlwapi.h>
 
@@ -1150,7 +1151,7 @@ static int execlib_exec(lua_State* L) {
     };
 
     auto& args = * new event_cmdstr_args;
-    args.args = cmd;
+    args.args = charset::e2a(cmd);
 
     return _evtmgr->trigger("exec:cmdstr", &args);
 }
