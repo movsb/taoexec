@@ -850,7 +850,7 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& wd,
     // before next/executing
 
     if (::GetFileAttributes(path_expanded.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
-        ::ShellExecute(::GetActiveWindow(), "open", "explorer", ("/select,\"" + path_expanded + "\"").c_str(), nullptr, SW_SHOWNORMAL);
+        ::ShellExecute(::GetActiveWindow(), "open", "explorer", path_expanded.c_str(), nullptr, SW_SHOWNORMAL);
         return true;
     }
 
