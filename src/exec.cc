@@ -801,9 +801,12 @@ std::string executor_fs::get_executor(const std::string& ext) {
         return _exec_strs[lower_ext];
 
     std::string what_file = shell::query_registry(HKEY_CLASSES_ROOT, ext, "");
-    if (what_file.size()) {
-        cmd = shell::query_registry(HKEY_CLASSES_ROOT, what_file + R"(\shell\open\command)", "");
-        if (cmd.size()) {
+    if (!what_file.empty()) {
+        auto pref = shell::query_registry(HKEY_CLASSES_ROOT, what_file + R"(\shell)", "");
+        if (pref.empty())
+            pref = "open";
+        cmd = shell::query_registry(HKEY_CLASSES_ROOT, what_file + R"(\shell\)" + pref + R"(\command)", "");
+        if (!cmd.empty()) {
 
         }
     }
