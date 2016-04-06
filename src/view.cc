@@ -952,16 +952,27 @@ void TW::_execute(int i) {
     auto& wd = _items[i]->work_dir;
     auto& env = _items[i]->env;
 
-    std::vector<std::string> patharr;
-    taoexec::utils::split_paths(paths, &patharr);
+    struct event_execfile_args : eventx::event_args_i
+    {
+        std::string path;
+        std::string args;
+        std::string wd;
+        std::string env;
+    };
 
-    /*
-    taoexec::::execute(_hwnd, patharr, params, "", wd, env, [&](const std::string& err) {
-        if(err != "ok") {
-            msgbox("Ê§°Ü¡£", MB_ICONEXCLAMATION);
-        }
-    });
-    */
+    std::vector<std::string> path_array;
+    utils::split_paths(paths, &path_array);
+
+    for(auto& path : path_array) {
+        auto thefile = new event_execfile_args;
+        thefile->path = path;
+        thefile->args = params;
+        thefile->wd = wd;
+        thefile->env = env;
+
+        if(_evtmgr->trigger("exec:file", thefile))
+            break;
+    }
 }
 
 void TW::_refresh() {
@@ -971,7 +982,18 @@ void TW::_refresh() {
     lv->set_item_count(_items.size(), 0);   // cause invalidate all.
 }
 
+void TW::_init_event_listeners() {
+    _event_cookies["msgbox"] = _evtmgr->attach("msgbox", [&](eventx::event_args_i* __args) {
+        auto args = reinterpret_cast<eventx::event_msgbox_args*>(__args);
+        msgbox(args->content, args->type, args->title);
+        return true;
+    });
+
+    _event_cookies["exit"] = _evtmgr->attach("exit", [&](eventx::event_args_i* __args) {
+        close();
+        return false;
+    });
+}
 } // namespace view
 
 } // namespace taoexec
-

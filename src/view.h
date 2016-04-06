@@ -216,6 +216,9 @@ protected:
     }
 
 private:
+    eventx::event_cookies_t _event_cookies;
+    void _init_event_listeners();
+
     void _refresh();
     void _execute(int i);
 };
