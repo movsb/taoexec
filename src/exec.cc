@@ -790,30 +790,16 @@ void executor_fs::_add_user_variables(const env_var_t& env_var) {
 }
 
 std::string executor_fs::get_executor(const std::string& ext) {
-    std::string cmd;
-    std::string lower_ext(utils::tolower(ext));
-
-    if (!lower_ext.size())
-        return cmd;
-
-    // hit from cache
-    if (_exec_strs.count(lower_ext))
-        return _exec_strs[lower_ext];
-
-    std::string what_file = shell::query_registry(HKEY_CLASSES_ROOT, ext, "");
-    if (!what_file.empty()) {
-        auto pref = shell::query_registry(HKEY_CLASSES_ROOT, what_file + R"(\shell)", "");
-        if (pref.empty())
-            pref = "open";
-        cmd = shell::query_registry(HKEY_CLASSES_ROOT, what_file + R"(\shell\)" + pref + R"(\command)", "");
-        if (!cmd.empty()) {
-
+    if(!ext.empty() && !_exec_strs.count(ext)) {
+        DWORD dwLen = 0;
+        if(AssocQueryString(ASSOCF_NONE, ASSOCSTR_COMMAND, ext.c_str(), nullptr, nullptr, &dwLen) == S_FALSE && dwLen) {
+            std::unique_ptr<char[]> cmd(new char[dwLen + 1]);
+            AssocQueryString(ASSOCF_NONE, ASSOCSTR_COMMAND, ext.c_str(), nullptr, cmd.get(), &dwLen);
+            _exec_strs[ext] = cmd.get();
         }
     }
 
-    // make cache
-    _exec_strs[lower_ext] = cmd;
-    return cmd;
+    return _exec_strs[ext];
 }
 
 void executor_fs::_initialize_event_listners() {
