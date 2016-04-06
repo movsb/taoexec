@@ -1093,6 +1093,10 @@ void executor_manager_t::_init_event_listners() {
 
             }
 
+            ~executor_x() {
+                ::luaL_unref(_L, LUA_REGISTRYINDEX, _fnrefid);
+            }
+
             const std::string get_name() const override {
                 return _type;
             }
