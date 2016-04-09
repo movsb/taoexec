@@ -156,7 +156,7 @@ bool executor_indexer::execute(const std::string& args) {
         if(rc == -1) {
             _evtmgr->msgbox("sqlite3 error.");
         } else if(rc == 0) {
-            _evtmgr->msgbox("Your search `" + index + "` does not match anything.");
+
         } else if(rc == 1) {
             found = items[0];
         } else {
@@ -185,7 +185,13 @@ bool executor_indexer::execute(const std::string& args) {
     auto item = from_db();
 
     if(!item) {
-        return false;
+        struct event_cmdstr_args : eventx::event_args_i {
+            std::string args;
+        };
+
+        auto p = new event_cmdstr_args;
+        p->args = "fs:" + args;
+        return _evtmgr->trigger("exec:cmdstr", p);
     }
 
     bool r = false;
