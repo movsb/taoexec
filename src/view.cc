@@ -773,31 +773,18 @@ LRESULT TW::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
                 auto ext = taoexec::shell::ext(path);
                 if(is_ext_link(ext)) {
                     link_info info;
-                    if(parse_link_file(path, &info)) {
-                        // 不打算再解析Shell Item IDList信息了，看了下面的文章简直吓尿
-                        // https://github.com/libyal/libfwsi/blob/master/documentation/Windows%20Shell%20Item%20format.asciidoc
-                        // http://forensicswiki.org/wiki/LNK
-                        if(!info.path.size()) {
-                            msgbox(path + "\n\n" + "不支持的快捷方式文件。", MB_ICONERROR);
-                            return;
-                        }
+                    parse_link_file(path, &info); // 不管成功与否
+                    auto on_init = [&](const std::string& field) {
+                        if(field == "path")
+                            return std::string(path);
+                        else if(field == "comment")
+                            return info.desc;
+                        else
+                            return std::string();
+                    };
 
-                        auto on_init = [&](const std::string& field) {
-                            if(field == "path")
-                                return info.path;
-                            else if(field == "params")
-                                return info.args;
-                            else if(field == "wd")
-                                return info.wd;
-                            else if(field == "comment")
-                                return info.desc;
-                            else
-                                return std::string();
-                        };
-
-                        ITEM item(_db, nullptr, on_added, on_init);
-                        item.domodal(this);
-                    }
+                    ITEM item(_db, nullptr, on_added, on_init);
+                    item.domodal(this);
                 }
                 /*
                 // EXE 可以获取到一些特殊的资源块信息，所以可以单独写一个添加函数
