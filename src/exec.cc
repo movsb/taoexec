@@ -162,7 +162,7 @@ bool executor_indexer::execute(const std::string& args) {
         } else {
             decltype(items.cbegin()) it;
             for(it = items.cbegin(); it != items.cend(); it++) {
-                if((*it)->index == index) {
+                if(_stricmp((*it)->index.c_str(), index.c_str()) == 0) {
                     found = *it;
                     break;
                 }
