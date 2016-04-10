@@ -845,13 +845,12 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& wd,
     // before next/executing
 
     if (::GetFileAttributes(path_expanded.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
-        ::ShellExecute(::GetActiveWindow(), "open", "explorer", path_expanded.c_str(), nullptr, SW_SHOWNORMAL);
-        return true;
+        return (int)::ShellExecute(::GetActiveWindow(), "open", "explorer", path_expanded.c_str(), nullptr, SW_SHOWNORMAL) > 32;
     }
 
     if (shell::is_ext_link(shell::ext(path_expanded))) {
-        ::ShellExecute(::GetActiveWindow(), "open", path_expanded.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-        return true;
+        return (int)::ShellExecute(::GetActiveWindow(), "open", path_expanded.c_str(), nullptr, nullptr, SW_SHOWNORMAL) > 32
+            || (int)::ShellExecute(nullptr, "open", "explorer", path_expanded.c_str(), nullptr, SW_SHOWNORMAL) > 32;
     }
 
     // working directory
