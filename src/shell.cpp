@@ -4,12 +4,82 @@
 
 #include <vector>
 #include <string>
+#include <sstream>
+#include <memory>
 
 #include "shell.h"
 #include "charset.h"
 
 namespace taoexec {
 namespace shell {
+
+// ----- env_var_t -----
+std::string env_var_t::serialize() const {
+    std::ostringstream oss;
+    for (auto& v : _nameless) {
+        oss << '=' << v;
+        oss.write("", 1);
+    }
+    for (auto it = _vars.cbegin(), end = _vars.cend(); it != end; ++it) {
+        oss << it->first << '=' << it->second;
+        oss.write("", 1);
+    }
+    oss.write("", 1);
+    return std::move(oss.str());
+}
+
+void env_var_t::patch_current() {
+    std::string def_env([]() {
+        auto def_env = ::GetEnvironmentStrings();
+        auto p = def_env;
+        while (*p) while (*p++);
+        std::string def_env_str(def_env, p + 1);
+        ::FreeEnvironmentStrings(def_env);
+        return std::move(def_env_str);
+    }());
+
+    patch(def_env);
+}
+
+void env_var_t::patch(const std::string& envstr) {
+    const char* p = envstr.c_str();
+    for (; *p;) {
+        auto key_begin = p;
+        while (*p != '=') p++; // buggy
+        auto key_end = p++;
+        std::string key(key_begin, key_end);
+
+        std::string val;
+        while (*p && *p != '\r' && *p != '\n') {
+            if (*p == '%') {
+                auto var_start = ++p;
+                while (*p != '%') p++; // buggy
+                auto var_end = p++;
+                std::string var(var_start, var_end);
+                if (_vars.count(var))
+                    val += _vars[var];
+            }
+            else {
+                val += *p++;
+            }
+        }
+
+        if (key.size() == 0)
+            _nameless.push_back(std::move(val));
+        else
+            _vars[std::move(key)] = std::move(val);
+
+        while (*p == '\r' || *p == '\n')
+            p++;
+        if (!*p) p++;
+    }
+}
+
+void env_var_t::set(const std::string& envstr) {
+    _vars.clear();
+    patch(envstr);
+}
+// ----- env_var_t -----
 
 bool parse_link_file(const std::string& path, link_info* info) {
     bool r = false;
@@ -264,6 +334,123 @@ std::string exe_dir() {
     *strrchr(path, '\\') = '\0';
     return path;
 }
+
+
+// ----- which -----
+
+which::which(const std::string& cmd, bool usecache)
+    : _cmd(cmd)
+    , _usecache(usecache)
+{
+    _init();
+}
+
+std::string which::_which() {
+    if (_usecache) {
+        auto it = _cache.find(_cmd);
+        if (it != _cache.cend()) {
+            return it->second;
+        }
+    }
+
+    std::string result;
+    std::vector<std::string> matches;
+    bool has_match = false;
+    for(auto& dir : _dirs) {
+        if(dir.empty())
+            continue;
+
+        std::string folder = dir;
+        if(folder.back() != '/' && folder.back() != '\\')
+            folder.append(1, '\\');
+
+        WIN32_FIND_DATA wfd;
+        std::string pattern = folder + _cmd + '*';
+        if(taoexec::shell::is_wow64()) ::Wow64DisableWow64FsRedirection(nullptr);
+        HANDLE hfind = ::FindFirstFile(pattern.c_str(), &wfd);
+        if(hfind != INVALID_HANDLE_VALUE) {
+            do {
+                std::string file = folder + wfd.cFileName;
+                matches.push_back(std::move(file));
+                // check exactly match
+                if(_stricmp(_cmd.c_str(), wfd.cFileName) == 0) {
+                    has_match = true;
+                    goto _exit_for;
+                }
+                // check if executable
+                auto offset_match = wfd.cFileName + _cmd.size();
+                if(_stricmp(offset_match, ".exe") == 0
+                    || _stricmp(offset_match, ".bat") == 0
+                    || _stricmp(offset_match, ".cmd") == 0
+                    ) {
+                    has_match = true;
+                    goto _exit_for;
+                }
+            } while(::FindNextFile(hfind, &wfd));
+            ::FindClose(hfind);
+        }
+        if(taoexec::shell::is_wow64()) ::Wow64EnableWow64FsRedirection(TRUE); // BUG: remember to disable
+    }
+
+_exit_for:
+    if(has_match) {
+        auto match = matches.back();
+        _cache[_cmd] = match;
+        return match;
+    }
+
+    return "";
+}
+
+void which::add_dir(const std::string& dir) {
+    _dirs.push_back(dir);
+}
+
+void which::_init() {
+    auto init_sys_path = [&]() {
+        char path[MAX_PATH];
+
+        // the exe directory
+        if (GetModuleFileName(NULL, path, _countof(path)) > 0) {
+            *strrchr(path, '\\') = '\0';
+            add_dir(path);
+        }
+
+        // the Current Directory
+        path[GetCurrentDirectory(_countof(path), path)] = '\0';
+        if (path[3] == '\0') path[2] = '\0'; // on root drive, removes backslash
+        add_dir(path);
+
+        // the System directory
+        path[GetSystemDirectory(path, _countof(path))] = '\0';
+        add_dir(path);
+
+        // the Windows directory
+        path[GetWindowsDirectory(path, _countof(path))] = '\0';
+        add_dir(path);
+
+        // The directories that are listed in the PATH environment variable
+        const int var_size = 32 * 1024;
+        std::unique_ptr<char[]> envstr(new char[var_size]);
+        if(::GetEnvironmentVariable("PATH", envstr.get(), var_size)) {
+            auto spath = envstr.get();
+            auto end = spath;
+            while(*end) {
+                auto begin = end;
+                while(*end && *end != ';')
+                    end++;
+                if(end > begin)
+                    add_dir({ begin, end });
+                if(*end == ';')
+                    end++;
+            }
+        }
+    };
+
+    init_sys_path();
+}
+
+// ----- which -----
 
 }
 }

@@ -13,6 +13,7 @@
 #include "charset.h"
 #include "model.h"
 #include "script.h"
+#include "shell.h"
 
 #include <windows.h>
 #include <shellapi.h>
@@ -93,24 +94,6 @@ namespace taoexec {
 
         class executor_fs : public command_executor_i
         {
-        private:
-            class env_var_t
-            {
-            public:
-                env_var_t() { }
-                void set(const std::string& envstr);
-                void patch(const std::string& envstr);
-                void patch_current();
-                std::string serialize() const;
-                const taoexec::strstrimap& get_vars() const {
-                    return _vars;
-                }
-
-            protected:
-                std::vector<std::string>    _nameless;
-                taoexec::strstrimap         _vars;
-            };
-
         protected:
             typedef std::vector<std::string>                        func_args;
             typedef std::function<std::string(func_args& args)>     func_proto;
@@ -140,11 +123,9 @@ namespace taoexec {
 
             void _initialize_event_listners();
             void _initialize_globals();
-            void _add_user_variables(const env_var_t& env_var);
+            void _add_user_variables(const shell::env_var_t& env_var);
             std::string _expand_variable(const std::string& var);
             std::string _expand_function(const std::string& fn, func_args& args);
-
-            std::string _which(const std::string& cmd, const std::string& env);
 
             std::string get_executor(const std::string& ext);
         };

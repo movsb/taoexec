@@ -299,72 +299,6 @@ executor_fs::executor_fs(model::config_db_t& cfgdb)
     _initialize_event_listners();
 }
 
-std::string executor_fs::env_var_t::serialize() const {
-    std::ostringstream oss;
-    for (auto& v : _nameless) {
-        oss << '=' << v;
-        oss.write("", 1);
-    }
-    for (auto it = _vars.cbegin(), end = _vars.cend(); it != end; ++it) {
-        oss << it->first << '=' << it->second;
-        oss.write("", 1);
-    }
-    oss.write("", 1);
-    return std::move(oss.str());
-}
-
-void executor_fs::env_var_t::patch_current() {
-    std::string def_env([]() {
-        auto def_env = ::GetEnvironmentStrings();
-        auto p = def_env;
-        while (*p) while (*p++);
-        std::string def_env_str(def_env, p + 1);
-        ::FreeEnvironmentStrings(def_env);
-        return std::move(def_env_str);
-    }());
-
-    patch(def_env);
-}
-
-void executor_fs::env_var_t::patch(const std::string& envstr) {
-    const char* p = envstr.c_str();
-    for (; *p;) {
-        auto key_begin = p;
-        while (*p != '=') p++; // buggy
-        auto key_end = p++;
-        std::string key(key_begin, key_end);
-
-        std::string val;
-        while (*p && *p != '\r' && *p != '\n') {
-            if (*p == '%') {
-                auto var_start = ++p;
-                while (*p != '%') p++; // buggy
-                auto var_end = p++;
-                std::string var(var_start, var_end);
-                if (_vars.count(var))
-                    val += _vars[var];
-            }
-            else {
-                val += *p++;
-            }
-        }
-
-        if (key.size() == 0)
-            _nameless.push_back(std::move(val));
-        else
-            _vars[std::move(key)] = std::move(val);
-
-        while (*p == '\r' || *p == '\n')
-            p++;
-        if (!*p) p++;
-    }
-}
-
-void executor_fs::env_var_t::set(const std::string& envstr) {
-    _vars.clear();
-    patch(envstr);
-}
-
 bool executor_fs::execute(const std::string& __args) {
     std::string path, args;
 
@@ -562,9 +496,9 @@ void executor_fs::_expand_path(const std::string& before, std::string* __after) 
     }());
 
     if(std::regex_match(after, std::regex(R"([0-9a-zA-z_]+)")))
-        after = _which(after, "");
+        after = shell::which(after);
 
-    if(!after.size())
+    if(after.empty())
         throw "无法取得目标文件路径。";
 
     *__after = std::move(after);
@@ -684,7 +618,7 @@ void executor_fs::_initialize_globals() {
     };
 
     auto initialize_user_variables = [this]() {
-        env_var_t envvars;
+        shell::env_var_t envvars;
         envvars.set(_cfgdb.get("user_vars").append(1, '\0'));
         for(auto& it : envvars.get_vars()) {
             _variables[it.first] = it.second;
@@ -711,86 +645,8 @@ std::string executor_fs::_expand_function(const std::string& fn, func_args& args
     return "";
 }
 
-std::string executor_fs::_which(const std::string& cmd, const std::string& env) {
-    std::string result;
 
-    // collect all search directories that match CreateProcess' behavior
-    std::vector<std::string> search_dirs;
-    // 1. the directory from which the application loaded
-    search_dirs.push_back(_expand_variable("exe_dir"));
-    // 2. the current directory for the parent process
-    search_dirs.push_back(_expand_variable("cd"));
-    // 3. The 32-bit Windows system directory
-    search_dirs.push_back(_expand_variable("system"));
-    // 4. The 16-bit Windows system directory (not implemented)
-    // 5. The Windows directory
-    search_dirs.push_back(_expand_variable("windows"));
-    // 6. The directories that are listed in the PATH environment variable
-    const int var_size = 32 * 1024;
-    std::unique_ptr<char[]> path(new char[var_size]);
-    if(::GetEnvironmentVariable("PATH", path.get(), var_size)) {
-        auto spath = path.get();
-        auto end = spath;
-        while(*end) {
-            auto begin = end;
-            while(*end && *end != ';')
-                end++;
-            if(end > begin)
-                search_dirs.push_back(std::string(begin, end));
-            if(*end == ';')
-                end++;
-        }
-    }
-
-    // now search the specified cmd as ``which`` always does
-    std::vector<std::string> matches;
-    bool has_match = false;
-    for(auto& dir : search_dirs) {
-        if(!dir.size())
-            continue;
-
-        std::string folder = dir;
-        if(folder.back() != '/' && folder.back() != '\\')
-            folder.append(1, '\\');
-
-        WIN32_FIND_DATA wfd;
-        std::string pattern = folder + cmd + '*';
-        if(taoexec::shell::is_wow64()) ::Wow64DisableWow64FsRedirection(nullptr);
-        HANDLE hfind = ::FindFirstFile(pattern.c_str(), &wfd);
-        if(hfind != INVALID_HANDLE_VALUE) {
-            do {
-                std::string file = folder + wfd.cFileName;
-                matches.push_back(std::move(file));
-                // check exactly match
-                if(_stricmp(cmd.c_str(), wfd.cFileName) == 0) {
-                    has_match = true;
-                    goto _exit_for;
-                }
-                // check if executable
-                auto offset_match = wfd.cFileName + cmd.size();
-                if(_stricmp(offset_match, ".exe") == 0
-                    || _stricmp(offset_match, ".bat") == 0
-                    || _stricmp(offset_match, ".cmd") == 0
-                    ) {
-                    has_match = true;
-                    goto _exit_for;
-                }
-            } while(::FindNextFile(hfind, &wfd));
-            ::FindClose(hfind);
-        }
-        if(taoexec::shell::is_wow64()) ::Wow64EnableWow64FsRedirection(TRUE);
-    }
-
-_exit_for:
-    if(has_match) {
-        return matches.back();
-    }
-
-    return "";
-}
-
-
-void executor_fs::_add_user_variables(const env_var_t& env_var) {
+void executor_fs::_add_user_variables(const shell::env_var_t& env_var) {
     for (auto& kv : env_var.get_vars())
         _variables[kv.first] = kv.second;
 }

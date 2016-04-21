@@ -6,8 +6,27 @@
 #include <windows.h>
 #include <shellapi.h>
 
+#include "types.hpp"
+
 namespace taoexec {
 namespace shell {
+
+class env_var_t
+{
+public:
+    env_var_t() { }
+    void set(const std::string& envstr);
+    void patch(const std::string& envstr);
+    void patch_current();
+    std::string serialize() const;
+    const taoexec::strstrimap& get_vars() const {
+        return _vars;
+    }
+
+protected:
+    std::vector<std::string>    _nameless;
+    taoexec::strstrimap         _vars;
+};
 
 std::string exe_dir();
 
@@ -68,6 +87,27 @@ file_type type(const char* file);
 bool parse_hotkey_string(const std::string& hotstr, unsigned int* mods, unsigned int* vk, const char** err = nullptr);
 
 int get_directory_files(const char* root, const char* extname, std::vector<std::string>* matches);
+
+class which {
+public:
+    which(const std::string& cmd, bool usecache = true);
+
+    operator std::string() {
+        return _which();
+    }
+
+    void add_dir(const std::string& dir);
+
+private:
+    void _init();
+    std::string _which();
+
+protected:
+    const std::string&          _cmd;
+    bool                        _usecache;
+    std::vector<std::string>    _dirs;
+    taoexec::strstrimap         _cache;
+};
 
 }
 }

@@ -1,0 +1,7 @@
+%PATH%
+用户变量
+HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\
+HKCU\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\App Paths\
+HKLM\Software\Microsoft\Windows\CurrentVersion\App Paths\
+HKLM\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\App Paths\
+
