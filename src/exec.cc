@@ -495,7 +495,7 @@ void executor_fs::_expand_path(const std::string& before, std::string* __after) 
         return std::move(s);
     }());
 
-    if(std::regex_match(after, std::regex(R"([0-9a-zA-z_]+)")))
+    if(std::regex_match(after, std::regex(R"([^/\:]+)")))
         after = _which.call(after);
 
     if(after.empty())
