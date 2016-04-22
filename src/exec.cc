@@ -681,7 +681,7 @@ void executor_fs::_initialize_event_listners() {
     });
 }
 
-bool executor_fs::execute(conststring& path, conststring& args, conststring& wd, conststring& env) {
+bool executor_fs::execute(conststring& path, conststring& args, conststring& __wd, conststring& env) {
     using string = std::string;
 
     // the file to be executed
@@ -700,7 +700,7 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& wd,
     }
 
     // before next/executing
-
+    // do some hacking
     if (::GetFileAttributes(path_expanded.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
         return (int)::ShellExecute(::GetActiveWindow(), "open", "explorer", path_expanded.c_str(), nullptr, SW_SHOWNORMAL) > 32;
     }
@@ -708,34 +708,6 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& wd,
     if (shell::is_ext_link(shell::ext(path_expanded))) {
         return (int)::ShellExecute(::GetActiveWindow(), "open", path_expanded.c_str(), nullptr, nullptr, SW_SHOWNORMAL) > 32
             || (int)::ShellExecute(nullptr, "open", "explorer", path_expanded.c_str(), nullptr, SW_SHOWNORMAL) > 32;
-    }
-
-    // working directory
-    // absolute:    c:\windows\notepad.exe  -> c:\windows
-    // relative:    ./notepad.exe           -> current directory + ./
-    // unspecified: notepad                 -> ${desktop}
-    std::string wd_expanded;
-    if (wd.size()) {
-        try {
-            _expand_path(wd, &wd_expanded);
-        }
-        catch (const char* e) {
-            _evtmgr->msgbox(e);
-            return false;
-        }
-    }
-    else {
-        auto p = path_expanded.c_str();
-        auto q = path_expanded.c_str() + path_expanded.size();
-        while (q > p && *q != '/' && *q != '\\')
-            --q;
-        ++q;
-        wd_expanded.assign(p, q);
-    }
-
-    if (!::PathFileExists(wd_expanded.c_str())) {
-        _evtmgr->msgbox("无法找到工作目录。");
-        return false;
     }
 
     // cmdline
@@ -751,6 +723,55 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& wd,
     }
     catch(const char* e) {
         _evtmgr->msgbox(e);
+        return false;
+    }
+
+    // working directory
+    std::string wd([&]() {
+        std::string _wd;
+        if(__wd.size()) {
+            try {
+                _expand_path(__wd, &_wd);
+            } catch(const char* e) {
+                _evtmgr->msgbox(e);
+                return _wd;
+            }
+        } else {
+            auto p = cmdline.c_str();
+            while(*p && (*p == ' ' || *p == '\t'))
+                ++p;
+
+            if(*p == '\'' || *p == '"') {
+                const char* s = nullptr;
+                const char* q = p++;
+                while(*p && *p != *q) {
+                    if(*p == '/' || *p == '\\')
+                        s = p;
+                    ++p;
+                }
+                if(*p)
+                    _wd.assign(q + 1, s ? s : p);
+            } else {
+                const char* s = nullptr;
+                const char* q = p;
+                while(*p && *p != ' ' && *p != '\t') {
+                    if(*p == '/' || *p == '\\')
+                        s = p;
+                    ++p;
+                }
+                if(p > q)
+                    _wd.assign(q, s ? s : p);
+            }
+        }
+
+        if(_wd.size() == 2 && _wd[1] == ':')
+            _wd += '\\';
+
+        return std::move(_wd);
+    }());
+
+    if (!::PathFileExists(wd.c_str()) || !(::GetFileAttributes(wd.c_str()) & FILE_ATTRIBUTE_DIRECTORY)) {
+        _evtmgr->msgbox("无法找到工作目录，或指定的路径不能作为工作目录。");
         return false;
     }
 
@@ -774,7 +795,7 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& wd,
 
     if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
         nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE,
-        (void*)(env.size() ? env.c_str() : nullptr), wd_expanded.size() ? wd_expanded.c_str() : nullptr,
+        (void*)(env.size() ? env.c_str() : nullptr), wd.size() ? wd.c_str() : nullptr,
         &si, &pi)) {
         ::CloseHandle(pi.hThread);
         ::CloseHandle(pi.hProcess);
