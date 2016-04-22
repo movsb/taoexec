@@ -496,7 +496,7 @@ void executor_fs::_expand_path(const std::string& before, std::string* __after) 
     }());
 
     if(std::regex_match(after, std::regex(R"([0-9a-zA-z_]+)")))
-        after = shell::which(after);
+        after = _which.call(after);
 
     if(after.empty())
         throw "无法取得目标文件路径。";
@@ -622,6 +622,7 @@ void executor_fs::_initialize_globals() {
         envvars.set(_cfgdb.get("user_vars").append(1, '\0'));
         for(auto& it : envvars.get_vars()) {
             _variables[it.first] = it.second;
+            _which.add_dir(it.second);
         }
     };
 

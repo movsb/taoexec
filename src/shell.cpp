@@ -174,7 +174,7 @@ bool is_ext_link(const std::string& ext) {
     return false;
 }
 
-std::string query_registry(HKEY root, const std::string& subkey, const std::string& name, bool* has_name) {
+std::string query_registry(HKEY root, const std::string& subkey, const std::string& name, bool* has_name, bool wow6432) {
     std::string result;
     char value[2048];
     DWORD cb = sizeof(value);
@@ -183,7 +183,7 @@ std::string query_registry(HKEY root, const std::string& subkey, const std::stri
         *has_name = false;
 
     REGSAM sam = KEY_READ;
-    if(is_wow64())
+    if(is_wow64() && wow6432)
         sam |= KEY_WOW64_32KEY;
 
     HKEY hkey;
@@ -338,21 +338,32 @@ std::string exe_dir() {
 
 // ----- which -----
 
-which::which(const std::string& cmd, bool usecache)
-    : _cmd(cmd)
-    , _usecache(usecache)
+which::which()
 {
     _init();
 }
 
-std::string which::_which() {
-    if (_usecache) {
-        auto it = _cache.find(_cmd);
-        if (it != _cache.cend()) {
+std::string which::call(const std::string& cmd, bool usecache) {
+    std::string result;
+
+    if (usecache) {
+        auto it = _cache.find(cmd);
+        if (it != _cache.cend() && !it->second.empty()) {
             return it->second;
         }
     }
 
+    // 先按照操作系统搜索顺序搜索，找不到才会到App Paths中去找
+    result = _from_search(cmd, usecache);
+    if(result.empty())
+        result = _from_apppaths(cmd, usecache);
+
+    _cache[cmd] = result;
+
+    return result;
+}
+
+std::string which::_from_search(const std::string& cmd, bool usecache) {
     std::string result;
     std::vector<std::string> matches;
     bool has_match = false;
@@ -365,7 +376,7 @@ std::string which::_which() {
             folder.append(1, '\\');
 
         WIN32_FIND_DATA wfd;
-        std::string pattern = folder + _cmd + '*';
+        std::string pattern = folder + cmd + '*';
         if(taoexec::shell::is_wow64()) ::Wow64DisableWow64FsRedirection(nullptr);
         HANDLE hfind = ::FindFirstFile(pattern.c_str(), &wfd);
         if(hfind != INVALID_HANDLE_VALUE) {
@@ -373,12 +384,12 @@ std::string which::_which() {
                 std::string file = folder + wfd.cFileName;
                 matches.push_back(std::move(file));
                 // check exactly match
-                if(_stricmp(_cmd.c_str(), wfd.cFileName) == 0) {
+                if(_stricmp(cmd.c_str(), wfd.cFileName) == 0) {
                     has_match = true;
                     goto _exit_for;
                 }
                 // check if executable
-                auto offset_match = wfd.cFileName + _cmd.size();
+                auto offset_match = wfd.cFileName + cmd.size();
                 if(_stricmp(offset_match, ".exe") == 0
                     || _stricmp(offset_match, ".bat") == 0
                     || _stricmp(offset_match, ".cmd") == 0
@@ -394,9 +405,7 @@ std::string which::_which() {
 
 _exit_for:
     if(has_match) {
-        auto match = matches.back();
-        _cache[_cmd] = match;
-        return match;
+        return matches.back();
     }
 
     return "";
@@ -450,6 +459,29 @@ void which::_init() {
     init_sys_path();
 }
 
+/*
+HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\
+HKCU\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\App Paths\
+HKLM\Software\Microsoft\Windows\CurrentVersion\App Paths\
+HKLM\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\App Paths\
+*/
+std::string which::_from_apppaths(const std::string& cmd, bool usecache) {
+    std::string result;
+
+    std::string key1(R"(Software\Microsoft\Windows\CurrentVersion\App Paths\)" + cmd + ".exe");
+    std::string key2(R"(Software\Wow6432Node\Microsoft\Windows\CurrentVersion\App Paths\)" + cmd + ".exe");
+
+    if(result.empty())
+        result = query_registry(HKEY_CURRENT_USER, key1, "", nullptr, false);
+    if(result.empty() && is_wow64())
+        result = query_registry(HKEY_CURRENT_USER, key2, "", nullptr, true);
+    if(result.empty())
+        result = query_registry(HKEY_LOCAL_MACHINE, key1, "", nullptr, false);
+    if(result.empty() && is_wow64())
+        result = query_registry(HKEY_LOCAL_MACHINE, key2, "", nullptr, true);
+
+    return std::move(result);
+}
 // ----- which -----
 
 }

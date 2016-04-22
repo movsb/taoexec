@@ -103,6 +103,7 @@ namespace taoexec {
 
         protected:
             model::config_db_t&     _cfgdb;
+            shell::which            _which;
 
         public:
             executor_fs(model::config_db_t& cfgdb);
@@ -117,7 +118,7 @@ namespace taoexec {
         private:
             void _expand_exec(conststring& exec_str, conststring& path, conststring& rest, std::string* __cmdline);
 
-            // 取得目标文件（可执行与不可执行），使用变量展开与函数调用技术
+            // 取得目标文件（可执行与不可执行），使用变量展开与函数调用
             // 支持的替换：$foo() - 函数调用，${variable} - 变量展开，%var% - 环境变量展开
             void _expand_path(const std::string& before,  std::string* after);
 

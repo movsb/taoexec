@@ -36,7 +36,7 @@ inline bool is_wow64() {
         && b64 != FALSE;
 }
 
-std::string query_registry(HKEY root, const std::string& subkey, const std::string& name, bool* has_name = nullptr);
+std::string query_registry(HKEY root, const std::string& subkey, const std::string& name, bool* has_name = nullptr, bool wow6432 = true);
 
 struct link_info {
     std::string path;
@@ -90,21 +90,18 @@ int get_directory_files(const char* root, const char* extname, std::vector<std::
 
 class which {
 public:
-    which(const std::string& cmd, bool usecache = true);
-
-    operator std::string() {
-        return _which();
-    }
+    which();
 
     void add_dir(const std::string& dir);
+    std::string call(const std::string& cmd, bool usecache = true);
 
 private:
     void _init();
-    std::string _which();
+
+    std::string _from_search(const std::string& cmd, bool usecache = true);
+    std::string _from_apppaths(const std::string& cmd, bool usecache = true);
 
 protected:
-    const std::string&          _cmd;
-    bool                        _usecache;
     std::vector<std::string>    _dirs;
     taoexec::strstrimap         _cache;
 };
