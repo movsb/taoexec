@@ -98,6 +98,7 @@ public:
 private:
     void _init();
 
+    std::string _from_special(const std::string& cmd, bool usecache = true);
     std::string _from_search(const std::string& cmd, bool usecache = true);
     std::string _from_apppaths(const std::string& cmd, bool usecache = true);
 

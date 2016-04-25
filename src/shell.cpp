@@ -353,8 +353,11 @@ std::string which::call(const std::string& cmd, bool usecache) {
         }
     }
 
-    // 先按照操作系统搜索顺序搜索，找不到才会到App Paths中去找
-    result = _from_search(cmd, usecache);
+    // 先特殊处理，然后按照操作系统搜索顺序搜索，找不到才会到App Paths中去找
+    if (result.empty())
+        result = _from_special(cmd, usecache);
+    if (result.empty())
+        result = _from_search(cmd, usecache);
     if(result.empty())
         result = _from_apppaths(cmd, usecache);
 
@@ -482,6 +485,16 @@ std::string which::_from_apppaths(const std::string& cmd, bool usecache) {
 
     return std::move(result);
 }
+
+std::string which::_from_special(const std::string& cmd, bool usecache /*= true*/) {
+    std::string result;
+
+    if (cmd.size() > 2 && cmd[0] == '\\' && cmd[1] == '\\')
+        result = cmd;
+
+    return result;
+}
+
 // ----- which -----
 
 }
