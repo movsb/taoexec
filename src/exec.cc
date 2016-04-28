@@ -821,6 +821,23 @@ bool executor_shell::execute(const std::string& args) {
 
 // ----- executor_shell -----
 
+// ----- executor_rtx -----
+bool executor_rtx::execute(const std::string& args) {
+    HWND hrtxforcelery = FindWindow("ThunderRT6FormDC", "RTX for Celery");
+    if (hrtxforcelery) {
+        COPYDATASTRUCT cds;
+        cds.dwData = 1;
+        cds.cbData = args.size() + 1;
+        cds.lpData = (void*)args.c_str();
+        ::SendMessage(hrtxforcelery, WM_COPYDATA, 0, LPARAM(&cds));
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+// ----- executor_rtx -----
 
 // ----- executor_manager -----
 
@@ -830,6 +847,7 @@ void executor_manager_t::_init_commanders() {
     add(new executor_shell);
     add(new executor_indexer(_itemdb));
     add(new executor_qq(_cfgdb));
+    add(new executor_rtx);
 }
 
 void executor_manager_t::_uninit_commanders() {
@@ -886,9 +904,9 @@ void executor_manager_t::_init_event_listners() {
                 goto _break;
             }
             // 到了这里并不知道有没有提供执行者，找到冒号才能确定
-            else if (::isalnum(c) || c == ':') {
+            else if (::isalnum(c) || strchr(":_", c)) {
                 auto bp = p; // p's backup
-                while ((c = *p) && c != ':' && ::isalnum(c))
+                while ((c = *p) && c != ':' && (::isalnum(c) || strchr("_", c)))
                     ++p;
 
                 if (c == ':') {  // 找到了执行者

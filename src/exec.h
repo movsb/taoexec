@@ -145,6 +145,20 @@ namespace taoexec {
             bool execute(const std::string& args) override;
         };
 
+        class executor_rtx : public command_executor_i
+        {
+        public:
+            executor_rtx() 
+            {
+
+            }
+            const std::string get_name() const override {
+                return "__rtx__";
+            }
+
+            bool execute(const std::string& args) override;
+        };
+
         class executor_manager_t 
         {
         public:
