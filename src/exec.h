@@ -25,23 +25,46 @@ namespace taoexec {
         class command_executor_i
         {
         public:
+            command_executor_i()
+                : _ref(1) {}
+
+            command_executor_i* ref() {
+                ++_ref;
+                return this;
+            }
+
+            command_executor_i* unref() {
+                --_ref;
+
+                if(_ref == 0) {
+                    delete this;
+                }
+
+                return this;
+            }
+
+        public:
             virtual const std::string get_name() const = 0;
             virtual bool execute(const std::string& args) = 0;
+
+        protected:
+            unsigned int _ref;
         };
 
-        /*
-        class registry_executor
+        class command_executor_any_i
+        {
+        public:
+            virtual bool execute(const std::string& raw, const std::string& scheme, const std::string& args) = 0;
+        };
+
+        class registry_executor : public command_executor_any_i
         {
         private:
             std::map<std::string, std::string, __string_nocase_compare> _commands;
         public:
             registry_executor();
-            bool execute(const std::string& all, const std::string& scheme, const std::string& args);
-
-        private:
-            bool _execute_command(const std::string& cmd, const std::string& all);
+            bool execute(const std::string& raw, const std::string& scheme, const std::string& args);
         };
-        */
 
         class executor_main : public command_executor_i
         {
@@ -179,25 +202,27 @@ namespace taoexec {
             }
 
         public:
-            void
-                init();
-            void
-                add(command_executor_i* p);
-            command_executor_i*
-                get(const std::string& name);
-            bool
-                exec(const std::string& args);
+            void init();
+            void add_unnamed(command_executor_i* p);
+            void add_named(command_executor_i* p);
+            void add_any(command_executor_any_i* p);
+
+            bool exec(const std::string& args);
 
         protected:
             void _init_commanders();
             void _uninit_commanders();
 
             void _init_event_listners();
+
         public:
             taoexec::model::item_db_t*      _itemdb;
             taoexec::model::config_db_t*    _cfgdb;
+
         protected:
-            std::map<std::string, command_executor_i*, taoexec::__string_nocase_compare> _command_executors;
+            std::vector<command_executor_i*>    _exec_unnamed;
+            std::map<std::string, command_executor_i*, taoexec::__string_nocase_compare> _exec_named;
+            std::vector<command_executor_any_i*>        _exec_any;
         };
 
         // ------------------------------------------------------------------------------------------------------------------

@@ -8,7 +8,7 @@
 
 namespace taoexec {
 namespace exec {
-/*
+
 // ----- registry_executor -----
 registry_executor::registry_executor() {
 
@@ -27,63 +27,68 @@ bool registry_executor::execute(const std::string& all, const std::string& schem
 
     auto it = _commands.find(scheme);
     if(it == _commands.end()) {
-        //_pMini->msgbox("尚未向注册表注册的协议。");
         return false;
     }
 
     auto cmd = it->second;
     if(!cmd.size()) {
-        //_pMini->msgbox("未正确注册的协议。");
         return false;
     }
 
-    _execute_command(cmd, all);
-
-    return true;
-}
-
-bool registry_executor::_execute_command(const std::string& cmd, const std::string& all) {
-    std::string str;
-    // 实参替换，目前只支持：%0, %1, %L, %l
-    auto p = cmd.c_str();
-    for(; *p;) {
-        if(*p == '%') {
-            switch(*++p) {
-            case '0':
-            case '1':
-            case 'l':
-            case 'L':
-                str += all;
-                ++p;
-                break;
-            default:
-                str += '%';
-                ++p;
-                break;
+    string cmdline;
+    // TODO remove
+    auto _expand_exec = [](conststring& exec_str, conststring& path, conststring& rest, std::string* __cmdline) {
+        // 实参替换，目前只支持：%0, %1, %L, %l, %*
+        std::string str;
+        auto p = exec_str.c_str();
+        for(; *p;) {
+            if(*p == '%') {
+                switch(*++p) {
+                case '0':
+                case '1':
+                case 'l':
+                case 'L':
+                    str += path;
+                    ++p;
+                    break;
+                case '*':
+                    str += rest;
+                    ++p;
+                    break;
+                default:
+                    throw "不支持的变量替换。";
+                }
+            } else {
+                auto bp = p;
+                while(*p && *p != '%')
+                    ++p;
+                str.append(bp, p);
             }
-        } else {
-            auto bp = p;
-            while(*p && *p != '%')
-                ++p;
-            str.append(bp, p);
         }
-    }
 
-    STARTUPINFO si = {sizeof(si)};
-    PROCESS_INFORMATION pi;
+        *__cmdline = std::move(str);
+    };
 
-    if(::CreateProcess(nullptr, (LPSTR)str.c_str(), nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, nullptr, &si, &pi)) {
+    _expand_exec(cmd, all, "", &cmdline);
+
+    ::STARTUPINFO si = {sizeof(si)};
+    ::PROCESS_INFORMATION pi;
+
+    if(::CreateProcess(nullptr, (char*)cmdline.c_str(),
+        nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE,
+        nullptr, nullptr, &si, &pi))
+    {
         ::CloseHandle(pi.hThread);
         ::CloseHandle(pi.hProcess);
-
         return true;
     } else {
         return false;
     }
+
+    return true;
 }
 
 // ----- registry_executor -----
-*/
 
 // ----- executor_main -----
 executor_main::executor_main()
@@ -185,13 +190,7 @@ bool executor_indexer::execute(const std::string& args) {
     auto item = from_db();
 
     if(!item) {
-        struct event_cmdstr_args : eventx::event_args_i {
-            std::string args;
-        };
-
-        auto p = new event_cmdstr_args;
-        p->args = "fs:" + args;
-        return _evtmgr->trigger("exec:cmdstr", p);
+        return false;
     }
 
     bool r = false;
@@ -847,18 +846,29 @@ bool executor_rtx::execute(const std::string& args) {
 // ----- executor_manager -----
 
 void executor_manager_t::_init_commanders() {
-    add(new executor_fs(*_cfgdb));
-    add(new executor_main);
-    add(new executor_shell);
-    add(new executor_indexer(_itemdb));
-    add(new executor_qq(_cfgdb));
-    add(new executor_rtx);
+    add_named(new executor_main);
+    add_named(new executor_shell);
+    add_named(new executor_qq(_cfgdb));
+    add_named(new executor_rtx);
+
+    add_named(new executor_indexer(_itemdb));
+    add_named(new executor_fs(*_cfgdb));
+
+    add_unnamed(new executor_indexer(_itemdb));
+    add_unnamed(new executor_fs(*_cfgdb));
+
+    add_any(new registry_executor);
 }
 
 void executor_manager_t::_uninit_commanders() {
-    for(auto& it : _command_executors) {
-        delete it.second;
-    }
+    for(auto& v : _exec_unnamed)
+        delete v;
+
+    for(auto& it : _exec_named)
+        it.second->unref();
+
+    for(auto& v : _exec_any)
+        delete v;
 }
 
 void executor_manager_t::init() {
@@ -965,17 +975,28 @@ void executor_manager_t::_init_event_listners() {
             return false;
         }
 
-        if(parsedscheme.cmd == "__none__")
-            parsedscheme.cmd = "__indexer__";
-
-        auto it = _command_executors.find(parsedscheme.cmd);
-        if(it == _command_executors.cend()) {
-            _evtmgr->msgbox("未找到执行者：" + parsedscheme.cmd);
-            return false;
+        if(parsedscheme.cmd == "__none__") {
+            for(auto& it : _exec_unnamed) {
+                if(it->execute(parsedscheme.args)) {
+                    return true;
+                }
+            }
         }
         else {
-            return it->second->execute(parsedscheme.args);
+            auto it = _exec_named.find(parsedscheme.cmd);
+            if(it != _exec_named.cend()) {
+                return it->second->execute(parsedscheme.args);
+            }
+            else {
+                for(auto& it : _exec_any) {
+                    if(it->execute(parsedscheme.raw, parsedscheme.cmd, parsedscheme.args)) {
+                        return true;
+                    }
+                }
+            }
         }
+
+        return false;
     });
 
     _evtmgr->attach("exec:addexec", [&](eventx::event_args_i* ____args) {
@@ -1020,24 +1041,24 @@ void executor_manager_t::_init_event_listners() {
             int _fnrefid;
         };
 
-        add(new executor_x(__args->L, __args->type, __args->fnrefid));
+        add_named(new executor_x(__args->L, __args->type, __args->fnrefid));
 
         return true;
     });
 }
 
-void executor_manager_t::add(command_executor_i* p) {
-    auto name = p->get_name();
-    if(!get(name))
-        _command_executors[name] = p;
+void executor_manager_t::add_unnamed(command_executor_i* p) {
+    _exec_unnamed.push_back(p);
 }
 
-command_executor_i* executor_manager_t::get(const std::string& name) {
-    auto it = _command_executors.find(name);
-    return it != _command_executors.cend()
-        ? it->second
-        : nullptr;
+void executor_manager_t::add_named(command_executor_i* p) {
+    _exec_named[p->get_name()] = p;
 }
+
+void executor_manager_t::add_any(command_executor_any_i* p) {
+    _exec_any.push_back(p);
+}
+
 // ----- executor_manager -----
 
 
