@@ -495,7 +495,7 @@ void executor_fs::_expand_path(const std::string& before, std::string* __after) 
         return std::move(s);
     }());
 
-    if(std::regex_match(after, std::regex(R"([^/\:]+)")))
+    if(std::regex_match(after, std::regex(R"([^/\\:]+)")))
         after = _which.call(after);
 
     if(after.empty())
@@ -692,6 +692,11 @@ bool executor_fs::execute(conststring& path, conststring& args, conststring& __w
     catch(const char* e) {
         _evtmgr->msgbox(e);
         return false;
+    }
+
+    // Windows sharing
+    if(std::regex_match(path_expanded, std::regex(R"(\\\\[^/\\]+\\.*)"))) {
+        return (int)::ShellExecute(nullptr, "open", "explorer", path_expanded.c_str(), nullptr, SW_SHOWNORMAL) > 32;
     }
 
     if(!::PathFileExists(path_expanded.c_str())) {
