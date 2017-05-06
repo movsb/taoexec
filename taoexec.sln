@@ -1,23 +1,29 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "taoexec", "taoexec.vcxproj", "{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "taoexec", "pro\taoexec.vcxproj", "{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C28D44BF-69D9-4077-BE36-D30D9E1958AE} = {C28D44BF-69D9-4077-BE36-D30D9E1958AE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "taowin", "3rd\taowin\vs\taowin.vcxproj", "{C28D44BF-69D9-4077-BE36-D30D9E1958AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
-		PR|Win32 = PR|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}.Debug|Win32.ActiveCfg = Debug|Win32
 		{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}.Debug|Win32.Build.0 = Debug|Win32
-		{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}.PR|Win32.ActiveCfg = PR|Win32
-		{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}.PR|Win32.Build.0 = PR|Win32
 		{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}.Release|Win32.ActiveCfg = Release|Win32
 		{4F3A7CF5-C464-4CFB-9CCE-3F593B2D1F64}.Release|Win32.Build.0 = Release|Win32
+		{C28D44BF-69D9-4077-BE36-D30D9E1958AE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C28D44BF-69D9-4077-BE36-D30D9E1958AE}.Debug|Win32.Build.0 = Debug|Win32
+		{C28D44BF-69D9-4077-BE36-D30D9E1958AE}.Release|Win32.ActiveCfg = Release|Win32
+		{C28D44BF-69D9-4077-BE36-D30D9E1958AE}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

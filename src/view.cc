@@ -321,22 +321,22 @@ LRESULT CONFIG::INPUT::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
     switch(umsg) {
     case WM_CREATE:
     {
-                      auto name = _root->find<taowin::edit>("name");
-                      auto value = _root->find<taowin::edit>("value");
-                      auto comment = _root->find<taowin::edit>("comment");
+		  auto name = _root->find<taowin::edit>("name");
+		  auto value = _root->find<taowin::edit>("value");
+		  auto comment = _root->find<taowin::edit>("comment");
 
-                      if(_item) {
-                          name->set_text(_item->name.c_str());
-                          value->set_text(_item->value.c_str());
-                          comment->set_text(_item->comment.c_str());
+		  if(_item) {
+			  name->set_text(_item->name.c_str());
+			  value->set_text(_item->value.c_str());
+			  comment->set_text(_item->comment.c_str());
 
-                          name->set_enabled(false);
-                          value->focus();
-                      } else {
-                          name->focus();
-                      }
+			  name->set_enabled(false);
+			  value->focus();
+		  } else {
+			  name->focus();
+		  }
 
-                      return 0;
+		  return 0;
     }
     }
     return __super::handle_message(umsg, wparam, lparam);
@@ -379,7 +379,7 @@ LPCTSTR CONFIG::get_skin_xml() const {
 }
 
 taoexec::view::CONFIG::menuid CONFIG::show_menu() {
-    auto lv = _root->find<taowin::listview>("lv");
+    auto lv = _root->find<taowin::ListViewControl>("lv");
     int nsel = lv->get_selected_count();
 
     ::EnableMenuItem(_hmenu, (UINT)menuid::modify, MF_BYCOMMAND | (nsel == 1 ? MF_ENABLED : MF_DISABLED | MF_GRAYED));
@@ -405,7 +405,7 @@ LRESULT CONFIG::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
                 {nullptr, 0}
             };
 
-            auto lv = _root->find<taowin::listview>("lv");
+            auto lv = _root->find<taowin::ListViewControl>("lv");
             for(int i = 0; i < _countof(cols); ++i) {
                 auto col = &cols[i];
                 lv->insert_column(col->name, col->width, i);
@@ -455,7 +455,7 @@ bool CONFIG::filter_message(MSG* msg) {
 
 LRESULT CONFIG::on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
     if(pc->name() == "lv") {
-        auto lv = reinterpret_cast<taowin::listview*>(pc);
+        auto lv = reinterpret_cast<taowin::ListViewControl*>(pc);
         if(code == NM_RCLICK) {
             switch(show_menu()) {
             case menuid::add:
@@ -565,7 +565,7 @@ LRESULT MINI::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
     case WM_CREATE:
         // move to top of screen, and set attributes
         ([&]() {
-            taowin::rect window_rect = get_window_rect();
+            taowin::Rect window_rect = get_window_rect();
             int cx_screen = ::GetSystemMetrics(SM_CXSCREEN);
             ::SetWindowPos(_hwnd, nullptr,
                 (cx_screen - window_rect.width()) / 2, 0, 0, 0,
@@ -716,7 +716,7 @@ LRESULT TW::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
     case WM_CREATE:
     {
         center();
-        auto lv = _root->find<taowin::listview>("list");
+        auto lv = _root->find<taowin::ListViewControl>("list");
         assert(lv);
 
         struct
@@ -759,7 +759,7 @@ LRESULT TW::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
             using namespace taoexec::shell;
 
             // TODO 复用
-            taowin::listview* lv = _root->find<taowin::listview>("list");
+            taowin::ListViewControl* lv = _root->find<taowin::ListViewControl>("list");
             // callback
             auto on_added = [&](taoexec::model::item_t* p) {
                 if(_items.size() == 0 || _items.back() != p)
@@ -817,7 +817,7 @@ LRESULT TW::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
 LRESULT TW::on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
     if(pc->name() == "list") {
         if(!hdr) return 0;
-        taowin::listview* list = static_cast<taowin::listview*>(pc);
+        taowin::ListViewControl* list = static_cast<taowin::ListViewControl*>(pc);
         if(code == LVN_GETDISPINFO) {
             NMLVDISPINFO* pdi = reinterpret_cast<NMLVDISPINFO*>(hdr);
             auto rit = _items[pdi->item.iItem]; // right-hand item
@@ -860,7 +860,7 @@ LRESULT TW::on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
         if(code != BN_CLICKED)
             return 0;
         if(pc->name() == "add") {
-            taowin::listview* lv = _root->find<taowin::listview>("list");
+            taowin::ListViewControl* lv = _root->find<taowin::ListViewControl>("list");
             // callback
             auto on_added = [&](taoexec::model::item_t* p) {
                 if(_items.size() == 0 || _items.back() != p)
@@ -874,7 +874,7 @@ LRESULT TW::on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
             item.domodal(this);
             return 0;
         } else if(pc->name() == "modify") {
-            taowin::listview* lv = _root->find<taowin::listview>("list");
+            taowin::ListViewControl* lv = _root->find<taowin::ListViewControl>("list");
             int lvid = lv->get_next_item(-1, LVNI_SELECTED);
             if(lvid == -1) return 0;
 
@@ -894,7 +894,7 @@ LRESULT TW::on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
         if(code != BN_CLICKED)
             return 0;
 
-        auto list = static_cast<taowin::listview*>(_root->find("list"));
+        auto list = static_cast<taowin::ListViewControl*>(_root->find("list"));
         int count = list->get_selected_count();
         if(msgbox(("确定要删除选中的 " + std::to_string(count) + "项？").c_str(), MB_OKCANCEL) == IDOK) {
             int index = -1;
@@ -965,7 +965,7 @@ void TW::_execute(int i) {
 void TW::_refresh() {
     _db.query("", &_items);
 
-    taowin::listview* lv = _root->find<taowin::listview>("list");
+    taowin::ListViewControl* lv = _root->find<taowin::ListViewControl>("list");
     lv->set_item_count(_items.size(), 0);   // cause invalidate all.
 }
 

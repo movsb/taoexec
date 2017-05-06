@@ -1,6 +1,6 @@
 #pragma once
 
-#include <taowin/tw_taowin.h>
+#include <taowin/core/tw_taowin.h>
 
 #include "event.h"
 #include "exec.h"
@@ -98,7 +98,7 @@ private:
         callback_t _onok;
 
     protected:
-        virtual void get_metas(taowin::window::window_meta_t* metas) override {
+        virtual void get_metas(taowin::window::WindowMeta* metas) override {
             __super::get_metas(metas);
         }
 
@@ -142,7 +142,7 @@ protected:
 
 class MINI : public taowin::window_creator {
 protected:
-    virtual void get_metas(taowin::window::window_meta_t* metas) override {
+    virtual void get_metas(taowin::window::WindowMeta* metas) override {
         __super::get_metas(metas);
         metas->style = WS_POPUP;
         metas->exstyle = WS_EX_TOPMOST | WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW | WS_EX_LAYERED;
@@ -203,7 +203,7 @@ public:
     }
 
 protected:
-    virtual void get_metas(window_meta_t* metas) {
+    virtual void get_metas(WindowMeta* metas) {
         __super::get_metas(metas);
         metas->exstyle |= WS_EX_ACCEPTFILES;
     }

@@ -39,27 +39,6 @@
     <ClCompile Include="..\src\view.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rd\taowin\tw_control.cpp">
-      <Filter>Source Files\taowin</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rd\taowin\tw_parser.cpp">
-      <Filter>Source Files\taowin</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rd\taowin\tw_resmgr.cpp">
-      <Filter>Source Files\taowin</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rd\taowin\tw_syscontrols.cpp">
-      <Filter>Source Files\taowin</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rd\taowin\tw_taowin.cpp">
-      <Filter>Source Files\taowin</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rd\taowin\tw_util.cpp">
-      <Filter>Source Files\taowin</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rd\taowin\tw_window.cpp">
-      <Filter>Source Files\taowin</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\shell.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -190,27 +169,6 @@
     </ClInclude>
     <ClInclude Include="..\src\view.h">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd\taowin\tw_control.h">
-      <Filter>Source Files\taowin</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd\taowin\tw_parser.h">
-      <Filter>Source Files\taowin</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd\taowin\tw_resmgr.h">
-      <Filter>Source Files\taowin</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd\taowin\tw_syscontrols.h">
-      <Filter>Source Files\taowin</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd\taowin\tw_taowin.h">
-      <Filter>Source Files\taowin</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd\taowin\tw_util.h">
-      <Filter>Source Files\taowin</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd\taowin\tw_window.h">
-      <Filter>Source Files\taowin</Filter>
     </ClInclude>
     <ClInclude Include="..\res\resource.h">
       <Filter>Header Files</Filter>
