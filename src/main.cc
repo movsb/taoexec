@@ -25,7 +25,7 @@ static void prompt_elevation() {
     }
 #endif
 
-#ifdef __PR__
+#ifdef NDEBUG
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nShowCmd) {
 #else
 int main() {

@@ -5,6 +5,7 @@
 #include "charset.h"
 
 #include <Shlwapi.h>
+#include <shlwapi.h>
 
 namespace taoexec {
 namespace exec {
@@ -654,9 +655,9 @@ void executor_fs::_add_user_variables(const shell::env_var_t& env_var) {
 std::string executor_fs::get_executor(const std::string& ext) {
     if(!ext.empty() && !_exec_strs.count(ext)) {
         DWORD dwLen = 0;
-        if(AssocQueryString(ASSOCF_NONE, ASSOCSTR_COMMAND, ext.c_str(), nullptr, nullptr, &dwLen) == S_FALSE && dwLen) {
+        if(AssocQueryString(/*ASSOCF_NONE*/0, ASSOCSTR_COMMAND, ext.c_str(), nullptr, nullptr, &dwLen) == S_FALSE && dwLen) {
             std::unique_ptr<char[]> cmd(new char[dwLen + 1]);
-            AssocQueryString(ASSOCF_NONE, ASSOCSTR_COMMAND, ext.c_str(), nullptr, cmd.get(), &dwLen);
+            AssocQueryString(/*ASSOCF_NONE*/0, ASSOCSTR_COMMAND, ext.c_str(), nullptr, cmd.get(), &dwLen);
             _exec_strs[ext] = cmd.get();
         }
     }
