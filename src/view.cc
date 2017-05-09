@@ -187,14 +187,14 @@ LRESULT ITEM::on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
     if(pc->name() == "ok") {
         if(code == BN_CLICKED) {
             auto p = new taoexec::model::item_t;
-            p->id = _id->get_text();
-            p->index = _index->get_text();
-            p->group = _group->get_text();
-            p->comment = _comment->get_text();
-            p->paths = _path->get_text();
-            p->params = _params->get_text();
-            p->work_dir = _work_dir->get_text();
-            p->env = _env->get_text();
+            p->id         = _id->get_text();
+            p->index      = _index->get_text();
+            p->group      = _group->get_text();
+            p->comment    = _comment->get_text();
+            p->paths      = _path->get_text();
+            p->params     = _params->get_text();
+            p->work_dir   = _work_dir->get_text();
+            p->env        = _env->get_text();
             p->show = !!std::atoi(_show->get_text().c_str()); // std::stoi will throw
 
             if(_item == nullptr) {    // create
@@ -742,6 +742,7 @@ LRESULT TW::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
         }
 
 		_list = lv;
+		_list->set_source(&_source);
 
         // 设置管理员标题
         ([](HWND hwnd) {
@@ -820,22 +821,7 @@ LRESULT TW::on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
     if(pc->name() == "list") {
         if(!hdr) return 0;
         taowin::ListViewControl* list = static_cast<taowin::ListViewControl*>(pc);
-        if(code == LVN_GETDISPINFO) {
-            NMLVDISPINFO* pdi = reinterpret_cast<NMLVDISPINFO*>(hdr);
-            auto rit = _items[pdi->item.iItem]; // right-hand item
-            auto lit = &pdi->item;              // left-hand item
-            switch(lit->iSubItem) {
-            case 0: lit->pszText = (LPSTR)rit->id.c_str(); break;
-            case 1: lit->pszText = (LPSTR)rit->index.c_str(); break;
-            case 2: lit->pszText = (LPSTR)rit->group.c_str(); break;
-            case 3: lit->pszText = (LPSTR)rit->comment.c_str(); break;
-            case 4: lit->pszText = (LPSTR)rit->paths.c_str(); break;
-            case 5: lit->pszText = (LPSTR)rit->params.c_str(); break;
-            case 6: lit->pszText = (LPSTR)rit->work_dir.c_str(); break;
-            case 7: lit->pszText = (LPSTR)rit->env.c_str(); break;
-            case 8: lit->pszText = (LPSTR)(rit->show ? "1" : "0"); break;
-            }
-        } else if(code == LVN_ITEMCHANGED
+        if(code == LVN_ITEMCHANGED
             || code == LVN_DELETEITEM
             || code == LVN_DELETEALLITEMS
             ) {
@@ -992,6 +978,7 @@ void TW::_init_event_listeners() {
         return false;
     });
 }
+
 } // namespace view
 
 } // namespace taoexec

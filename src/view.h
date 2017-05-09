@@ -195,11 +195,59 @@ private:
     taoexec::model::config_db_t& _cfg;
     std::vector<taoexec::model::item_t*> _items;
 
+	class ItemDataSource : public taowin::ListViewControl::IDataSource
+	{
+	private:
+		const std::vector<taoexec::model::item_t*>* _items;
+
+	public:
+		ItemDataSource()
+			: _items(nullptr)
+		{
+
+		}
+
+		void SetItems(const std::vector<taoexec::model::item_t*>* items)
+		{
+			_items = items;
+		}
+
+	public:
+		virtual size_t size() const override
+		{
+			return _items != nullptr ? _items->size() : 0;
+		}
+
+		virtual LPCTSTR get(int row, int column) const override
+		{
+			if (_items == nullptr) return _T("");
+
+			auto rit = (*_items)[row];
+			auto value = _T("");
+
+			switch (column)
+			{
+			case 0: value = rit->id.c_str();                 break;
+			case 1: value = rit->index.c_str();              break;
+			case 2: value = rit->group.c_str();              break;
+			case 3: value = rit->comment.c_str();            break;
+			case 4: value = rit->paths.c_str();              break;
+			case 5: value = rit->params.c_str();			 break;
+			case 6: value = rit->work_dir.c_str();			 break;
+			case 7: value = rit->env.c_str();                break;
+			case 8: value = (rit->show ? _T("1") : _T("0")); break;
+			}
+
+			return value;
+		}
+	};
+
 public:
     TW(taoexec::model::item_db_t& db, taoexec::model::config_db_t& cfg) 
         : _db(db)
         , _cfg(cfg)
     {
+		_source.SetItems(&_items);
     }
 
 protected:
@@ -225,6 +273,7 @@ private:
 
 private:
 	taowin::ListViewControl* _list;
+	ItemDataSource _source;
 };
 
 } // namespace view
