@@ -741,6 +741,8 @@ LRESULT TW::handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) {
             lv->insert_column(col->name, col->width, i);
         }
 
+		_list = lv;
+
         // 设置管理员标题
         ([](HWND hwnd) {
             char tt[1024];
@@ -928,6 +930,15 @@ LRESULT TW::on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) {
         return 0;
     }
     return 0;
+}
+
+taowin::syscontrol* TW::filter_control(HWND hwnd)
+{
+	if (hwnd == _list->get_header()) {
+		return _list;
+	}
+
+	return nullptr;
 }
 
 void TW::_execute(int i) {

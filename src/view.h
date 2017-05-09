@@ -211,6 +211,7 @@ protected:
     virtual LPCTSTR get_skin_xml() const override;
     virtual LRESULT handle_message(UINT umsg, WPARAM wparam, LPARAM lparam) override;
     virtual LRESULT on_notify(HWND hwnd, taowin::control* pc, int code, NMHDR* hdr) override;
+	virtual taowin::syscontrol* filter_control(HWND hwnd) override;
     virtual void on_final_message() override {
         delete this;
     }
@@ -221,6 +222,9 @@ private:
 
     void _refresh();
     void _execute(int i);
+
+private:
+	taowin::ListViewControl* _list;
 };
 
 } // namespace view

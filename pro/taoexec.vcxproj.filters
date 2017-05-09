@@ -16,9 +16,6 @@
     <Filter Include="Source Files\sqlite3">
       <UniqueIdentifier>{e64017e6-4a8f-426f-9023-d8b7a459e4f4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\taowin">
-      <UniqueIdentifier>{f5cfa382-1fa0-4a27-8de2-08104e98877a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\lua">
       <UniqueIdentifier>{a44a277e-34c3-4dbd-bce1-c64e4cded8b4}</UniqueIdentifier>
     </Filter>

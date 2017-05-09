@@ -60,7 +60,7 @@
       <AdditionalIncludeDirectories>../3rd</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>ws2_32.lib;shlwapi.lib;$(SolutionDir)/bin/$(Configuration)/taowin.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../3rd;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
